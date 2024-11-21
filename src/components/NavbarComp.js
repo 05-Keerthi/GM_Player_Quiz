@@ -22,7 +22,7 @@ const Navbar = () => {
             onClick={() => navigate("/")}
           />
           <div>
-            <h1 className="text-lg font-semibold">Welcome to GMI!</h1>
+            <h1 className="text-lg font-semibold">Welcome to GM Play..!</h1>
             <p className="text-sm text-gray-500">Engage, learn, and have fun</p>
           </div>
         </div>
