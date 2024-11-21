@@ -27,11 +27,11 @@ export const authReducer = (state, action) => {
         token: null, // Reset token on logout
       };
 
-    // Update User Data (for cases where user info changes)
-    case "UPDATE_USER":
+    case "GET_USER_PROFILE":
       return {
         ...state,
-        user: { ...state.user, ...action.payload }, // Update specific user info
+        // profile: action.payload,
+        user: action.payload.user,
       };
 
     default:

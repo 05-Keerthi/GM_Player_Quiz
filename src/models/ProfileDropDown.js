@@ -59,7 +59,7 @@ const ProfileDropdown = ({ user, onLogout }) => {
 
             <button
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-300 hover:bg-blue-50 rounded-md transition-colors duration-200"
-              onClick={() => navigate("/profile")}
+              onClick={() => navigate("/user/profile")}
             >
               <span className="text-blue-200">👤</span>
               Profile

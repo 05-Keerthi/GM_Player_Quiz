@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { AuthContext } from "./context/AuthContext";
 import Home from "./pages/Home";
+import ProfilePage from "./pages/ProfilePage";
 
 export default function App() {
   const { isAuthenticated } = useContext(AuthContext);
@@ -20,6 +21,7 @@ export default function App() {
         element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
       />
       <Route path="/" element={<Home />} />
+      <Route path="/user/profile" element={<ProfilePage />} />
     </Routes>
   );
 }

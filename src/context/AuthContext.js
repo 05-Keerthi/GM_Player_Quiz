@@ -1,12 +1,11 @@
-
 import React, { createContext, useReducer, useEffect, useState } from "react";
 import axios from "axios";
 import { authReducer } from "../reducers/authReducer";
+import Cookies from "js-cookie";
 
-// Initial state for authentication context
 const initialState = {
   isAuthenticated: false,
-  user: null, // user will contain details including role
+  user: null,
   token: null,
 };
 
@@ -26,7 +25,9 @@ export const AuthProvider = ({ children }) => {
           type: "LOGIN",
           payload: { user: storedUser, token: storedToken },
         });
-        axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${storedToken}`;
       }
       setLoading(false);
     };
@@ -41,8 +42,12 @@ export const AuthProvider = ({ children }) => {
           originalRequest._retry = true;
           try {
             const refreshedToken = await refreshToken();
-            axios.defaults.headers.common["Authorization"] = `Bearer ${refreshedToken}`;
-            originalRequest.headers["Authorization"] = `Bearer ${refreshedToken}`;
+            axios.defaults.headers.common[
+              "Authorization"
+            ] = `Bearer ${refreshedToken}`;
+            originalRequest.headers[
+              "Authorization"
+            ] = `Bearer ${refreshedToken}`;
             return axios(originalRequest);
           } catch (refreshError) {
             logout();
@@ -59,28 +64,49 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, rememberMe) => {
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/auth/login`,
-        { email, password }
+        "http://localhost:5000/api/auth/login",
+        {
+          email,
+          password,
+        }
       );
 
       const { user, token } = response.data;
 
-      // Store the user's role and token in local storage
+      // Handle Remember Me with Cookies
       if (rememberMe) {
-        localStorage.setItem("email", email);
-        localStorage.setItem("password", password);
+        // Store email in a cookie (more secure than localStorage)
+        Cookies.set("rememberedEmail", email, {
+          expires: 30, // 30 days
+          secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+          sameSite: "strict", // Protect against CSRF
+        });
       } else {
-        localStorage.removeItem("email");
-        localStorage.removeItem("password");
+        // Remove the cookie if remember me is not checked
+        Cookies.remove("rememberedEmail");
       }
 
-      localStorage.setItem("user", JSON.stringify(user)); // User object includes 'role'
+      // Store user and token
+      localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
+
+      // Set Authorization header
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       dispatch({ type: "LOGIN", payload: { user, token } });
     } catch (error) {
-      console.error("Login failed", error);
+      const errorResponse = error.response?.data;
+      if (errorResponse?.message === "Invalid Email.") {
+        throw new Error(JSON.stringify({ email: "Email does not exist" }));
+      } else if (errorResponse?.message === "Invalid Password.") {
+        throw new Error(JSON.stringify({ password: "Enter valid password" }));
+      } else {
+        throw new Error(
+          JSON.stringify({
+            general: "An error occurred. Please try again later.",
+          })
+        );
+      }
     }
   };
 
@@ -88,12 +114,17 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(
         `http://localhost:5000/api/auth/register`,
-        { username, email, mobile, password }
+        {
+          username,
+          email,
+          mobile,
+          password,
+        }
       );
 
       const { user, token } = response.data;
 
-      localStorage.setItem("user", JSON.stringify(user)); // Save user info, including role
+      localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
@@ -101,8 +132,20 @@ export const AuthProvider = ({ children }) => {
 
       return response.data;
     } catch (error) {
-      console.error("Registration failed", error);
-      throw error;
+      const errorResponse = error.response?.data;
+
+      if (errorResponse?.field && errorResponse?.message) {
+        // Convert the error to match our expected format
+        throw {
+          field: errorResponse.field,
+          message: errorResponse.message,
+        };
+      } else {
+        throw {
+          field: "general",
+          message: "An error occurred. Please try again later.",
+        };
+      }
     }
   };
 
@@ -116,6 +159,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: "LOGOUT" });
     } catch (error) {
       console.error("Logout failed", error);
+      throw error;
     }
   };
 
@@ -128,6 +172,7 @@ export const AuthProvider = ({ children }) => {
         }
       );
       const { token } = response.data;
+      console.log(response.data);
       localStorage.setItem("token", token);
       return token;
     } catch (error) {
@@ -136,8 +181,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const getProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No token found");
+      }
+
+      const response = await axios.get("http://localhost:5000/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Assuming the response contains the user data directly
+      const user = response.data;
+
+      // Dispatch the user data to update the context
+      dispatch({ type: "GET_USER_PROFILE", payload: user });
+
+      return user;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      throw error;
+    }
+  };
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, register, loading }}>
+    <AuthContext.Provider
+      value={{ ...state, login, logout, register, getProfile, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

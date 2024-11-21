@@ -70,8 +70,17 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+    <div className="min-h-screen relative flex items-center justify-center bg-gray-100 p-4">
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center z-0 opacity-50"
+        style={{
+          backgroundImage:
+            "url('https://img.freepik.com/free-vector/technology-wire-mesh-network-connection-digital-background_1017-28407.jpg?semt=ais_hybrid')",
+        }}
+      />
+
+      <div className="relative z-10 max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
         <h2 className="text-2xl font-bold text-center mb-8">Login</h2>
 
         {/* Display general error at the top if present */}
@@ -177,48 +186,6 @@ export const LoginPage = () => {
               Don't have an account? Register
             </p>
           </div>
-          {/* Divider */}
-          {/* <div className="flex items-center justify-center mt-4">
-            <p>OR</p>
-          </div> */}
-          {/* Social Login Buttons */}
-          {/* <div className="space-y-4 mt-4">
-            <button
-              type="button"
-              className="w-full bg-black text-white rounded-md py-2 px-4 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              <span>Login with Google</span>
-            </button>
-
-            <button
-              type="button"
-              className="w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <span>Login with Facebook</span>
-            </button>
-          </div> */}
-
-          {/* Divider */}
-          {/* <div className="flex items-center justify-center mt-4">
-            <p>Join quiz using</p>
-          </div> */}
-
-          {/* Join Quiz Options */}
-          {/* <div className="mt-4 space-y-2">
-            <button
-              type="button"
-              className="w-full border border-gray-300 text-gray-700 rounded-md py-2 px-4 hover:bg-gray-50"
-            >
-              Scan QR code
-            </button>
-
-            <button
-              type="button"
-              className="w-full border border-gray-300 text-gray-700 rounded-md py-2 px-4 hover:bg-gray-50"
-            >
-              Enter the PIN
-            </button>
-          </div> */}
         </form>
       </div>
     </div>
