@@ -11,7 +11,7 @@ const register = async (req, res) => {
     if (existingUsername) {
       return res.status(400).json({
         field: "username",
-        message: "username is already registered",
+        message: "Username is already registered",
       });
     }
     // Check email existence separately
@@ -33,10 +33,11 @@ const register = async (req, res) => {
     }
 
     // Create new user if no conflicts
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       username,
       email,
-      password,
+      password: hashedPassword,
       tenantId,
       mobile,
       role,
@@ -46,10 +47,15 @@ const register = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "8h" }
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "1d" }
     );
 
-    res.status(200).json({ token, user });
+    res.status(200).json({ token, refresh_token: refreshToken, user });
   } catch (error) {
     res.status(500).json({
       field: "general",
@@ -72,10 +78,17 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: existingUser._id, role: existingUser.role },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "1h" }
     );
+    const refreshToken = jwt.sign(
+      { id: existingUser._id, role: existingUser.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(200).json({
       token,
+      refresh_token: refreshToken,
       user: {
         id: existingUser._id,
         username: existingUser.username,
