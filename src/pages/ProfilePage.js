@@ -214,7 +214,7 @@ export const ProfilePage = () => {
                 </div>
               </div>
             </div>
-            <div className="flex justify-center md:justify-end mt-6 md:mt-8">
+            {/* <div className="flex justify-center md:justify-end mt-6 md:mt-8">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -222,7 +222,7 @@ export const ProfilePage = () => {
               >
                 {isLoading ? "Saving..." : "Save Changes"}
               </button>
-            </div>
+            </div> */}
           </form>
         </div>
       </>

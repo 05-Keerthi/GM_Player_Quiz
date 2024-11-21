@@ -15,11 +15,11 @@ export const RegisterPage = () => {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState(""); // New state for username
+  const [username, setUsername] = useState("");
   const [emailError, setEmailError] = useState("");
   const [mobileError, setMobileError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [usernameError, setUsernameError] = useState(""); // New state for username error
+  const [usernameError, setUsernameError] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -35,7 +35,7 @@ export const RegisterPage = () => {
     setEmailError("");
     setMobileError("");
     setPasswordError("");
-    setUsernameError(""); // Clear username error
+    setUsernameError("");
     setGeneralError("");
 
     // Email validation
@@ -47,7 +47,7 @@ export const RegisterPage = () => {
       isValid = false;
     }
 
-    // Username validation (no regex, just check for non-empty value)
+    // Username validation
     if (!username) {
       setUsernameError("Username is required");
       isValid = false;
@@ -81,14 +81,14 @@ export const RegisterPage = () => {
 
     if (validateForm()) {
       try {
-        await register(username, email, mobile, password); // Pass username to register function
+        await register(username, email, mobile, password);
         navigate("/");
       } catch (error) {
         // Clear all previous errors first
         setEmailError("");
         setMobileError("");
         setPasswordError("");
-        setUsernameError(""); // Clear username error
+        setUsernameError("");
         setGeneralError("");
 
         // Set the appropriate error based on the field
@@ -113,8 +113,17 @@ export const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+    <div className="min-h-screen relative flex items-center justify-center bg-gray-100 p-4">
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center z-0 opacity-50"
+        style={{
+          backgroundImage:
+            "url('https://img.freepik.com/free-vector/technology-wire-mesh-network-connection-digital-background_1017-28407.jpg?semt=ais_hybrid')",
+        }}
+      />
+
+      <div className="relative z-10 max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
         <h2 className="text-2xl font-bold text-center mb-8">Registration</h2>
 
         {generalError && (
