@@ -33,11 +33,11 @@ const register = async (req, res) => {
     }
 
     // Create new user if no conflicts
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       username,
       email,
-      password: hashedPassword,
+      password,
       tenantId,
       mobile,
       role,
