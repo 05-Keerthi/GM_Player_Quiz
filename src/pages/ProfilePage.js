@@ -2,11 +2,15 @@ import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/NavbarComp";
+import { toast } from "react-toastify"; // Assuming you're using react-toastify for notifications
+import { useUserContext } from "../context/userContext";
 
 export const ProfilePage = () => {
   const { user, getProfile, logout } = useContext(AuthContext);
+  const { updateUser } = useUserContext();
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -83,14 +87,44 @@ export const ProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setIsLoading(true);
-      // TODO: Implement actual profile update API call
-      alert("Profile update functionality not implemented yet.");
+      setIsUpdating(true);
+      // Prepare the data for update (only include fields that can be updated)
+      const updateData = {
+        username: profileData.username,
+        // email: profileData.email,
+        mobile: profileData.mobile,
+      };
+
+      // Call the updateUser method from UserContext
+      const updatedUser = await updateUser(profileData._id, updateData);
+
+      // Update local state with the returned user data
+      setProfileData(updatedUser);
+
+      // Show success toast
+      toast.success("Profile updated successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Update profile error:", error);
-      setError("Failed to update profile.");
+
+      // Handle different types of errors
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update profile.";
+
+      // Show error toast
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+
+      // Set error state for potential additional error handling
+      setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -160,7 +194,6 @@ export const ProfilePage = () => {
                       value={profileData?.username || ""}
                       onChange={handleInputChange}
                       className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      disabled
                     />
                   </div>
                   <div>
@@ -188,6 +221,7 @@ export const ProfilePage = () => {
                       value={profileData?.mobile || ""}
                       onChange={handleInputChange}
                       className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      placeholder="Enter mobile number"
                     />
                   </div>
                 </div>
@@ -214,20 +248,20 @@ export const ProfilePage = () => {
                 </div>
               </div>
             </div>
-            {/* <div className="flex justify-center md:justify-end mt-6 md:mt-8">
+            <div className="flex justify-center md:justify-end mt-6 md:mt-8">
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isUpdating}
                 className="w-full md:w-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
               >
-                {isLoading ? "Saving..." : "Save Changes"}
+                {isUpdating ? "Saving..." : "Save Changes"}
               </button>
-            </div> */}
+            </div>
           </form>
         </div>
       </>
     );
-  }, [profileData, isLoading, error]);
+  }, [profileData, isLoading, isUpdating, error]);
 
   return renderContent;
 };
