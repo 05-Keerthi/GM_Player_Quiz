@@ -1,6 +1,7 @@
 import React, { createContext, useReducer, useEffect, useState } from "react";
 import axios from "axios";
 import { authReducer } from "../reducers/authReducer";
+import Cookies from "js-cookie";
 
 const initialState = {
   isAuthenticated: false,
@@ -72,16 +73,24 @@ export const AuthProvider = ({ children }) => {
 
       const { user, token } = response.data;
 
+      // Handle Remember Me with Cookies
       if (rememberMe) {
-        localStorage.setItem("email", email);
-        localStorage.setItem("password", password);
+        // Store email in a cookie (more secure than localStorage)
+        Cookies.set("rememberedEmail", email, {
+          expires: 30, // 30 days
+          secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+          sameSite: "strict", // Protect against CSRF
+        });
       } else {
-        localStorage.removeItem("email");
-        localStorage.removeItem("password");
+        // Remove the cookie if remember me is not checked
+        Cookies.remove("rememberedEmail");
       }
 
+      // Store user and token
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
+
+      // Set Authorization header
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       dispatch({ type: "LOGIN", payload: { user, token } });
@@ -101,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username,email, mobile, password) => {
+  const register = async (username, email, mobile, password) => {
     try {
       const response = await axios.post(
         `http://localhost:5000/api/auth/register`,

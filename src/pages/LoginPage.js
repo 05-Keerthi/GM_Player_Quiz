@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
@@ -17,12 +18,11 @@ export const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
-    const storedEmail = localStorage.getItem("email");
-    const storedPassword = localStorage.getItem("password");
+    // Check for remembered email in cookies
+    const rememberedEmail = Cookies.get("rememberedEmail");
 
-    if (storedEmail && storedPassword) {
-      setEmail(storedEmail);
-      setPassword(storedPassword);
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
       setRememberMe(true);
     }
   }, []);
@@ -31,7 +31,7 @@ export const LoginPage = () => {
     e.preventDefault();
     let isValid = true;
 
-    // Clear all previous errors
+    // Clear previous errors
     setEmailError("");
     setPasswordError("");
     setGeneralError("");
@@ -51,7 +51,6 @@ export const LoginPage = () => {
         await login(email, password, rememberMe);
         navigate("/");
       } catch (error) {
-        // Parse the error message from the JSON string
         try {
           const errorObj = JSON.parse(error.message);
           if (errorObj.email) {
