@@ -10,6 +10,27 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+exports.sendWelcomeEmail = async (email, username) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Welcome to GM Play!",
+    text: `Hi ${username},
+           
+           Thank you for registering at GM Play!
+           
+           You can now log in and enjoy our services.
+
+           If you have any questions or need assistance, don't hesitate to contact our support team.
+
+           
+           Best regards,
+           GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 exports.sendResetCode = async (to, resetCode) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -32,4 +53,20 @@ exports.sendResetCode = async (to, resetCode) => {
   };
 
   await transporter.sendMail(mailOptions);
+};
+
+exports.sendPasswordResetConfirmation = async (email, username) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Password Changed Successfully for GMPlay ',
+    text: `Hi ${username},
+    
+           Your password has been successfully changed. If you did not perform this action, please contact our support team immediately.
+           
+           Best regards,
+           GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
 };

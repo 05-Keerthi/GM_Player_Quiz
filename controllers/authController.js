@@ -1,6 +1,9 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const { sendWelcomeEmail } = require("../services/mailService");
+
+
 
 const register = async (req, res) => {
   try {
@@ -14,6 +17,7 @@ const register = async (req, res) => {
         message: "Username is already registered",
       });
     }
+
     // Check email existence separately
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
@@ -33,7 +37,6 @@ const register = async (req, res) => {
     }
 
     // Create new user if no conflicts
-    // const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       username,
       email,
@@ -44,6 +47,7 @@ const register = async (req, res) => {
     });
     await user.save();
 
+    // Generate tokens
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -55,6 +59,10 @@ const register = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    // Send Welcome Email
+    await sendWelcomeEmail(email, username);
+
+    // Respond with success
     res.status(200).json({ token, refresh_token: refreshToken, user });
   } catch (error) {
     res.status(500).json({

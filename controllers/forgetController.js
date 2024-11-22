@@ -45,23 +45,32 @@ exports.verifyResetCode = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   const { resetCode, newPassword } = req.body;
+
   try {
-    const user = await User.findOne({ 
-      resetPasswordCode: resetCode, 
-      resetPasswordExpires: { $gt: Date.now() }
+    const user = await User.findOne({
+      resetPasswordCode: resetCode,
+      resetPasswordExpires: { $gt: Date.now() }, // Ensure the reset code hasn't expired
     });
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired reset code' });
     }
 
+   
+   
+
     user.password = newPassword;
     user.resetPasswordCode = undefined;
     user.resetPasswordExpires = undefined;
+
     await user.save();
 
-    res.status(200).json({ message: 'Password reset successful' });
+    // Send confirmation email to the user
+    await mailService.sendPasswordResetConfirmation(user.email, user.username);
+
+    res.status(200).json({ message: 'Password reset successful. Confirmation email sent.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
