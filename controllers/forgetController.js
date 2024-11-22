@@ -27,10 +27,10 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { email, resetCode, newPassword } = req.body;
+  const { resetCode, newPassword } = req.body;
   try {
     const user = await User.findOne({ 
-      email, 
+      
       resetPasswordCode: resetCode, 
       resetPasswordExpires: { $gt: Date.now() }
     });
