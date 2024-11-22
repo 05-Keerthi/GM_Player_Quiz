@@ -51,35 +51,30 @@ const UserManagement = () => {
       id: 1,
       name: "Yenny Rosales",
       email: "yenny@example.com",
-      avatar: "/api/placeholder/32/32",
       role: "User"
     },
     {
       id: 2,
       name: "Lennart Nyqvist",
       email: "lennart@example.com",
-      avatar: "/api/placeholder/32/32",
       role: "User"
     },
     {
       id: 3,
       name: "Tallen Dalton",
       email: "tallen@example.com",
-      avatar: "/api/placeholder/32/32",
       role: "User"
     },
     {
       id: 4,
       name: "Anders Andersen",
       email: "anders@example.com",
-      avatar: "/api/placeholder/32/32",
       role: "User"
     },
     {
       id: 5,
       name: "Armand Hyde",
       email: "armand@example.com",
-      avatar: "/api/placeholder/32/32",
       role: "User"
     }
   ];
@@ -122,9 +117,6 @@ const UserManagement = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="w-8 pb-4">
-                <input type="checkbox" className="rounded" />
-              </th>
               <th className="text-left pb-4 font-medium">Name</th>
               <th className="text-left pb-4 font-medium">User Role</th>
               <th className="text-right pb-4 font-medium">Actions</th>
@@ -134,19 +126,9 @@ const UserManagement = () => {
             {users.map((user) => (
               <tr key={user.id} className="border-b hover:bg-gray-50">
                 <td className="py-4">
-                  <input type="checkbox" className="rounded" />
-                </td>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <div>
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
+                  <div>
+                    <div className="font-medium">{user.name}</div>
+                    <div className="text-sm text-gray-500">{user.email}</div>
                   </div>
                 </td>
                 <td>
@@ -174,22 +156,6 @@ const UserManagement = () => {
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex justify-between items-center text-sm">
-        <div className="text-gray-500">
-          Displaying page 1 of 11
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">First</button>
-          <div className="flex gap-1">
-            <button className="w-8 h-8 rounded bg-blue-50 text-blue-600 font-medium">1</button>
-            <button className="w-8 h-8 rounded hover:bg-gray-50">10</button>
-            <button className="w-8 h-8 rounded hover:bg-gray-50">11</button>
-          </div>
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">Last</button>
-        </div>
       </div>
     </div>
   );
