@@ -14,7 +14,7 @@ export function PasswordResetProvider({ children }) {
   const actions = {
     initiatePasswordReset: async (email) => {
       dispatch({ type: ACTIONS.SET_EMAIL, payload: email });
-      dispatch({ type: ACTIONS.REQUEST_RESET });
+      dispatch({ type: ACTIONS.REQUEST_START });
 
       try {
         const response = await fetch(
@@ -29,27 +29,27 @@ export function PasswordResetProvider({ children }) {
         const data = await response.json();
 
         if (response.ok) {
-          dispatch({ type: ACTIONS.CHANGE_STAGE, payload: "code" });
+          dispatch({ type: ACTIONS.CODE_SENT_SUCCESS });
           return true;
         } else {
           dispatch({
-            type: ACTIONS.RESET_ERROR,
-            payload: data.message || "Password reset request failed",
+            type: ACTIONS.REQUEST_ERROR,
+            payload: data.message || "Failed to send reset code",
           });
           return false;
         }
       } catch (error) {
         dispatch({
-          type: ACTIONS.RESET_ERROR,
+          type: ACTIONS.REQUEST_ERROR,
           payload: "Network error. Please try again.",
         });
         return false;
       }
     },
 
-    verifyResetCode: async (resetCode) => {
-      dispatch({ type: ACTIONS.SET_RESET_CODE, payload: resetCode });
-      dispatch({ type: ACTIONS.REQUEST_RESET });
+    verifyResetCode: async (code) => {
+      dispatch({ type: ACTIONS.SET_RESET_CODE, payload: code });
+      dispatch({ type: ACTIONS.REQUEST_START });
 
       try {
         const response = await fetch(
@@ -59,7 +59,7 @@ export function PasswordResetProvider({ children }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email: state.email,
-              resetCode,
+              resetCode: code,
             }),
           }
         );
@@ -67,18 +67,18 @@ export function PasswordResetProvider({ children }) {
         const data = await response.json();
 
         if (response.ok) {
-          dispatch({ type: ACTIONS.CHANGE_STAGE, payload: "newPassword" });
+          dispatch({ type: ACTIONS.CODE_VERIFIED_SUCCESS });
           return true;
         } else {
           dispatch({
-            type: ACTIONS.RESET_ERROR,
+            type: ACTIONS.REQUEST_ERROR,
             payload: data.message || "Invalid reset code",
           });
           return false;
         }
       } catch (error) {
         dispatch({
-          type: ACTIONS.RESET_ERROR,
+          type: ACTIONS.REQUEST_ERROR,
           payload: "Network error. Please try again.",
         });
         return false;
@@ -86,7 +86,7 @@ export function PasswordResetProvider({ children }) {
     },
 
     resetPassword: async (newPassword) => {
-      dispatch({ type: ACTIONS.REQUEST_RESET });
+      dispatch({ type: ACTIONS.REQUEST_START });
 
       try {
         const response = await fetch(
@@ -109,19 +109,21 @@ export function PasswordResetProvider({ children }) {
           return true;
         } else {
           dispatch({
-            type: ACTIONS.RESET_ERROR,
-            payload: data.message || "Password reset failed",
+            type: ACTIONS.REQUEST_ERROR,
+            payload: data.message || "Failed to reset password",
           });
           return false;
         }
       } catch (error) {
         dispatch({
-          type: ACTIONS.RESET_ERROR,
+          type: ACTIONS.REQUEST_ERROR,
           payload: "Network error. Please try again.",
         });
         return false;
       }
     },
+
+    clearError: () => dispatch({ type: ACTIONS.CLEAR_ERROR }),
 
     reset: () => dispatch({ type: ACTIONS.RESET }),
   };

@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { AuthContext } from "../context/AuthContext";
 import { usePasswordReset } from "../context/passwordResetContext";
-import { PasswordResetModal } from "../models/PasswordResetModal";
+import PasswordResetModal from "../models/PasswordResetModal";
 
-
-export const LoginPage = () => {
+const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
-  const passwordResetContext = usePasswordReset(); // Use the custom hook instead
+  const { state: passwordResetState, actions: passwordResetActions } =
+    usePasswordReset();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,26 +24,41 @@ export const LoginPage = () => {
 
   useEffect(() => {
     const rememberedEmail = Cookies.get("rememberedEmail");
-
     if (rememberedEmail) {
       setEmail(rememberedEmail);
       setRememberMe(true);
     }
   }, []);
 
+  // Reset all errors when modal closes
+  useEffect(() => {
+    if (!showForgotPasswordModal) {
+      setEmailError("");
+      setPasswordError("");
+      setGeneralError("");
+      passwordResetActions.reset(); // Reset password reset state when modal closes
+    }
+  }, [showForgotPasswordModal, passwordResetActions]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     let isValid = true;
 
+    // Clear all errors
     setEmailError("");
     setPasswordError("");
     setGeneralError("");
 
+    // Validate email
     if (!email) {
       setEmailError("Enter email");
       isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError("Please enter a valid email address");
+      isValid = false;
     }
 
+    // Validate password
     if (!password) {
       setPasswordError("Enter your password");
       isValid = false;
@@ -56,17 +71,11 @@ export const LoginPage = () => {
       } catch (error) {
         try {
           const errorObj = JSON.parse(error.message);
-          if (errorObj.email) {
-            setEmailError(errorObj.email);
-          }
-          if (errorObj.password) {
-            setPasswordError(errorObj.password);
-          }
-          if (errorObj.general) {
-            setGeneralError(errorObj.general);
-          }
+          if (errorObj.email) setEmailError(errorObj.email);
+          if (errorObj.password) setPasswordError(errorObj.password);
+          if (errorObj.general) setGeneralError(errorObj.general);
         } catch (parseError) {
-          setGeneralError("An unexpected error occurred");
+          setGeneralError("An unexpected error occurred. Please try again.");
         }
       }
     }
@@ -74,6 +83,16 @@ export const LoginPage = () => {
 
   const handleForgotPassword = () => {
     setShowForgotPasswordModal(true);
+    // Pre-fill email in password reset modal if it exists
+    if (email) {
+      passwordResetActions.reset(); // Reset any previous state
+    }
+  };
+
+  const handlePasswordResetComplete = () => {
+    setShowForgotPasswordModal(false);
+    setGeneralError("");
+    setPassword(""); // Clear password field after reset
   };
 
   return (
@@ -83,13 +102,34 @@ export const LoginPage = () => {
           <h2 className="text-2xl font-bold text-center mb-8">Login</h2>
 
           {generalError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {generalError}
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded relative">
+              <span>{generalError}</span>
+              <button
+                onClick={() => setGeneralError("")}
+                className="absolute top-1 right-1 text-red-500 hover:text-red-700"
+                aria-label="Close error message"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {passwordResetState.success && (
+            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded relative">
+              <span>
+                Password reset successful! Please login with your new password.
+              </span>
+              <button
+                onClick={() => passwordResetActions.reset()}
+                className="absolute top-1 right-1 text-green-500 hover:text-green-700"
+                aria-label="Close success message"
+              >
+                ×
+              </button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
             <div>
               <label
                 htmlFor="email"
@@ -107,16 +147,14 @@ export const LoginPage = () => {
                 }}
                 className={`mt-1 block w-full rounded-md border ${
                   emailError ? "border-red-500" : "border-gray-300"
-                } px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                }px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
                 placeholder="Enter your email"
-                aria-label="Email"
               />
               {emailError && (
                 <p className="mt-1 text-sm text-red-600">{emailError}</p>
               )}
             </div>
 
-            {/* Password Input */}
             <div>
               <label
                 htmlFor="password"
@@ -135,17 +173,18 @@ export const LoginPage = () => {
                   }}
                   className={`mt-1 block w-full rounded-md border ${
                     passwordError ? "border-red-500" : "border-gray-300"
-                  } px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                  }px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
                   placeholder="Enter your password"
-                  aria-label="Password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 px-3 py-2 text-gray-600 focus:outline-none"
-                  aria-label="Toggle password visibility"
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600"
                 >
-                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                  <FontAwesomeIcon
+                    icon={showPassword ? faEyeSlash : faEye}
+                    className="h-4 w-4"
+                  />
                 </button>
               </div>
               {passwordError && (
@@ -153,53 +192,59 @@ export const LoginPage = () => {
               )}
             </div>
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="mr-2"
-              />
-              <label className="text-gray-700">Remember me</label>
-            </div>
-            <div className="flex items-center justify-end mt-2">
-              <p
-                className="text-sm text-blue-600 hover:underline cursor-pointer"
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Remember me
+                </label>
+              </div>
+              <button
+                type="button"
                 onClick={handleForgotPassword}
+                className="text-sm font-medium text-blue-600 hover:text-blue-500"
               >
                 Forgot password?
-              </p>
+              </button>
             </div>
 
-            {/* Login Button */}
             <button
               type="submit"
-              className="w-full bg-black text-white rounded-md py-2 px-4 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
             >
               Login
             </button>
 
-            {/* Register Link */}
-            <div className="flex items-center justify-center mt-4">
-              <p
-                className="text-sm text-blue-600 hover:underline cursor-pointer"
+            <div className="text-center">
+              <button
+                type="button"
                 onClick={() => navigate("/register")}
+                className="text-sm font-medium text-blue-600 hover:text-blue-500"
               >
                 Don't have an account? Register
-              </p>
+              </button>
             </div>
           </form>
         </div>
       </div>
 
-      {showForgotPasswordModal && (
-        <PasswordResetModal
-          isOpen={showForgotPasswordModal}
-          onClose={() => setShowForgotPasswordModal(false)}
-          initialEmail={email}
-        />
-      )}
+      <PasswordResetModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        initialEmail={email}
+        onSuccess={handlePasswordResetComplete}
+      />
     </>
   );
 };
+
+export default LoginPage;

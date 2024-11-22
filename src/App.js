@@ -3,8 +3,7 @@ import React, { useContext } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-import { LoginPage } from "./pages/LoginPage";
+import LoginPage from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { AuthContext } from "./context/AuthContext";
 import Home from "./pages/Home";
