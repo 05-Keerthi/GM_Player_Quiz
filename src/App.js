@@ -1,21 +1,28 @@
-// App.js
-import React, { useContext } from "react";
+import React from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoginPage from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { AuthContext } from "./context/AuthContext";
+import { useAuthContext } from "./context/AuthContext";
 import Home from "./pages/Home";
-import ProfilePage from "./pages/ProfilePage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { NotFoundPage } from "./pages/NotFoundPage";
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuthContext();
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
 
 export default function App() {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated } = useAuthContext();
 
   return (
     <>
       <ToastContainer />
       <Routes>
+        {/* Public Routes */}
         <Route
           path="/login"
           element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />}
@@ -24,8 +31,27 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
-        <Route path="/" element={<Home />} />
-        <Route path="/user/profile" element={<ProfilePage />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

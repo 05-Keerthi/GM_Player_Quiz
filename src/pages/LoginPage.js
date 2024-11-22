@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { AuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
 import { usePasswordReset } from "../context/passwordResetContext";
 import PasswordResetModal from "../models/PasswordResetModal";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
+  const { login } = useAuthContext();
   const { state: passwordResetState, actions: passwordResetActions } =
     usePasswordReset();
 

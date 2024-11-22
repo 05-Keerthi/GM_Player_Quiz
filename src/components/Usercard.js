@@ -1,135 +1,154 @@
-// import React from "react";
-// import { User, Mail, Phone } from "lucide-react";
-
-// const UserCard = ({
-//   username,
-//   email,
-//   phoneNumber,
-//   actionText = "View Profile",
-//   onAction,
-//   bgColor = "bg-indigo-600"
-// }) => (
-//   <div className={`relative p-4 rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl ${bgColor} max-w-sm`}>
-//     <div className="absolute top-3 right-3">
-//       <User className="text-white/80" size={20} />
-//     </div>
-    
-//     <div className="space-y-3">
-//       <h3 className="text-lg font-bold text-white">{username}</h3>
-      
-//       <ul className="space-y-2 text-white/90 text-sm">
-//         <li className="flex items-center space-x-2">
-//           <Mail size={14} className="flex-shrink-0" />
-//           <span className="break-all">{email}</span>
-//         </li>
-//         <li className="flex items-center space-x-2">
-//           <Phone size={14} className="flex-shrink-0" />
-//           <span>{phoneNumber}</span>
-//         </li>
-//       </ul>
-      
-//       <button
-//         onClick={onAction}
-//         className="w-full mt-2 py-2 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition-colors text-sm"
-//       >
-//         {actionText}
-//       </button>
-//     </div>
-//   </div>
-// );
-
-// export default UserCard;
-
-
-
-import React from 'react';
-import { Search, Pencil, Trash2 } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Search, Pencil, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { useUserContext } from "../context/userContext";
+import EditUserModal from "../models/EditUserModel";
+import { paginateData, PaginationControls } from "../utils/pagination";
 
 const UserManagement = () => {
-  const users = [
-    {
-      id: 1,
-      name: "Yenny Rosales",
-      email: "yenny@example.com",
-      role: "User"
-    },
-    {
-      id: 2,
-      name: "Lennart Nyqvist",
-      email: "lennart@example.com",
-      role: "User"
-    },
-    {
-      id: 3,
-      name: "Tallen Dalton",
-      email: "tallen@example.com",
-      role: "User"
-    },
-    {
-      id: 4,
-      name: "Anders Andersen",
-      email: "anders@example.com",
-      role: "User"
-    },
-    {
-      id: 5,
-      name: "Armand Hyde",
-      email: "armand@example.com",
-      role: "User"
+  const {
+    users,
+    loading,
+    error,
+    fetchUsers,
+    deleteUser,
+    clearError,
+    fetchUserById,
+  } = useUserContext();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const usersPerPage = 5;
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (users) {
+      setFilteredUsers(
+        users.filter(
+          (user) =>
+            user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.mobile.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.role.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
     }
-  ];
+  }, [users, searchQuery]);
 
-  const handleEdit = (userId) => {
-    console.log('Edit user:', userId);
+  useEffect(() => {
+    if (error) {
+      toast.error(error, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        onClose: clearError,
+      });
+    }
+  }, [error, clearError]);
+
+  const handleEditClick = async (userId) => {
+    try {
+      await fetchUserById(userId);
+      const userToEdit = users.find((user) => user._id === userId);
+      setSelectedUser(userToEdit);
+      setEditModalOpen(true);
+    } catch (err) {
+      toast.error("Failed to fetch user details");
+    }
   };
 
-  const handleDelete = (userId) => {
-    console.log('Delete user:', userId);
+  const handleDelete = async (userId) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        await deleteUser(userId);
+        toast.success("User deleted successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } catch (err) {
+        toast.error("Failed to delete user");
+      }
+    }
   };
+
+  const handleCloseModal = () => {
+    setEditModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const { currentItems: currentUsers, totalPages } = paginateData(
+    filteredUsers,
+    currentPage,
+    usersPerPage
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm min-h-screen">
-      {/* Header */}
+    <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm min-h-screen">
+      {/* Header section remains the same */}
       <div className="mb-8">
-        <div className="text-sm text-gray-500 mb-2">
-          
-        </div>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-semibold">User Management</h1>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Search User"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+              <Search
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={20}
+              />
             </div>
-            <button className="bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium">
-              Add User
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="mb-6">
+      <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="text-left pb-4 font-medium">Name</th>
+              <th className="text-left pb-4 font-medium">Username</th>
+              <th className="text-left pb-4 font-medium">Email</th>
+              <th className="text-left pb-4 font-medium">Mobile Number</th>
               <th className="text-left pb-4 font-medium">User Role</th>
               <th className="text-right pb-4 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50">
+            {currentUsers.map((user) => (
+              <tr key={user._id} className="border-b hover:bg-gray-50">
                 <td className="py-4">
-                  <div>
-                    <div className="font-medium">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </div>
+                  <div className="font-medium">{user.username}</div>
+                </td>
+                <td>
+                  <div className="text-sm text-gray-500">{user.email}</div>
+                </td>
+                <td>
+                  <div className="text-sm text-gray-500">{user.mobile}</div>
                 </td>
                 <td>
                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -138,15 +157,15 @@ const UserManagement = () => {
                 </td>
                 <td>
                   <div className="flex justify-end gap-2">
-                    <button 
-                      onClick={() => handleEdit(user.id)}
-                      className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg"
+                    <button
+                      onClick={() => handleEditClick(user._id)}
+                      className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
                     >
                       <Pencil size={18} />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(user.id)}
-                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg"
+                    <button
+                      onClick={() => handleDelete(user._id)}
+                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -154,9 +173,30 @@ const UserManagement = () => {
                 </td>
               </tr>
             ))}
+            {currentUsers.length === 0 && !loading && (
+              <tr>
+                <td colSpan="5" className="text-center py-8 text-gray-500">
+                  No users found
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {filteredUsers.length > usersPerPage && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
+
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModal}
+        user={selectedUser}
+      />
     </div>
   );
 };

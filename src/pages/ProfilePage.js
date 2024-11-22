@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext, useMemo } from "react";
-import { AuthContext } from "../context/AuthContext";
+import React, { useState, useEffect, useMemo } from "react";
+import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/NavbarComp";
 import { toast } from "react-toastify"; // Assuming you're using react-toastify for notifications
 import { useUserContext } from "../context/userContext";
 
 export const ProfilePage = () => {
-  const { user, getProfile, logout } = useContext(AuthContext);
+  const { getProfile, logout } = useAuthContext();
   const { updateUser } = useUserContext();
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,5 +265,3 @@ export const ProfilePage = () => {
 
   return renderContent;
 };
-
-export default ProfilePage;

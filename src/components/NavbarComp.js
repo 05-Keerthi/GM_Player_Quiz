@@ -1,13 +1,12 @@
 // In Navbar.jsx
 
 import { useNavigate } from "react-router-dom";
-import { useContext } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
 import logo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useContext(AuthContext);
+  const { isAuthenticated, user, logout } = useAuthContext();
   const navigate = useNavigate();
 
   return (

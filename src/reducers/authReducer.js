@@ -1,39 +1,33 @@
+export const initialState = {
+  isAuthenticated: false,
+  user: null,
+  token: null,
+};
+
+export const ACTIONS = {
+  LOGIN: "LOGIN",
+  LOGOUT: "LOGOUT",
+  GET_USER_PROFILE: "GET_USER_PROFILE",
+  REGISTER: "REGISTER", // New action
+};
+
 export const authReducer = (state, action) => {
   switch (action.type) {
-    // Register New User
-    case "REGISTER":
+    case ACTIONS.LOGIN:
+    case ACTIONS.REGISTER: // Both actions do the same thing
       return {
         ...state,
         isAuthenticated: true,
         user: action.payload.user,
         token: action.payload.token,
       };
-
-    // Login Action
-    case "LOGIN":
+    case ACTIONS.LOGOUT:
+      return initialState;
+    case ACTIONS.GET_USER_PROFILE:
       return {
         ...state,
-        isAuthenticated: true,
-        user: action.payload.user, // User includes role and other info
-        token: action.payload.token, // Store the token as well
+        user: action.payload,
       };
-
-    // Logout Action
-    case "LOGOUT":
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        token: null, // Reset token on logout
-      };
-
-    case "GET_USER_PROFILE":
-      return {
-        ...state,
-        // profile: action.payload,
-        user: action.payload.user,
-      };
-
     default:
       return state;
   }

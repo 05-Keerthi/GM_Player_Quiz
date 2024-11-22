@@ -1,15 +1,16 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "react-phone-number-input/style.css";
 import PhoneInput from "react-phone-number-input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { AuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 // RegisterPage.jsx
 export const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register } = useContext(AuthContext);
+  const { register } = useAuthContext();
 
   // State variables
   const [email, setEmail] = useState("");
@@ -82,6 +83,13 @@ export const RegisterPage = () => {
     if (validateForm()) {
       try {
         await register(username, email, mobile, password);
+
+        // Show success toast
+        toast.success("Registration successful! Redirecting to login...", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        
         navigate("/");
       } catch (error) {
         // Clear all previous errors first
