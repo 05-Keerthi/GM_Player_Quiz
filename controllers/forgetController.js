@@ -25,9 +25,10 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.verifyResetCode = async (req, res) => {
-  const { resetCode } = req.body;
+  const { email, resetCode } = req.body;
   try {
     const user = await User.findOne({ 
+      email,
       resetPasswordCode: resetCode, 
       resetPasswordExpires: { $gt: Date.now() } // Ensure code hasn't expired
     });
