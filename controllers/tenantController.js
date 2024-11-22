@@ -2,11 +2,22 @@ const Tenant = require('../models/Tenant');
 
 const createTenant = async (req, res) => {
   try {
+    // Check if custom domain exists if provided
+    if (req.body.customDomain) {
+      const existingTenant = await Tenant.findOne({ customDomain: req.body.customDomain });
+      if (existingTenant) {
+        return res.status(400).json({
+          message: 'Validation Error',
+          errors: [{ field: 'customDomain', message: 'Custom domain already exists' }]
+        });
+      }
+    }
+
     const newTenant = new Tenant(req.body);
     await newTenant.save();
-    res.status(200).json(newTenant);
+    res.status(201).json(newTenant);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    handleError(res, error);
   }
 };
 
@@ -31,11 +42,33 @@ const getTenantById = async (req, res) => {
 
 const updateTenant = async (req, res) => {
   try {
-    const updatedTenant = await Tenant.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedTenant) return res.status(404).json({ message: 'Tenant not found' });
+    // Check if custom domain is being updated
+    if (req.body.customDomain) {
+      const existingTenant = await Tenant.findOne({
+        customDomain: req.body.customDomain,
+        _id: { $ne: req.params.id } // Exclude current tenant from check
+      });
+      
+      if (existingTenant) {
+        return res.status(400).json({
+          message: 'Validation Error',
+          errors: [{ field: 'customDomain', message: 'Custom domain already exists' }]
+        });
+      }
+    }
+
+    const updatedTenant = await Tenant.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedTenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
     res.status(200).json(updatedTenant);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    handleError(res, error);
   }
 };
 
@@ -47,6 +80,23 @@ const deleteTenant = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+const handleError = (res, error) => {
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      message: 'Validation Error',
+      errors: Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message
+      }))
+    });
+  }
+  
+  console.error('Server Error:', error);
+  return res.status(500).json({
+    message: 'Internal server error'
+  });
 };
 
 module.exports = {
