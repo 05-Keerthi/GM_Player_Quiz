@@ -70,3 +70,21 @@ exports.sendPasswordResetConfirmation = async (email, username) => {
 
   return transporter.sendMail(mailOptions);
 };
+
+exports.sendPasswordChangeEmail = async (email, username) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Password Changed Successfully",
+    text: `Hi ${username},
+
+           Your password has been successfully changed.
+
+           If you did not make this change, please contact our support team immediately.
+
+           Best regards,
+           GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};

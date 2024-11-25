@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const Tenant = require('../models/Tenant');  // Assuming you have a Tenant model
+const { sendPasswordChangeEmail } = require("../services/mailService");
+
 
 // Helper validation functions
 function validateEmail(email) {
@@ -182,8 +184,11 @@ exports.changePassword = async (req, res) => {
     }
 
     // Update the password
-    user.password = newPassword; // This will trigger the `pre('save')` middleware to hash the password
+    user.password = newPassword; // Trigger pre-save hook to hash the password
     await user.save();
+
+    // Send success email
+    await sendPasswordChangeEmail(user.email, user.username);
 
     res.status(200).json({ message: "Password updated successfully." });
   } catch (error) {
