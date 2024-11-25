@@ -59,65 +59,62 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
-  if (!token)
-    return res
-      .status(401)
-      .json({ message: "Access denied. No token provided." });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(400).json({ message: "Invalid token." });
-  }
-};
-
-const protect = async (req, res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select("-password");
-
-      if (!req.user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      next();
-    } catch (error) {
-      return res.status(401).json({ message: "Not authorized, token failed" });
-    }
-  }
 
   if (!token) {
     return res
       .status(401)
-      .json({ message: "No token provided, authorization denied" });
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    // Decode and verify the JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+
+    // Check if a user exists in the database (optional, based on use case)
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Attach the user object to the request
+    req.user = user;
+
+    // Log the decoded token and user details
+    console.log("Authenticated user:", decoded);
+    console.log("User details after database lookup:", req.user);
+
+    next();
+  } catch (error) {
+    console.log("Token validation error:", error);
+    return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
 
 const isSuperAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "superadmin") {
+    console.log(
+      `Access denied. User: ${req.user?.email} does not have superadmin role.`
+    );
     return res
       .status(403)
       .json({ message: "Access denied. Super admin only." });
   }
+  console.log(`SuperAdmin access granted to: ${req.user.email}`);
   next();
 };
 
 const admin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
+    console.log(
+      `Access denied. User: ${req.user?.email} does not have admin role.`
+    );
     return res.status(403).json({ message: "Access denied, admin only" });
   }
+  console.log(`Admin access granted to: ${req.user.email}`);
   next();
 };
 
-module.exports = { auth, isSuperAdmin, admin, protect };
+module.exports = { auth, isSuperAdmin, admin };
