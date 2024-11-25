@@ -1,4 +1,7 @@
 const Tenant = require('../models/Tenant');
+const User = require('../models/User');
+const { sendInviteEmail } = require('../services/mailService');
+const crypto = require('crypto');
 
 const createTenant = async (req, res) => {
   try {
@@ -20,6 +23,61 @@ const createTenant = async (req, res) => {
     handleError(res, error);
   }
 };
+
+const registerTenantAdmin = async (req, res) => {
+  try {
+    const tenantId = req.params.id;
+
+    // Ensure that the current user is a super admin
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Forbidden: Only super admin can create a tenant admin' });
+    }
+
+    // Check if the tenant ID exists
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+
+    // Check if the tenant admin email already exists
+    const existingAdmin = await User.findOne({ email: req.body.email });
+    if (existingAdmin) {
+      return res.status(400).json({
+        message: 'Validation Error',
+        errors: [{ field: 'email', message: 'Email already registered' }],
+      });
+    }
+
+    // Create the tenant admin
+    const newAdmin = new User({
+      username: req.body.username,
+      email: req.body.email,
+      password: req.body.password, // Ensure you hash the password before saving it
+      mobile: req.body.mobile,
+      role: req.body.role, // Fixed role as tenant admin
+      tenantId: tenantId, // Assign the tenant ID
+    });
+
+    await newAdmin.save();
+
+    // Send an invitation email to the tenant admin
+    await sendInviteEmail(
+      newAdmin.email,
+      tenant.name,
+      `${process.env.FRONTEND_URL}/login`, // Example invitation link
+      {
+        username: newAdmin.username,
+        email: newAdmin.email,
+        password: req.body.password, // Send plain password (ensure it’s temporary)
+      }
+    );
+
+    res.status(201).json({ message: 'Tenant admin created successfully', user: newAdmin });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 
 const getAllTenants = async (req, res) => {
   try {
@@ -101,6 +159,7 @@ const handleError = (res, error) => {
 
 module.exports = {
   createTenant,
+  registerTenantAdmin,
   getAllTenants,
   getTenantById,
   updateTenant,

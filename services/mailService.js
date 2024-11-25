@@ -88,3 +88,31 @@ exports.sendPasswordChangeEmail = async (email, username) => {
 
   return transporter.sendMail(mailOptions);
 };
+
+exports.sendInviteEmail = async (email, name, inviteLink, credentials) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Welcome to ${name} as Admin`,
+    text: `Hi ${credentials.username},
+
+      You have been invited to join ${name} as the admin.
+
+      Here are your credentials:
+      - Username: ${credentials.username}
+      - Email: ${credentials.email}
+      - Password: ${credentials.password}
+
+      Please use the link below to complete your registration and access your dashboard:
+      ${inviteLink}
+
+      We recommend changing your password immediately after logging in for security purposes.
+
+      If you have any questions or need assistance, feel free to contact our support team.
+
+      Best regards,
+      GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
