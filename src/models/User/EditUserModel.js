@@ -1,7 +1,7 @@
 // EditUserModal.js
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { useUserContext } from "../context/userContext";
+import { useUserContext } from "../../context/userContext";
 
 const EditUserModal = ({ isOpen, onClose, user }) => {
   const { updateUser } = useUserContext();

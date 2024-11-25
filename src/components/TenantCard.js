@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../context/TenantContext";
-import TenantDetailsModal from "../models/TenantDetailModel";
-import TenantEditModal from "../models/TenantEditModel";
+import TenantDetailsModal from "../models/Tenant/TenantDetailModel";
+import TenantEditModal from "../models/Tenant/TenantEditModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import ConfirmationModal from "../models/ConfiremationModel";
 

@@ -74,7 +74,7 @@ export const ProfilePage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [] );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

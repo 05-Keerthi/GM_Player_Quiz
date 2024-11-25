@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { usePasswordReset } from "../context/passwordResetContext";
 import { toast } from "react-toastify";
+import { usePasswordReset } from "../../context/passwordResetContext";
 
 const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
   const { state, actions } = usePasswordReset();

@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useUserContext } from "../context/userContext";
-import EditUserModal from "../models/EditUserModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import ConfirmationModal from "../models/ConfiremationModel";
+import EditUserModal from "../models/User/EditUserModel";
 
 const UserManagement = () => {
   const {

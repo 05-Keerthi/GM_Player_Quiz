@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useAuthContext } from "../context/AuthContext";
 import { usePasswordReset } from "../context/passwordResetContext";
-import PasswordResetModal from "../models/PasswordResetModal";
+import PasswordResetModal from "../models/User/PasswordResetModal";
 
 const LoginPage = () => {
   const navigate = useNavigate();

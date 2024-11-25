@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { useTenantContext } from "../context/TenantContext";
+import { useTenantContext } from "../../context/TenantContext";
 
 const TenantEditModal = ({ isOpen, onClose, tenant }) => {
   const { updateTenant } = useTenantContext();

@@ -13,7 +13,7 @@ import Card from "../components/CardComp";
 import Navbar from "../components/NavbarComp";
 import UserManagement from "../components/Usercard";
 import TenantManagement from "../components/TenantCard";
-import CreateTenantModal from "../models/CreateTenantModel";
+import CreateTenantModal from "../models/Tenant/CreateTenantModel";
 
 export default function HomePage() {
   const navigate = useNavigate();
