@@ -16,10 +16,12 @@ function validateMobileNumber(mobile) {
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().populate('tenantId'); 
+    const users = await User.find({ role: { $in: ["user" , "admin"] } })
+      .select("-password") // Exclude passwords from the response
+      .populate('tenantId'); // Populate tenantId field with tenant details
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ field: "general", message: "Server error", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
