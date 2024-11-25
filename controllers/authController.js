@@ -2,6 +2,7 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { sendWelcomeEmail } = require("../services/mailService");
+const BlacklistedToken = require('../models/BlacklistedToken');
 
 
 
@@ -118,13 +119,20 @@ const getProfile = async (req, res) => {
   }
 };
 
-const logout = (req, res) => {
+const logout = async (req, res) => {
   try {
-    res.status(200).json({ message: "Successfully logged out." });
+    // Add the current token to blacklist
+    const blacklistedToken = new BlacklistedToken({
+      token: req.token
+    });
+    await blacklistedToken.save();
+
+    res.status(200).json({ message: 'Successfully logged out.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const listUsers = async (req, res) => {
   try {

@@ -59,39 +59,40 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+const BlacklistedToken = require('../models/BlacklistedToken');
+
 const auth = async (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
-
-  if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Access denied. No token provided." });
-  }
-
   try {
-    // Decode and verify the JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
 
-    // Check if a user exists in the database (optional, based on use case)
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
+    if (!token) {
+      return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
-    // Attach the user object to the request
+    // Check if token is blacklisted
+    const isBlacklisted = await BlacklistedToken.findOne({ token });
+    if (isBlacklisted) {
+      return res.status(401).json({ message: 'Token has been invalidated.' });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Check if user exists
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({ message: 'User not found.' });
+    }
+
     req.user = user;
-
-    // Log the decoded token and user details
-    console.log("Authenticated user:", decoded);
-    console.log("User details after database lookup:", req.user);
-
+    req.token = token;
     next();
   } catch (error) {
-    console.log("Token validation error:", error);
-    return res.status(401).json({ message: "Invalid or expired token." });
+    console.log('Authentication error:', error);
+    return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
+
 
 const isSuperAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "superadmin") {
