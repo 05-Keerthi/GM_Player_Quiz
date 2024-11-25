@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const Tenant = require('../models/Tenant');  // Assuming you have a Tenant model
 
 // Helper validation functions
 function validateEmail(email) {
@@ -15,7 +16,7 @@ function validateMobileNumber(mobile) {
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find().populate('tenantId'); 
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ field: "general", message: "Server error", error: error.message });
@@ -32,7 +33,7 @@ exports.getUserById = async (req, res) => {
       return res.status(400).json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id);
+    const user = await User.findById(id).populate('tenantId'); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -55,8 +56,8 @@ exports.updateUser = async (req, res) => {
       return res.status(400).json({ field: "id", message: "User ID is required" });
     }
 
-    // Find the user by ID
-    const user = await User.findById(userId);
+    // Find the user by ID and populate tenantId
+    const user = await User.findById(userId).populate('tenantId'); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -124,6 +125,7 @@ exports.updateUser = async (req, res) => {
         email: user.email,
         mobile: user.mobile,
         role: user.role,
+        tenantId: user.tenantId, // Tenant details will be included automatically after populate
         createdAt: user.createdAt,
       },
     });
@@ -131,7 +133,6 @@ exports.updateUser = async (req, res) => {
     res.status(500).json({ field: "general", message: "Server error", error: error.message });
   }
 };
-
 
 // Delete user
 exports.deleteUser = async (req, res) => {
@@ -143,7 +144,7 @@ exports.deleteUser = async (req, res) => {
       return res.status(400).json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id);
+    const user = await User.findById(id).populate('tenantId'); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });

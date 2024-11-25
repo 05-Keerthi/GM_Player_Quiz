@@ -136,8 +136,11 @@ const logout = async (req, res) => {
 
 const listUsers = async (req, res) => {
   try {
-    // Filter users to return only those with role "user"
-    const users = await User.find({ role: "user" }).select("-password"); // Exclude passwords from the response
+    
+    const users = await User.find({ role: "user" })
+      .select("-password") // Exclude passwords from the response
+      .populate('tenantId'); // Populate tenantId field with tenant details
+
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
