@@ -9,22 +9,14 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { ACTIONS, authReducer, initialState } from "../reducers/authReducer";
 
-// Constants for API and Actions
 const BASE_URL = "http://localhost:5000/api";
 
-// Get authentication headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-};
-
-// Create axios instance with base URL and headers
+// Create axios instance
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: getAuthHeaders(),
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 export const AuthContext = createContext(initialState);
@@ -33,56 +25,106 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [loading, setLoading] = useState(true);
 
+  // Update axios authorization header
+  const updateAuthHeader = (token) => {
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common["Authorization"];
+    }
+  };
+
+  // Initialize auth state and set up interceptors
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      const storedToken = localStorage.getItem("token");
+      try {
+        const storedToken = localStorage.getItem("token");
+        const storedUser = JSON.parse(localStorage.getItem("user"));
 
-      if (storedUser && storedToken) {
-        dispatch({
-          type: ACTIONS.LOGIN,
-          payload: { user: storedUser, token: storedToken },
-        });
-        api.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+        if (storedToken && storedUser) {
+          updateAuthHeader(storedToken);
+          dispatch({
+            type: ACTIONS.LOGIN,
+            payload: { user: storedUser, token: storedToken },
+          });
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        await logout();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    initializeAuth();
+    let isRefreshing = false;
+    let failedQueue = [];
 
+    const processQueue = (error, token = null) => {
+      failedQueue.forEach((prom) => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      failedQueue = [];
+    };
+
+    // Set up response interceptor for handling 401 errors
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+
         if (error.response?.status === 401 && !originalRequest._retry) {
+          if (isRefreshing) {
+            // Queue the request if a refresh is already in progress
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then((token) => {
+                originalRequest.headers["Authorization"] = `Bearer ${token}`;
+                return api(originalRequest);
+              })
+              .catch((err) => Promise.reject(err));
+          }
+
           originalRequest._retry = true;
+          isRefreshing = true;
+
           try {
-            const refreshedToken = await refreshToken();
-            api.defaults.headers.common[
-              "Authorization"
-            ] = `Bearer ${refreshedToken}`;
-            originalRequest.headers[
-              "Authorization"
-            ] = `Bearer ${refreshedToken}`;
-            return api(originalRequest);
+            const newToken = await refreshToken();
+            if (newToken) {
+              updateAuthHeader(newToken);
+              originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+              processQueue(null, newToken);
+              return api(originalRequest);
+            }
           } catch (refreshError) {
-            logout();
+            processQueue(refreshError, null);
+            await logout();
             return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
           }
         }
+
         return Promise.reject(error);
       }
     );
 
-    return () => api.interceptors.response.eject(interceptor);
+    initializeAuth();
+
+    return () => {
+      api.interceptors.response.eject(interceptor);
+    };
   }, []);
 
   const login = async (email, password, rememberMe) => {
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { user, token } = response.data;
+      const { user, token, refresh_token } = response.data;
 
-      // Remember Me functionality
       if (rememberMe) {
         Cookies.set("rememberedEmail", email, {
           expires: 30,
@@ -93,33 +135,70 @@ export const AuthProvider = ({ children }) => {
         Cookies.remove("rememberedEmail");
       }
 
-      // Store user and token
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
+      localStorage.setItem("refresh_token", refresh_token);
 
-      // Update authorization
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
+      updateAuthHeader(token);
       dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
     } catch (error) {
       const errorResponse = error.response?.data;
-      const errorMessage = errorResponse?.message || "An error occurred";
+      throw new Error(
+        JSON.stringify({
+          email:
+            errorResponse?.message === "Invalid Email."
+              ? "Email does not exist"
+              : null,
+          password:
+            errorResponse?.message === "Invalid Password."
+              ? "Enter valid password"
+              : null,
+          general: errorResponse?.message || "An error occurred",
+        })
+      );
+    }
+  };
 
-      const formattedError = {
-        email:
-          errorMessage === "Invalid Email." ? "Email does not exist" : null,
-        password:
-          errorMessage === "Invalid Password." ? "Enter valid password" : null,
-        general: errorMessage,
-      };
+  const refreshToken = async () => {
+    try {
+      const refresh_token = localStorage.getItem("refresh_token");
+      if (!refresh_token) throw new Error("No refresh token available");
 
-      throw new Error(JSON.stringify(formattedError));
+      const response = await api.post("/auth/refresh-token", {
+        refresh_token,
+      });
+
+      const { token: newToken } = response.data;
+      localStorage.setItem("token", newToken);
+      updateAuthHeader(newToken);
+
+      return newToken;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      await logout();
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        await api.post("/auth/logout", { token });
+      }
+    } catch (error) {
+      console.error("Logout request failed:", error);
+    } finally {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      updateAuthHeader(null);
+      dispatch({ type: ACTIONS.LOGOUT });
     }
   };
 
   const register = async (username, email, mobile, password) => {
     try {
-      // Send registration request
       const response = await api.post("/auth/register", {
         username,
         email,
@@ -127,89 +206,36 @@ export const AuthProvider = ({ children }) => {
         password,
       });
 
-      const { user, token } = response.data;
+      const { user, token, refresh_token } = response.data;
 
-      // Save user and token to localStorage
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
+      localStorage.setItem("refresh_token", refresh_token);
 
-      // Update axios default headers
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // Dispatch REGISTER action
+      updateAuthHeader(token);
       dispatch({ type: ACTIONS.REGISTER, payload: { user, token } });
 
-      // Return the response for any additional handling
       return response.data;
     } catch (error) {
       const errorResponse = error.response?.data;
-
-      // Format error with field-specific messages
-      if (errorResponse?.field && errorResponse?.message) {
-        throw {
-          field: errorResponse.field,
-          message: errorResponse.message,
-        };
-      } else {
-        throw {
-          field: "general",
-          message: "An error occurred. Please try again later.",
-        };
-      }
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await api.post("/auth/logout", { token });
-
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      delete api.defaults.headers.common["Authorization"];
-
-      dispatch({ type: ACTIONS.LOGOUT });
-    } catch (error) {
-      console.error("Logout failed", error);
-      throw error;
-    }
-  };
-
-  const refreshToken = async () => {
-    try {
-      const response = await api.post("/refresh-token", {
-        token: localStorage.getItem("token"),
-      });
-
-      const { token } = response.data;
-      localStorage.setItem("token", token);
-      return token;
-    } catch (error) {
-      console.error("Failed to refresh token", error);
-      throw error;
+      throw {
+        field: errorResponse?.field || "general",
+        message:
+          errorResponse?.message ||
+          "An error occurred. Please try again later.",
+      };
     }
   };
 
   const getProfile = async () => {
     try {
       const response = await api.get("/auth/me");
-      const user = response.data;
-
-      dispatch({ type: ACTIONS.GET_USER_PROFILE, payload: user });
-      return user;
+      dispatch({ type: ACTIONS.GET_USER_PROFILE, payload: response.data });
+      return response.data;
     } catch (error) {
       console.error("Error fetching user profile:", error);
       throw error;
     }
-  };
-
-  // Custom hook for using AuthContext
-  const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-      throw new Error("useAuth must be used within an AuthProvider");
-    }
-    return context;
   };
 
   return (
@@ -221,7 +247,6 @@ export const AuthProvider = ({ children }) => {
         register,
         getProfile,
         loading,
-        useAuth,
       }}
     >
       {children}
@@ -232,7 +257,7 @@ export const AuthProvider = ({ children }) => {
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuthContext must be used within an AuthProvider");
   }
   return context;
 };

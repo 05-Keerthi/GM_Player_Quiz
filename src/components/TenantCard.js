@@ -5,13 +5,16 @@ import { useTenantContext } from "../context/TenantContext";
 import TenantDetailsModal from "../models/TenantDetailModel";
 import TenantEditModal from "../models/TenantEditModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
+import ConfirmationModal from "../models/ConfiremationModel";
 
 const TenantManagement = () => {
   const { state, getAllTenants, deleteTenant, error, clearError, loading } =
     useTenantContext();
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false); // State for confirmation modal
   const [selectedTenant, setSelectedTenant] = useState(null);
+  const [tenantToDelete, setTenantToDelete] = useState(null); // Track tenant to delete
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTenants, setFilteredTenants] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,19 +65,27 @@ const TenantManagement = () => {
     setIsEditOpen(true);
   };
 
-  const handleDelete = async (tenantId) => {
-    if (window.confirm("Are you sure you want to delete this tenant?")) {
+  const handleDelete = async () => {
+    if (tenantToDelete) {
       try {
-        await deleteTenant(tenantId);
-        await getAllTenants();
+        await deleteTenant(tenantToDelete);
+        await getAllTenants(); // Refresh the tenant list
         toast.success("Tenant deleted successfully!", {
           position: "top-right",
           autoClose: 3000,
         });
       } catch (err) {
         toast.error("Failed to delete tenant");
+      } finally {
+        setTenantToDelete(null); // Clear the tenantToDelete state
+        setIsConfirmOpen(false); // Close the modal
       }
     }
+  };
+
+  const confirmDelete = (tenantId) => {
+    setTenantToDelete(tenantId); // Set the tenant to delete
+    setIsConfirmOpen(true); // Open the confirmation modal
   };
 
   const handlePageChange = (page) => {
@@ -97,7 +108,6 @@ const TenantManagement = () => {
 
   return (
     <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm min-h-screen">
-      {/* Header section remains the same */}
       <div className="mb-8">
         <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-semibold">Tenant Management</h1>
@@ -160,7 +170,7 @@ const TenantManagement = () => {
                       <Pencil size={18} />
                     </button>
                     <button
-                      onClick={() => handleDelete(tenant._id)}
+                      onClick={() => confirmDelete(tenant._id)}
                       className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
                     >
                       <Trash2 size={18} />
@@ -202,6 +212,14 @@ const TenantManagement = () => {
           getAllTenants();
         }}
         tenant={selectedTenant}
+      />
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Tenant"
+        message="Are you sure you want to delete this tenant? This action cannot be undone."
       />
     </div>
   );

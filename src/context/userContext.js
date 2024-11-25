@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer } from "react";
+// userContext.js
+import React, { createContext, useContext, useReducer, useEffect } from "react";
 import axios from "axios";
 import {
   userReducer,
@@ -6,23 +7,63 @@ import {
   initialState,
 } from "../reducers/userReducer";
 
-// Base URL and API configuration
 const BASE_URL = "http://localhost:5000/api";
 
-// Get authentication headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-};
-
-// Create axios instance with base URL and headers
+// Create axios instance
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: getAuthHeaders(),
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
+
+// Add request interceptor to always get fresh token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't tried refreshing yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Try to refresh the token
+        const refreshToken = localStorage.getItem("refresh_token");
+        const response = await axios.post(`${BASE_URL}/auth/refresh-token`, {
+          refresh_token: refreshToken,
+        });
+
+        const { token } = response.data;
+
+        // Update stored token
+        localStorage.setItem("token", token);
+
+        // Update the failed request's auth header and retry
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, redirect to login
+        localStorage.removeItem("token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Context
 const UserContext = createContext();
@@ -31,7 +72,15 @@ const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
 
-  // Action Creators
+  // Verify auth state on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  // Rest of your existing actions but using the enhanced api instance
   const fetchUsers = async () => {
     dispatch({ type: USER_ACTIONS.FETCH_USERS_START });
     try {

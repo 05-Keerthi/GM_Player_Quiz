@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from "react";
+import React, { createContext, useContext, useReducer, useEffect } from "react";
 import axios from "axios";
 import {
   initialState,
@@ -6,57 +6,92 @@ import {
   tenantReducer,
 } from "../reducers/TenantReducer";
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-};
-
-// Create axios instance with base URL
+// Create axios instance with base configuration
 const api = axios.create({
   baseURL: "http://localhost:5000/api",
-  headers: getAuthHeaders(),
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Create context
+// Add request interceptor to always get fresh token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem("refresh_token");
+        const response = await axios.post(
+          `${api.defaults.baseURL}/auth/refresh-token`,
+          {
+            refresh_token: refreshToken,
+          }
+        );
+
+        const { token } = response.data;
+        localStorage.setItem("token", token);
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export const TenantContext = createContext();
 
-// Provider component
 export const TenantProvider = ({ children }) => {
   const [state, dispatch] = useReducer(tenantReducer, initialState);
 
-  // Actions
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login";
+    }
+  }, []);
+
   const actions = {
     createTenant: async (tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        // Send data to backend to create the tenant
         const { data: newTenant } = await api.post("/tenants", tenantData);
         dispatch({ type: ACTIONS.ADD_TENANT, payload: newTenant });
         return newTenant;
       } catch (error) {
-        dispatch({
-          type: ACTIONS.SET_ERROR,
-          payload: error.response?.data?.message
-            ? {
-                message:
-                  error.response?.data?.message || "Failed to create tenant",
-                errors: error.response?.data?.errors || [],
-              }
-            : {
-                message: "Failed to create tenant",
-              },
-        });
+        const errorPayload = {
+          message: error.response?.data?.message || "Failed to create tenant",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
         throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     },
 
     updateTenant: async (id, tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        // Send data to backend to update the tenant
         const { data: updatedTenant } = await api.put(
           `/tenants/${id}`,
           tenantData
@@ -64,19 +99,14 @@ export const TenantProvider = ({ children }) => {
         dispatch({ type: ACTIONS.UPDATE_TENANT, payload: updatedTenant });
         return updatedTenant;
       } catch (error) {
-        dispatch({
-          type: ACTIONS.SET_ERROR,
-          payload: error.response?.data?.message
-            ? {
-                message:
-                  error.response?.data?.message || "Failed to update tenant",
-                errors: error.response?.data?.errors || [],
-              }
-            : {
-                message: "Failed to update tenant",
-              },
-        });
+        const errorPayload = {
+          message: error.response?.data?.message || "Failed to update tenant",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
         throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     },
 
@@ -93,6 +123,8 @@ export const TenantProvider = ({ children }) => {
           },
         });
         throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     },
 
@@ -110,6 +142,8 @@ export const TenantProvider = ({ children }) => {
           },
         });
         throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     },
 
@@ -127,18 +161,32 @@ export const TenantProvider = ({ children }) => {
           },
         });
         throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
+    },
+
+    clearError: () => {
+      dispatch({ type: ACTIONS.SET_ERROR, payload: null });
     },
   };
 
+  const contextValue = {
+    state,
+    tenants: state.tenants,
+    currentTenant: state.currentTenant,
+    loading: state.loading,
+    error: state.error,
+    ...actions,
+  };
+
   return (
-    <TenantContext.Provider value={{ state, ...actions }}>
+    <TenantContext.Provider value={contextValue}>
       {children}
     </TenantContext.Provider>
   );
 };
 
-// Custom hook for using the tenant context
 export const useTenantContext = () => {
   const context = useContext(TenantContext);
   if (!context) {

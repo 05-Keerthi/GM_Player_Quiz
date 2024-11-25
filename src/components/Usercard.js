@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useUserContext } from "../context/userContext";
 import EditUserModal from "../models/EditUserModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
+import ConfirmationModal from "../models/ConfiremationModel";
 
 const UserManagement = () => {
   const {
@@ -20,6 +21,7 @@ const UserManagement = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const usersPerPage = 5;
 
@@ -66,23 +68,30 @@ const UserManagement = () => {
     }
   };
 
-  const handleDelete = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        await deleteUser(userId);
-        toast.success("User deleted successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      } catch (err) {
-        toast.error("Failed to delete user");
-      }
+  const handleDelete = async () => {
+    try {
+      await deleteUser(selectedUser._id);
+      toast.success("User deleted successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      fetchUsers(); // Fetch updated list
+    } catch (err) {
+      toast.error("Failed to delete user");
+    } finally {
+      setConfirmModalOpen(false); // Close confirmation modal
+      setSelectedUser(null);
     }
   };
 
   const handleCloseModal = () => {
     setEditModalOpen(false);
     setSelectedUser(null);
+  };
+
+  const openConfirmModal = (user) => {
+    setSelectedUser(user);
+    setConfirmModalOpen(true);
   };
 
   const handlePageChange = (page) => {
@@ -105,7 +114,6 @@ const UserManagement = () => {
 
   return (
     <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm min-h-screen">
-      {/* Header section remains the same */}
       <div className="mb-8">
         <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-semibold">User Management</h1>
@@ -164,7 +172,7 @@ const UserManagement = () => {
                       <Pencil size={18} />
                     </button>
                     <button
-                      onClick={() => handleDelete(user._id)}
+                      onClick={() => openConfirmModal(user)}
                       className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
                     >
                       <Trash2 size={18} />
@@ -196,6 +204,14 @@ const UserManagement = () => {
         isOpen={isEditModalOpen}
         onClose={handleCloseModal}
         user={selectedUser}
+      />
+
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete the user "${selectedUser?.username}"? This action cannot be undone.`}
       />
     </div>
   );

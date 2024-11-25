@@ -1,27 +1,76 @@
-// In Navbar.jsx
-
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
-import logo from "../assets/GMI-Logo.png";
+import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
+import { useState, useEffect } from "react";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
   const navigate = useNavigate();
+  const [logoSrc, setLogoSrc] = useState(defaultLogo);
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    // Reset error state when user or tenant changes
+    setLogoError(false);
+
+    // Debug log the entire user object
+    console.log("Current user data:", user);
+
+    try {
+      // Check if we have a valid tenant logo URL
+      const tenantLogo = user?.tenantId?.logo;
+      console.log("Tenant logo URL:", tenantLogo);
+
+      if (
+        tenantLogo &&
+        typeof tenantLogo === "string" &&
+        tenantLogo.startsWith("http")
+      ) {
+        setLogoSrc(tenantLogo);
+      } else {
+        console.log("Using default logo due to invalid tenant logo");
+        setLogoSrc(defaultLogo);
+      }
+    } catch (error) {
+      console.error("Error setting logo:", error);
+      setLogoSrc(defaultLogo);
+    }
+  }, [user]);
+
+  const handleLogoError = (e) => {
+    console.error("Logo loading failed:", {
+      attemptedSrc: e.target.src,
+      tenantId: user?.tenantId?._id,
+      tenantName: user?.tenantId?.name,
+      fallbackAvailable: !!defaultLogo,
+    });
+
+    if (!logoError) {
+      setLogoError(true);
+      setLogoSrc(defaultLogo);
+    }
+  };
 
   return (
     <div className="border-b-4 p-2">
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
         {/* Left: Logo with Welcome Message */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <img
-            src={logo}
-            alt="GMI"
-            className="h-10 w-10 rounded-full cursor-pointer"
-            onClick={() => navigate("/")}
-          />
+          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden">
+            <img
+              key={logoSrc} // Add key to force re-render when source changes
+              src={logoSrc}
+              alt={user?.tenantId?.name || "GMI"}
+              className="h-full w-full object-cover"
+              onClick={() => navigate("/")}
+              onError={handleLogoError}
+            />
+          </div>
           <div>
-            <h1 className="text-lg font-semibold">Welcome to GM Play..!</h1>
+            <h1 className="text-lg font-semibold">
+              Welcome to {user?.tenantId?.name || "GM Play"}..!
+            </h1>
             <p className="text-sm text-gray-500">Engage, learn, and have fun</p>
           </div>
         </div>
