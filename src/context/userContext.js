@@ -1,4 +1,3 @@
-// userContext.js
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import axios from "axios";
 import {
@@ -32,27 +31,20 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401 and we haven't tried refreshing yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Try to refresh the token
         const refreshToken = localStorage.getItem("refresh_token");
         const response = await axios.post(`${BASE_URL}/auth/refresh-token`, {
           refresh_token: refreshToken,
         });
 
         const { token } = response.data;
-
-        // Update stored token
         localStorage.setItem("token", token);
-
-        // Update the failed request's auth header and retry
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, redirect to login
         localStorage.removeItem("token");
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
@@ -65,14 +57,11 @@ api.interceptors.response.use(
   }
 );
 
-// Context
 const UserContext = createContext();
 
-// Provider Component
 export const UserProvider = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
 
-  // Verify auth state on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -80,7 +69,6 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // Rest of your existing actions but using the enhanced api instance
   const fetchUsers = async () => {
     dispatch({ type: USER_ACTIONS.FETCH_USERS_START });
     try {
@@ -158,6 +146,29 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async (oldPassword, newPassword) => {
+    dispatch({ type: USER_ACTIONS.CHANGE_PASSWORD_START });
+    try {
+      const response = await api.post("/change-password", {
+        oldPassword,
+        newPassword,
+      });
+      dispatch({
+        type: USER_ACTIONS.CHANGE_PASSWORD_SUCCESS,
+        payload: response.data,
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to change password";
+      dispatch({
+        type: USER_ACTIONS.CHANGE_PASSWORD_FAILURE,
+        payload: errorMessage,
+      });
+      throw error;
+    }
+  };
+
   const clearError = () => {
     dispatch({ type: USER_ACTIONS.CLEAR_ERROR });
   };
@@ -169,6 +180,7 @@ export const UserProvider = ({ children }) => {
     fetchUserById,
     updateUser,
     deleteUser,
+    changePassword,
     clearError,
   };
 

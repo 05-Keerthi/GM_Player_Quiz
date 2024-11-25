@@ -1,26 +1,34 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import Navbar from "../components/NavbarComp";
-import { toast } from "react-toastify"; // Assuming you're using react-toastify for notifications
 import { useUserContext } from "../context/userContext";
 
 export const ProfilePage = () => {
   const { getProfile, logout } = useAuthContext();
-  const { updateUser } = useUserContext();
+  const { updateUser, changePassword } = useUserContext();
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Password state with direct input handling
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // New state for inline errors
+  const [updateError, setUpdateError] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
+
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
       try {
         setIsLoading(true);
-
-        // Ensure we have a token before making the request
         const token = localStorage.getItem("token");
         if (!token) {
           throw new Error("No authentication token found");
@@ -43,7 +51,6 @@ export const ProfilePage = () => {
           if (error.response) {
             switch (error.response.status) {
               case 401:
-                // Unauthorized - token invalid
                 await logout();
                 navigate("/login");
                 break;
@@ -74,7 +81,7 @@ export const ProfilePage = () => {
     return () => {
       isMounted = false;
     };
-  }, [] );
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -82,52 +89,75 @@ export const ProfilePage = () => {
       ...prev,
       [name]: value,
     }));
+    // Clear any existing update error when user starts typing
+    setUpdateError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setIsUpdating(true);
-      // Prepare the data for update (only include fields that can be updated)
+      setUpdateError(null);
       const updateData = {
         username: profileData.username,
-        // email: profileData.email,
         mobile: profileData.mobile,
       };
 
-      // Call the updateUser method from UserContext
       const updatedUser = await updateUser(profileData._id, updateData);
-
-      // Update local state with the returned user data
       setProfileData(updatedUser);
-
-      // Show success toast
-      toast.success("Profile updated successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-      });
     } catch (error) {
       console.error("Update profile error:", error);
-
-      // Handle different types of errors
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
         "Failed to update profile.";
 
-      // Show error toast
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-
-      // Set error state for potential additional error handling
-      setError(errorMessage);
+      setUpdateError(errorMessage);
     } finally {
       setIsUpdating(false);
     }
   };
 
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    // Validate passwords
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match!");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters long!");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      await changePassword(oldPassword, newPassword);
+
+      // Clear password fields
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError(null);
+
+      // Add toast notification
+      toast.success("Password changed successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to change password";
+      setPasswordError(errorMessage);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  
   const renderContent = useMemo(() => {
     if (isLoading) {
       return (
@@ -248,6 +278,13 @@ export const ProfilePage = () => {
                 </div>
               </div>
             </div>
+
+            {updateError && (
+              <div className="max-w-4xl mx-auto mt-4 text-red-500 text-sm">
+                {updateError}
+              </div>
+            )}
+
             <div className="flex justify-center md:justify-end mt-6 md:mt-8">
               <button
                 type="submit"
@@ -258,10 +295,111 @@ export const ProfilePage = () => {
               </button>
             </div>
           </form>
+
+          {/* Password Change Form */}
+          <form
+            onSubmit={handlePasswordSubmit}
+            className="max-w-4xl mx-auto mt-8"
+          >
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-lg font-bold mb-4">Change Password</h2>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="oldPassword"
+                    className="block font-medium mb-2"
+                  >
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    id="oldPassword"
+                    name="oldPassword"
+                    value={oldPassword}
+                    onChange={(e) => {
+                      setOldPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="newPassword"
+                    className="block font-medium mb-2"
+                  >
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    name="newPassword"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                    minLength={8}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block font-medium mb-2"
+                  >
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                    minLength={8}
+                  />
+                </div>
+              </div>
+
+              {passwordError && (
+                <div className="text-red-500 text-sm mt-4">{passwordError}</div>
+              )}
+
+              <div className="mt-6">
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
+                >
+                  {isChangingPassword
+                    ? "Changing Password..."
+                    : "Change Password"}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       </>
     );
-  }, [profileData, isLoading, isUpdating, error]);
+  }, [
+    profileData,
+    isLoading,
+    isUpdating,
+    error,
+    oldPassword,
+    newPassword,
+    confirmPassword,
+    isChangingPassword,
+    updateError,
+    passwordError,
+  ]);
 
   return renderContent;
 };
