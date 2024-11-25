@@ -103,6 +103,7 @@ const login = async (req, res) => {
         username: existingUser.username,
         email: existingUser.email,
         role: existingUser.role,
+        tenantId: existingUser.tenantId,
       },
     });
   } catch (error) {

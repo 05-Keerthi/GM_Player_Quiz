@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   mobile: { type: String, required: true, unique: true },
-  role: { type: String, enum: ['user', 'admin', 'superadmin'], required: false, default: 'user'},
+  role: { type: String, enum: ['user', 'admin', 'superadmin', 'tenant_admin'], required: false, default: 'user'},
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: false },
   createdAt: { type: Date, default: Date.now },
   resetPasswordCode: { type: String },
