@@ -77,7 +77,7 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email }).populate("tenantId");
     if (!existingUser)
       return res.status(400).json({ message: "Invalid Email." });
 
