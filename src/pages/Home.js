@@ -137,46 +137,51 @@ export default function HomePage() {
 
   const roleBasedActions = getRoleBasedActions();
 
+  const renderForSuperAdmin = () => (
+    <>
+      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+        Tenant Management
+      </h2>
+      <TenantManagement />
+    </>
+  );
+
+  const renderForAdmin = () => (
+    <>
+      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+        User Management
+      </h2>
+      <UserManagement />
+    </>
+  );
+
+  const renderForUser = () => (
+    <>
+      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+        Choose Your Plan
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {plans.map((plan, index) => (
+          <Card
+            key={index}
+            {...plan}
+            onClick={() => handleNavigation(plan.path)}
+          />
+        ))}
+      </div>
+    </>
+  );
+
   const renderSecondSection = () => {
     switch (user?.role) {
       case "superadmin":
-        return (
-          <>
-            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-              Tenant Management
-            </h2>
-            <TenantManagement />
-          </>
-        );
+        return renderForSuperAdmin();
       case "admin":
-        return (
-          <>
-            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-              User Management
-            </h2>
-            <UserManagement />
-          </>
-        );
+        return renderForAdmin();
       default:
-        return (
-          <>
-            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-              Choose Your Plan
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {plans.map((plan, index) => (
-                <Card
-                  key={index}
-                  {...plan}
-                  onClick={() => handleNavigation(plan.path)}
-                />
-              ))}
-            </div>
-          </>
-        );
+        return renderForUser();
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">

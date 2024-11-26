@@ -25,7 +25,7 @@ const Navbar = () => {
       if (
         tenantLogo &&
         typeof tenantLogo === "string" &&
-        tenantLogo.startsWith("http")
+        tenantLogo.startsWith("data")
       ) {
         setLogoSrc(tenantLogo);
       } else {
