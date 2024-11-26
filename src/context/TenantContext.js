@@ -28,7 +28,9 @@ export const TenantContext = createContext();
 export const TenantProvider = ({ children }) => {
   const [state, dispatch] = useReducer(tenantReducer, initialState);
 
+
   const actions = {
+    // Existing tenant actions...
     createTenant: async (tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
@@ -116,6 +118,79 @@ export const TenantProvider = ({ children }) => {
           type: ACTIONS.SET_ERROR,
           payload: {
             message: error.response?.data?.message || "Failed to fetch tenant",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    // New Tenant Admin Actions
+    registerTenantAdmin: async (tenantId, adminData) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data: newAdmin } = await api.post(`/registerTenantAdmin/${tenantId}`, adminData);
+        // Optionally dispatch an action to update tenant admins list if your reducer supports it
+        return newAdmin;
+      } catch (error) {
+        const errorPayload = {
+          message: error.response?.data?.message || "Failed to register tenant admin",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    updateTenantAdmin: async (tenantId, userId, adminData) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data: updatedAdmin } = await api.put(`/updateTenantAdmin/${tenantId}/${userId}`, adminData);
+        return updatedAdmin;
+      } catch (error) {
+        const errorPayload = {
+          message: error.response?.data?.message || "Failed to update tenant admin",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    getTenantAdmins: async (tenantId) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data: tenantAdmins } = await api.get(`/tenant-admins/${tenantId}`);
+        // Optionally dispatch an action to update tenant admins list if your reducer supports it
+        return tenantAdmins;
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message: error.response?.data?.message || "Failed to fetch tenant admins",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    deleteTenantAdmin: async (tenantId, userId) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        await api.delete(`/tenant-admins/${tenantId}/${userId}`);
+        // Optionally dispatch an action to remove admin from list if your reducer supports it
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message: error.response?.data?.message || "Failed to delete tenant admin",
           },
         });
         throw error;

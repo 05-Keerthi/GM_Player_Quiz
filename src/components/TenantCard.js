@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Search, Pencil, Trash2 } from "lucide-react";
+import { Search, Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../context/TenantContext";
 import TenantDetailsModal from "../models/Tenant/TenantDetailModel";
 import TenantEditModal from "../models/Tenant/TenantEditModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import ConfirmationModal from "../models/ConfirmationModal";
+import TenantAddAdminModal from "../models/Tenant/TenantAddAdminModal";
 
 const TenantManagement = () => {
   const { state, getAllTenants, deleteTenant, error, clearError, loading } =
@@ -18,6 +19,9 @@ const TenantManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTenants, setFilteredTenants] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [tenantForAdmin, setTenantForAdmin] = useState(null);
+
   const tenantsPerPage = 5;
 
   // Initial data fetch
@@ -90,6 +94,11 @@ const TenantManagement = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  const handleAddAdmin = (tenant) => {
+    setTenantForAdmin(tenant); // Set the selected tenant
+    setIsAddAdminOpen(true); // Open the modal
   };
 
   const { currentItems: currentTenants, totalPages } = paginateData(
@@ -175,6 +184,12 @@ const TenantManagement = () => {
                     >
                       <Trash2 size={18} />
                     </button>
+                    <button
+                      onClick={() => handleAddAdmin(tenant)}
+                      className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors"
+                    >
+                      <Plus size={18} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -220,6 +235,12 @@ const TenantManagement = () => {
         onConfirm={handleDelete}
         title="Delete Tenant"
         message="Are you sure you want to delete this tenant? This action cannot be undone."
+      />
+
+      <TenantAddAdminModal
+        isOpen={isAddAdminOpen}
+        onClose={() => setIsAddAdminOpen(false)}
+        tenant={tenantForAdmin}
       />
     </div>
   );
