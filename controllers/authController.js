@@ -93,14 +93,29 @@ const refreshToken = async (req, res) => {
       return res.status(401).json({ message: "Invalid or expired refresh token." });
     }
 
+    // Fetch the user to get the latest details
+    const user = await User.findById(payload.id);
+    if (!user) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
     // Generate a new access token
-    const newAccessToken = generateAccessToken(payload);
+    const newAccessToken = generateAccessToken(user);
 
     // Optionally, update the refresh token in the database (if rotation is required)
     storedToken.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // Extend expiry time
     await storedToken.save();
 
-    res.status(200).json({ token: newAccessToken });
+    res.status(200).json({ 
+      token: newAccessToken, 
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+      }
+    });
   } catch (error) {
     res.status(401).json({ message: "Token validation failed." });
   }
