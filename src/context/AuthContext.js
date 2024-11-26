@@ -25,87 +25,90 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [loading, setLoading] = useState(true);
 
+  // Debug logging function
+  const debugLog = (message, ...args) => {
+    console.log(`[AuthContext Debug] ${message}`, ...args);
+  };
+
   // Update axios authorization header
   const updateAuthHeader = (token) => {
     if (token) {
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      debugLog("Authorization header updated with token");
     } else {
       delete api.defaults.headers.common["Authorization"];
+      debugLog("Authorization header removed");
     }
   };
 
-  // Initialize auth state and set up interceptors
+  // Initialization effect with more conservative approach
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const storedToken = localStorage.getItem("token");
         const storedUser = JSON.parse(localStorage.getItem("user"));
+        const storedRefreshToken = localStorage.getItem("refresh_token");
 
-        if (storedToken && storedUser) {
+        debugLog("Auth Initialization", {
+          hasToken: !!storedToken,
+          hasUser: !!storedUser,
+          hasRefreshToken: !!storedRefreshToken,
+        });
+
+        if (storedToken && storedUser && storedRefreshToken) {
           updateAuthHeader(storedToken);
           dispatch({
             type: ACTIONS.LOGIN,
             payload: { user: storedUser, token: storedToken },
           });
+        } else {
+          debugLog("Incomplete authentication data");
+          await logout();
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        debugLog("Auth initialization error", { errorMessage: error.message });
         await logout();
       } finally {
         setLoading(false);
       }
     };
 
-    let isRefreshing = false;
-    let failedQueue = [];
-
-    const processQueue = (error, token = null) => {
-      failedQueue.forEach((prom) => {
-        if (error) {
-          prom.reject(error);
-        } else {
-          prom.resolve(token);
-        }
-      });
-      failedQueue = [];
-    };
-
-    // Set up response interceptor for handling 401 errors
+    // More conservative interceptor setup
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          if (isRefreshing) {
-            // Queue the request if a refresh is already in progress
-            return new Promise((resolve, reject) => {
-              failedQueue.push({ resolve, reject });
-            })
-              .then((token) => {
-                originalRequest.headers["Authorization"] = `Bearer ${token}`;
-                return api(originalRequest);
-              })
-              .catch((err) => Promise.reject(err));
-          }
-
-          originalRequest._retry = true;
-          isRefreshing = true;
+        // Only handle 401 errors
+        if (error.response?.status === 401) {
+          debugLog("401 Unauthorized Error Detected", {
+            url: error.config.url,
+            method: error.config.method,
+          });
 
           try {
-            const newToken = await refreshToken();
-            if (newToken) {
-              updateAuthHeader(newToken);
-              originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-              processQueue(null, newToken);
-              return api(originalRequest);
+            // Attempt to refresh token only for specific endpoints
+            const refreshableEndpoints = [
+              "/auth/me",
+              "/some-protected-endpoint",
+            ];
+
+            const isRefreshableEndpoint = refreshableEndpoints.some(
+              (endpoint) => error.config.url.includes(endpoint)
+            );
+
+            if (isRefreshableEndpoint) {
+              const newToken = await refreshToken();
+
+              if (newToken) {
+                // Retry the original request
+                error.config.headers["Authorization"] = `Bearer ${newToken}`;
+                return axios(error.config);
+              }
             }
           } catch (refreshError) {
-            processQueue(refreshError, null);
+            debugLog("Token refresh in interceptor failed", {
+              errorMessage: refreshError.message,
+            });
             await logout();
-            return Promise.reject(refreshError);
-          } finally {
-            isRefreshing = false;
           }
         }
 
@@ -158,45 +161,76 @@ export const AuthProvider = ({ children }) => {
       );
     }
   };
-
+  // Enhanced refresh token method with more robust error handling
   const refreshToken = async () => {
     try {
       const refresh_token = localStorage.getItem("refresh_token");
-      if (!refresh_token) throw new Error("No refresh token available");
-
-      const response = await api.post("/auth/refresh-token", {
-        refresh_token,
+      debugLog("Attempting to refresh token", {
+        hasRefreshToken: !!refresh_token,
       });
 
+      if (!refresh_token) {
+        debugLog("No refresh token available");
+        throw new Error("No refresh token available");
+      }
+
+      const response = await axios.post(
+        `${BASE_URL}/auth/refresh-token`,
+        {
+          refresh_token,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
       const { token: newToken } = response.data;
+
+      debugLog("Token refreshed successfully", { newToken });
+
+      // Update local storage and header
       localStorage.setItem("token", newToken);
       updateAuthHeader(newToken);
 
       return newToken;
     } catch (error) {
-      console.error("Token refresh failed:", error);
+      debugLog("Token refresh failed", {
+        errorMessage: error.message,
+        errorResponse: error.response?.data,
+      });
+
       await logout();
       throw error;
     }
   };
 
+  // Logout method with comprehensive cleanup
   const logout = async () => {
     try {
+      debugLog("Logout initiated");
       const token = localStorage.getItem("token");
+
       if (token) {
         await api.post("/auth/logout", { token });
       }
     } catch (error) {
-      console.error("Logout request failed:", error);
+      debugLog("Logout request failed", { errorMessage: error.message });
     } finally {
+      // Clear all auth-related data
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       localStorage.removeItem("refresh_token");
+
+      // Remove auth header
       updateAuthHeader(null);
+
+      // Dispatch logout action
       dispatch({ type: ACTIONS.LOGOUT });
+      debugLog("Logout completed");
     }
   };
-
   const register = async (username, email, mobile, password) => {
     try {
       const response = await api.post("/auth/register", {
@@ -238,6 +272,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Rest of the context remains the same
   return (
     <AuthContext.Provider
       value={{
