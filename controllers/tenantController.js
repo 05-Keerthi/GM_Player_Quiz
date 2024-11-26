@@ -78,6 +78,119 @@ const registerTenantAdmin = async (req, res) => {
   }
 };
 
+const updateTenantAdmin = async (req, res) => {
+  try {
+    const tenantId = req.params.id;
+    const userId = req.params.userId;
+
+    // Ensure that the current user is a super admin or a tenant admin
+    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
+      return res.status(403).json({ message: 'Forbidden: Only super admin or tenant admin can update tenant admin details' });
+    }
+
+    // Check if the tenant ID exists
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+
+    // Check if the user exists
+    const user = await User.findOne({ _id: userId, tenantId: tenantId });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for the given tenant' });
+    }
+
+    // Update only allowed fields
+    const updates = {};
+    const allowedFields = ['username', 'email', 'mobile', 'password', 'role']; // Add fields you want to allow
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    // If password is being updated, ensure it is hashed
+    if (updates.password) {
+      updates.password = await hashPassword(updates.password); // Replace with your hashing logic
+    }
+
+    // Perform the update
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
+
+    res.status(200).json({
+      message: 'Tenant admin updated successfully',
+      user: updatedUser,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const getTenantAdmins = async (req, res) => {
+  try {
+    const tenantId = req.params.id;
+
+    // SuperAdmin can view all tenant admins; tenantAdmin can view their own
+    if (req.user.role === 'tenant_admin' && req.user.tenantId !== tenantId) {
+      return res
+        .status(403)
+        .json({ message: 'Access denied. You can only view your own tenant users.' });
+    }
+
+    // Find tenant admins for the given tenant ID
+    const tenantAdmins = await User.find({ tenantId: tenantId, role: 'tenant_admin' });
+
+    if (!tenantAdmins) {
+      return res.status(404).json({ message: 'No tenant admins found for this tenant.' });
+    }
+
+    res.status(200).json(tenantAdmins);
+  } catch (error) {
+    console.error('Error retrieving tenant admins:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const deleteTenantAdmin = async (req, res) => {
+  try {
+    const tenantId = req.params.id;
+    const userId = req.params.userId;
+
+    // Ensure that the current user is a super admin or tenant admin
+    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
+      return res.status(403).json({
+        message: 'Forbidden: Only super admin or tenant admin can delete tenant admin details',
+      });
+    }
+
+    // Check if the tenant ID exists
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+
+    // Check if the user exists and belongs to the correct tenant
+    const user = await User.findOne({ _id: userId, tenantId: tenantId });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for the given tenant' });
+    }
+
+    // If the current user is not a super admin and is trying to delete their own account, prevent it
+    if (req.user.role === 'tenant_admin' && req.user._id.toString() === userId.toString()) {
+      return res.status(400).json({ message: 'Tenant admin cannot delete themselves' });
+    }
+
+    // Perform the delete operation
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({
+      message: 'Tenant admin deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting tenant admin:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 const getAllTenants = async (req, res) => {
   try {
@@ -160,6 +273,9 @@ const handleError = (res, error) => {
 module.exports = {
   createTenant,
   registerTenantAdmin,
+  updateTenantAdmin,
+  getTenantAdmins,
+  deleteTenantAdmin,
   getAllTenants,
   getTenantById,
   updateTenant,

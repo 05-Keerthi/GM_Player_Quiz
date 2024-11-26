@@ -118,4 +118,17 @@ const admin = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, isSuperAdmin, admin };
+const isTenantAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "tenant_admin") {
+    console.log(
+      `Access denied. User: ${req.user?.email} does not have tenantAdmin role.`
+    );
+    return res
+      .status(403)
+      .json({ message: "Access denied. Tenant admin only." });
+  }
+  console.log(`TenantAdmin access granted to: ${req.user.email}`);
+  next();
+};
+
+module.exports = { auth, isSuperAdmin, admin, isTenantAdmin };
