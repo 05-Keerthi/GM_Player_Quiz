@@ -41,74 +41,94 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Initialization effect with more conservative approach
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        const storedToken = localStorage.getItem("token");
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        const storedRefreshToken = localStorage.getItem("refresh_token");
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      const storedToken = localStorage.getItem("token");
+      const storedRefreshToken = localStorage.getItem("refresh_token");
 
-        debugLog("Auth Initialization", {
-          hasToken: !!storedToken,
-          hasUser: !!storedUser,
-          hasRefreshToken: !!storedRefreshToken,
-        });
+      if (storedUser && storedToken && storedRefreshToken) {
+        try {
+          // Attempt to fetch profile to validate token
+          await api.get("/auth/me");
 
-        if (storedToken && storedUser && storedRefreshToken) {
-          updateAuthHeader(storedToken);
           dispatch({
             type: ACTIONS.LOGIN,
             payload: { user: storedUser, token: storedToken },
           });
-        } else {
-          debugLog("Incomplete authentication data");
-          await logout();
+          updateAuthHeader(storedToken);
+        } catch (error) {
+          // If token validation fails, attempt to refresh
+          try {
+            const response = await axios.post(
+              `${BASE_URL}/auth/refresh-token`,
+              { refresh_token: storedRefreshToken },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const { token: newToken } = response.data;
+
+            // Update local storage
+            localStorage.setItem("token", newToken);
+
+            dispatch({
+              type: ACTIONS.LOGIN,
+              payload: { user: storedUser, token: newToken },
+            });
+            updateAuthHeader(newToken);
+          } catch (refreshError) {
+            // If refresh fails, logout
+            await logout();
+          }
         }
-      } catch (error) {
-        debugLog("Auth initialization error", { errorMessage: error.message });
-        await logout();
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
-    // More conservative interceptor setup
+    initializeAuth();
+
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
-        // Only handle 401 errors
-        if (error.response?.status === 401) {
-          debugLog("401 Unauthorized Error Detected", {
-            url: error.config.url,
-            method: error.config.method,
-          });
+        const originalRequest = error.config;
+
+        // Only retry once and for 401 errors
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
 
           try {
-            // Attempt to refresh token only for specific endpoints
-            const refreshableEndpoints = [
-              "/auth/me",
-              "/some-protected-endpoint",
-            ];
-
-            const isRefreshableEndpoint = refreshableEndpoints.some(
-              (endpoint) => error.config.url.includes(endpoint)
+            const storedRefreshToken = localStorage.getItem("refresh_token");
+            const response = await axios.post(
+              `${BASE_URL}/auth/refresh-token`,
+              { refresh_token: storedRefreshToken },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
             );
 
-            if (isRefreshableEndpoint) {
-              const newToken = await refreshToken();
+            const { token: refreshedToken } = response.data;
 
-              if (newToken) {
-                // Retry the original request
-                error.config.headers["Authorization"] = `Bearer ${newToken}`;
-                return axios(error.config);
-              }
-            }
+            // Update local storage and headers
+            localStorage.setItem("token", refreshedToken);
+            originalRequest.headers[
+              "Authorization"
+            ] = `Bearer ${refreshedToken}`;
+            api.defaults.headers.common[
+              "Authorization"
+            ] = `Bearer ${refreshedToken}`;
+
+            // Retry the original request
+            return api(originalRequest);
           } catch (refreshError) {
-            debugLog("Token refresh in interceptor failed", {
-              errorMessage: refreshError.message,
-            });
+            // If refresh fails, logout
             await logout();
+            return Promise.reject(refreshError);
           }
         }
 
@@ -116,11 +136,8 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
-    initializeAuth();
-
-    return () => {
-      api.interceptors.response.eject(interceptor);
-    };
+    // Cleanup interceptor on component unmount
+    return () => api.interceptors.response.eject(interceptor);
   }, []);
 
   const login = async (email, password, rememberMe) => {
