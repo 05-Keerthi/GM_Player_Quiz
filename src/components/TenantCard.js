@@ -5,7 +5,7 @@ import { useTenantContext } from "../context/TenantContext";
 import TenantDetailsModal from "../models/Tenant/TenantDetailModel";
 import TenantEditModal from "../models/Tenant/TenantEditModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
-import ConfirmationModal from "../models/ConfiremationModel";
+import ConfirmationModal from "../models/ConfirmationModal";
 
 const TenantManagement = () => {
   const { state, getAllTenants, deleteTenant, error, clearError, loading } =

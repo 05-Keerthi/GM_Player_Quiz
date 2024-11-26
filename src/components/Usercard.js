@@ -3,7 +3,7 @@ import { Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useUserContext } from "../context/userContext";
 import { paginateData, PaginationControls } from "../utils/pagination";
-import ConfirmationModal from "../models/ConfiremationModel";
+import ConfirmationModal from "../models/ConfirmationModal";
 import EditUserModal from "../models/User/EditUserModel";
 
 const UserManagement = () => {
