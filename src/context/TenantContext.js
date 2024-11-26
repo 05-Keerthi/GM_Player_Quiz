@@ -23,52 +23,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Add response interceptor to handle 401 errors
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        const response = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh-token`,
-          {
-            refresh_token: refreshToken,
-          }
-        );
-
-        const { token } = response.data;
-        localStorage.setItem("token", token);
-        originalRequest.headers.Authorization = `Bearer ${token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
 export const TenantContext = createContext();
 
 export const TenantProvider = ({ children }) => {
   const [state, dispatch] = useReducer(tenantReducer, initialState);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-    }
-  }, []);
 
   const actions = {
     createTenant: async (tenantData) => {

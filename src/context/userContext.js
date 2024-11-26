@@ -25,49 +25,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Add response interceptor to handle 401 errors
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        const response = await axios.post(`${BASE_URL}/auth/refresh-token`, {
-          refresh_token: refreshToken,
-        });
-
-        const { token } = response.data;
-        localStorage.setItem("token", token);
-        originalRequest.headers.Authorization = `Bearer ${token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
 
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-    }
-  }, []);
 
   const fetchUsers = async () => {
     dispatch({ type: USER_ACTIONS.FETCH_USERS_START });

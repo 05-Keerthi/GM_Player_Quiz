@@ -49,9 +49,6 @@ export const AuthProvider = ({ children }) => {
 
       if (storedUser && storedToken && storedRefreshToken) {
         try {
-          // Attempt to fetch profile to validate token
-          await api.get("/auth/me");
-
           dispatch({
             type: ACTIONS.LOGIN,
             payload: { user: storedUser, token: storedToken },
@@ -70,14 +67,18 @@ export const AuthProvider = ({ children }) => {
               }
             );
 
-            const { token: newToken } = response.data;
+            const { token: newToken, user: refreshedUser } = response.data;
 
             // Update local storage
             localStorage.setItem("token", newToken);
+            localStorage.setItem("user", JSON.stringify(refreshedUser));
 
             dispatch({
               type: ACTIONS.LOGIN,
-              payload: { user: storedUser, token: newToken },
+              payload: {
+                user: refreshedUser,
+                token: newToken,
+              },
             });
             updateAuthHeader(newToken);
           } catch (refreshError) {
@@ -112,16 +113,28 @@ export const AuthProvider = ({ children }) => {
               }
             );
 
-            const { token: refreshedToken } = response.data;
+            const { token: refreshedToken, user: refreshedUser } =
+              response.data;
 
             // Update local storage and headers
             localStorage.setItem("token", refreshedToken);
+            localStorage.setItem("user", JSON.stringify(refreshedUser));
+
             originalRequest.headers[
               "Authorization"
             ] = `Bearer ${refreshedToken}`;
             api.defaults.headers.common[
               "Authorization"
             ] = `Bearer ${refreshedToken}`;
+
+            // Update state with new user and token
+            dispatch({
+              type: ACTIONS.LOGIN,
+              payload: {
+                user: refreshedUser,
+                token: refreshedToken,
+              },
+            });
 
             // Retry the original request
             return api(originalRequest);
@@ -178,6 +191,7 @@ export const AuthProvider = ({ children }) => {
       );
     }
   };
+
   // Enhanced refresh token method with more robust error handling
   const refreshToken = async () => {
     try {
@@ -193,9 +207,7 @@ export const AuthProvider = ({ children }) => {
 
       const response = await axios.post(
         `${BASE_URL}/auth/refresh-token`,
-        {
-          refresh_token,
-        },
+        { refresh_token },
         {
           headers: {
             "Content-Type": "application/json",
@@ -203,13 +215,23 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      const { token: newToken } = response.data;
+      const { token: newToken, user: refreshedUser } = response.data;
 
-      debugLog("Token refreshed successfully", { newToken });
+      debugLog("Token refreshed successfully", { newToken, refreshedUser });
 
       // Update local storage and header
       localStorage.setItem("token", newToken);
+      localStorage.setItem("user", JSON.stringify(refreshedUser));
       updateAuthHeader(newToken);
+
+      // Dispatch login action to update the user details
+      dispatch({
+        type: ACTIONS.LOGIN,
+        payload: {
+          user: refreshedUser,
+          token: newToken,
+        },
+      });
 
       return newToken;
     } catch (error) {
@@ -248,6 +270,7 @@ export const AuthProvider = ({ children }) => {
       debugLog("Logout completed");
     }
   };
+
   const register = async (username, email, mobile, password) => {
     try {
       const response = await api.post("/auth/register", {
@@ -298,6 +321,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         register,
         getProfile,
+        refreshToken, // Expose refreshToken method if needed
         loading,
       }}
     >
