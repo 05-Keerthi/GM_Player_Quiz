@@ -10,17 +10,21 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
     email: "",
     password: "",
     mobile: "",
-    role: "tenant_admin", // Default role
+    role: "tenant_admin",
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleMobileChange = (value) => {
     setFormData((prev) => ({ ...prev, mobile: value }));
+    setErrors((prev) => ({ ...prev, mobile: "" }));
   };
 
   const handleSubmit = async (e) => {
@@ -29,10 +33,18 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
     try {
       await registerTenantAdmin(tenant._id, formData);
       toast.success("Admin added successfully!");
-      await getTenantAdmins(tenant._id); // Optionally refresh admin list
-      onClose(); // Close the modal
+      await getTenantAdmins(tenant._id);
+      onClose();
     } catch (err) {
-      toast.error("Failed to add admin. Please try again.");
+      const fieldErrors =
+        err.response?.data?.errors?.reduce((acc, error) => {
+          acc[error.field] = error.message;
+          return acc;
+        }, {}) || {};
+      setErrors(fieldErrors);
+      if (!Object.keys(fieldErrors).length) {
+        toast.error("Failed to add admin. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -56,8 +68,13 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
               value={formData.username}
               onChange={handleInputChange}
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.username ? "border-red-500" : ""
+              }`}
             />
+            {errors.username && (
+              <p className="mt-1 text-sm text-red-500">{errors.username}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="email" className="block text-sm font-medium">
@@ -70,8 +87,13 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
               value={formData.email}
               onChange={handleInputChange}
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.email ? "border-red-500" : ""
+              }`}
             />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="password" className="block text-sm font-medium">
@@ -84,8 +106,13 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.password ? "border-red-500" : ""
+              }`}
             />
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="mobile" className="block text-sm font-medium">
@@ -94,10 +121,15 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
             <PhoneInput
               value={formData.mobile}
               onChange={handleMobileChange}
-              defaultCountry="IN" // Set a default country code
+              defaultCountry="IN"
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.mobile ? "border-red-500" : ""
+              }`}
             />
+            {errors.mobile && (
+              <p className="mt-1 text-sm text-red-500">{errors.mobile}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="role" className="block text-sm font-medium">

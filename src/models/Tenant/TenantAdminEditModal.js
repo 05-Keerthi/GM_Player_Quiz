@@ -11,9 +11,9 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
     mobile: "",
     role: "tenant_admin",
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Populate form data when admin prop changes
   useEffect(() => {
     if (admin) {
       setFormData({
@@ -22,16 +22,19 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
         mobile: admin.mobile || "",
         role: admin.role || "tenant_admin",
       });
+      setErrors({}); // Clear errors when admin data changes
     }
   }, [admin]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleMobileChange = (value) => {
     setFormData((prev) => ({ ...prev, mobile: value }));
+    setErrors((prev) => ({ ...prev, mobile: "" }));
   };
 
   const handleSubmit = async (e) => {
@@ -42,22 +45,28 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
       toast.success("Admin updated successfully!");
       onClose();
     } catch (err) {
-      toast.error("Failed to update admin. Please try again.");
+      const fieldErrors =
+        err.response?.data?.errors?.reduce((acc, error) => {
+          acc[error.field] = error.message;
+          return acc;
+        }, {}) || {};
+      setErrors(fieldErrors);
+      if (!Object.keys(fieldErrors).length) {
+        toast.error("Failed to update admin. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset form when modal closes
   const handleClose = () => {
     setFormData({
       username: "",
       email: "",
       mobile: "",
       role: "tenant_admin",
-      firstName: "",
-      lastName: "",
     });
+    setErrors({});
     onClose();
   };
 
@@ -79,8 +88,13 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
               value={formData.username}
               onChange={handleInputChange}
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.username ? "border-red-500" : ""
+              }`}
             />
+            {errors.username && (
+              <p className="mt-1 text-sm text-red-500">{errors.username}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="email" className="block text-sm font-medium">
@@ -93,8 +107,13 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
               value={formData.email}
               onChange={handleInputChange}
               required
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.email ? "border-red-500" : ""
+              }`}
             />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="mobile" className="block text-sm font-medium">
@@ -104,8 +123,13 @@ const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
               value={formData.mobile}
               onChange={handleMobileChange}
               defaultCountry="IN"
-              className="w-full mt-1 border rounded-lg p-2"
+              className={`w-full mt-1 border rounded-lg p-2 ${
+                errors.mobile ? "border-red-500" : ""
+              }`}
             />
+            {errors.mobile && (
+              <p className="mt-1 text-sm text-red-500">{errors.mobile}</p>
+            )}
           </div>
           <div className="mb-4">
             <label htmlFor="role" className="block text-sm font-medium">

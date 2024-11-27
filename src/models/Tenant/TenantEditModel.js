@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useTenantContext } from "../../context/TenantContext";
 
 const TenantEditModal = ({ isOpen, onClose, tenant }) => {
-  const { updateTenant } = useTenantContext();
+  const { updateTenant, getAllTenants } = useTenantContext(); // Add getAllTenants here
   const [formData, setFormData] = useState({
     name: "",
     customDomain: "",
@@ -12,6 +12,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
     secondaryColor: "",
     fontFamily: "",
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (tenant) {
@@ -23,6 +24,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
         secondaryColor: tenant.secondaryColor || "",
         fontFamily: tenant.fontFamily || "",
       });
+      setErrors({});
     }
   }, [tenant]);
 
@@ -32,24 +34,28 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
       ...prev,
       [name]: value,
     }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await updateTenant(tenant._id, formData);
+      await getAllTenants(); // Call getAllTenants here immediately after update
       toast.success("Tenant updated successfully!");
       onClose();
     } catch (error) {
-      if (error.response && error.response.data.errors) {
-        // If validation errors are returned from the server
-        error.response.data.errors.forEach((err) =>
-          toast.error(`${err.field}: ${err.message}`)
-        );
-      } else {
-        // General error message if no specific errors are returned
-        toast.error("Failed to update tenant");
+      if (error.response?.data?.errors) {
+        const fieldErrors = error.response.data.errors.reduce((acc, err) => {
+          acc[err.field] = err.message;
+          return acc;
+        }, {});
+        setErrors(fieldErrors);
+        if (Object.keys(fieldErrors).length > 0) {
+          return;
+        }
       }
+      toast.error("Failed to update tenant");
     }
   };
 
@@ -60,6 +66,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold mb-4">Edit Tenant</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ... rest of the form fields remain the same ... */}
           <div>
             <label className="block text-sm font-medium mb-2">Name</label>
             <input
@@ -67,9 +74,14 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.name ? "border-red-500" : ""
+              }`}
               required
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -81,9 +93,14 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               name="customDomain"
               value={formData.customDomain}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.customDomain ? "border-red-500" : ""
+              }`}
               required
             />
+            {errors.customDomain && (
+              <p className="mt-1 text-sm text-red-500">{errors.customDomain}</p>
+            )}
           </div>
 
           <div>
@@ -99,6 +116,9 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               <option value="light">Light</option>
               <option value="dark">Dark</option>
             </select>
+            {errors.theme && (
+              <p className="mt-1 text-sm text-red-500">{errors.theme}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -137,15 +157,20 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               name="fontFamily"
               value={formData.fontFamily}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.fontFamily ? "border-red-500" : ""
+              }`}
               required
             />
+            {errors.fontFamily && (
+              <p className="mt-1 text-sm text-red-500">{errors.fontFamily}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => onClose()}
               className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
             >
               Cancel

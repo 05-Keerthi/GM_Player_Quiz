@@ -221,10 +221,7 @@ const TenantManagement = () => {
 
       <TenantEditModal
         isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          getAllTenants();
-        }}
+        onClose={() => setIsEditOpen(false)}
         tenant={selectedTenant}
       />
 
