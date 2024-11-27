@@ -48,14 +48,14 @@ export default function HomePage() {
             buttonColor: "bg-purple-500 hover:bg-purple-600",
             modalAction: true, // Added this to indicate it should open a modal
           },
-          {
-            icon: <LayoutGrid className="text-blue-600" size={48} />,
-            title: "Create Quiz",
-            description: "Design and launch new quizzes",
-            buttonText: "Create Now",
-            buttonColor: "bg-blue-500 hover:bg-blue-600",
-            path: "/select-category",
-          },
+          // {
+          //   icon: <LayoutGrid className="text-blue-600" size={48} />,
+          //   title: "Create Quiz",
+          //   description: "Design and launch new quizzes",
+          //   buttonText: "Create Now",
+          //   buttonColor: "bg-blue-500 hover:bg-blue-600",
+          //   path: "/select-category",
+          // },
         ];
       case "tenant_admin":
         return [

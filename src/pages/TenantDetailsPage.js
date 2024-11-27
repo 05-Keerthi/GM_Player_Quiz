@@ -47,6 +47,10 @@ const TenantDetailsPage = () => {
     }
   };
 
+  const getInitial = (username) => {
+    return username?.charAt(0)?.toUpperCase() || "";
+  };
+
   useEffect(() => {
     fetchTenantDetails();
   }, [id]);
@@ -65,7 +69,7 @@ const TenantDetailsPage = () => {
       toast.success("Admin deleted successfully");
       setIsDeleteModalOpen(false);
       setAdminToDelete(null);
-      fetchTenantDetails(); // Refresh the admin list
+      fetchTenantDetails();
     } catch (err) {
       toast.error("Failed to delete admin");
     }
@@ -89,23 +93,27 @@ const TenantDetailsPage = () => {
   }
 
   return (
-    <div className="bg-white min-h-screen p-6">
+    <div className="bg-white min-h-screen p-3 sm:p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Left Column - Basic Info */}
-          <div className="col-span-2">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              {/* Existing tenant info content */}
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center">
+          <div className="lg:col-span-2">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
+              {/* Tenant Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center w-full sm:w-auto mb-4 sm:mb-0">
                   <img
                     src={tenant.logo}
                     alt={tenant.name}
-                    className="w-16 h-16 rounded-lg object-cover mr-4"
+                    className="w-16 h-16 rounded-lg object-cover mb-3 sm:mb-0 sm:mr-4"
                   />
                   <div>
-                    <h2 className="text-xl font-semibold">{tenant.name}</h2>
-                    <p className="text-gray-500">{tenant.customDomain}</p>
+                    <h2 className="text-xl font-semibold break-words">
+                      {tenant.name}
+                    </h2>
+                    <p className="text-gray-500 break-words">
+                      {tenant.customDomain}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -116,28 +124,29 @@ const TenantDetailsPage = () => {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <Building className="w-5 h-5 text-gray-400 mr-3" />
-                  <span>
+              {/* Tenant Info */}
+              <div className="lg:col-span-2">
+                <div className="flex items-start sm:items-center">
+                  <Building className="w-5 h-5 text-gray-400 mr-3 mt-1 sm:mt-0 flex-shrink-0" />
+                  <span className="break-words">
                     {tenant.description || "No description available"}
                   </span>
                 </div>
                 <div className="flex items-center">
-                  <Globe className="w-5 h-5 text-gray-400 mr-3" />
-                  <span>{tenant.customDomain}</span>
+                  <Globe className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                  <span className="break-words">{tenant.customDomain}</span>
                 </div>
                 <div className="flex items-center">
-                  <Mail className="w-5 h-5 text-gray-400 mr-3" />
-                  <span>{tenant.contactEmail}</span>
+                  <Mail className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                  <span className="break-words">{tenant.contactEmail}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Column - Admins */}
-          <div className="col-span-1">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="lg:col-span-1">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Tenant Admins</h3>
                 <button
@@ -147,27 +156,27 @@ const TenantDetailsPage = () => {
                   <Plus size={20} />
                 </button>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {admins.map((admin) => (
                   <div
                     key={admin._id}
-                    className="flex items-center justify-between"
+                    className="group flex items-center justify-between w-full p-2 hover:bg-gray-50 rounded-lg transition-all"
                   >
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                        {admin.firstName?.charAt(0)}
+                    <div className="flex items-center min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3 flex-shrink-0 text-base font-medium">
+                        {getInitial(admin.username)}
                       </div>
-                      <div>
-                        <p className="font-medium">
-                          {admin.firstName} {admin.lastName}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{admin.username}</p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {admin.email}
                         </p>
-                        <p className="text-sm text-gray-500">{admin.email}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 ml-2">
                       <button
                         onClick={() => handleEditAdmin(admin)}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <Pencil size={16} />
                       </button>
@@ -176,7 +185,7 @@ const TenantDetailsPage = () => {
                           setAdminToDelete(admin);
                           setIsDeleteModalOpen(true);
                         }}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors text-red-500"
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-red-500 opacity-0 group-hover:opacity-100"
                       >
                         <Trash size={16} />
                       </button>
@@ -226,7 +235,7 @@ const TenantDetailsPage = () => {
           }}
           onConfirm={handleDeleteAdmin}
           title="Delete Admin"
-          message={`Are you sure you want to delete ${adminToDelete?.firstName} ${adminToDelete?.lastName} from the tenant admins?`}
+          message={`Are you sure you want to delete ${adminToDelete?.username} from the tenant admins?`}
         />
       </div>
     </div>
