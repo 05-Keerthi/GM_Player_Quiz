@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { Search, Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import { useTenantContext } from "../context/TenantContext";
-import TenantDetailsModal from "../models/Tenant/TenantDetailModel";
 import TenantEditModal from "../models/Tenant/TenantEditModel";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import ConfirmationModal from "../models/ConfirmationModal";
 import TenantAddAdminModal from "../models/Tenant/TenantAddAdminModal";
 
 const TenantManagement = () => {
+  const navigate = useNavigate();
+
   const { state, getAllTenants, deleteTenant, error, clearError, loading } =
     useTenantContext();
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false); // State for confirmation modal
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
-  const [tenantToDelete, setTenantToDelete] = useState(null); // Track tenant to delete
+  const [tenantToDelete, setTenantToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTenants, setFilteredTenants] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,9 +60,8 @@ const TenantManagement = () => {
     }
   }, [error, clearError]);
 
-  const handleOpenDetails = (tenant) => {
-    setSelectedTenant(tenant);
-    setIsDetailsOpen(true);
+  const handleTenantClick = (tenantId) => {
+    navigate(`/tenants/${tenantId}`);
   };
 
   const handleOpenEdit = (tenant) => {
@@ -81,15 +81,15 @@ const TenantManagement = () => {
       } catch (err) {
         toast.error("Failed to delete tenant");
       } finally {
-        setTenantToDelete(null); // Clear the tenantToDelete state
-        setIsConfirmOpen(false); // Close the modal
+        setTenantToDelete(null);
+        setIsConfirmOpen(false);
       }
     }
   };
 
   const confirmDelete = (tenantId) => {
-    setTenantToDelete(tenantId); // Set the tenant to delete
-    setIsConfirmOpen(true); // Open the confirmation modal
+    setTenantToDelete(tenantId);
+    setIsConfirmOpen(true);
   };
 
   const handlePageChange = (page) => {
@@ -97,8 +97,8 @@ const TenantManagement = () => {
   };
 
   const handleAddAdmin = (tenant) => {
-    setTenantForAdmin(tenant); // Set the selected tenant
-    setIsAddAdminOpen(true); // Open the modal
+    setTenantForAdmin(tenant);
+    setIsAddAdminOpen(true);
   };
 
   const { currentItems: currentTenants, totalPages } = paginateData(
@@ -154,19 +154,25 @@ const TenantManagement = () => {
                 key={tenant._id}
                 className="border-b hover:bg-gray-50 cursor-pointer"
               >
-                <td className="py-4" onClick={() => handleOpenDetails(tenant)}>
+                <td
+                  className="py-4"
+                  onClick={() => handleTenantClick(tenant._id)}
+                >
                   <img
                     src={tenant.logo}
                     alt={tenant.name}
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                 </td>
-                <td className="py-4" onClick={() => handleOpenDetails(tenant)}>
+                <td
+                  className="py-4"
+                  onClick={() => handleTenantClick(tenant._id)}
+                >
                   <div className="font-medium">{tenant.name}</div>
                 </td>
                 <td
                   className="text-sm"
-                  onClick={() => handleOpenDetails(tenant)}
+                  onClick={() => handleTenantClick(tenant._id)}
                 >
                   <span className="text-blue-600">{tenant.customDomain}</span>
                 </td>
@@ -212,13 +218,6 @@ const TenantManagement = () => {
           onPageChange={handlePageChange}
         />
       )}
-
-      <TenantDetailsModal
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-        tenant={selectedTenant}
-        onEdit={handleOpenEdit}
-      />
 
       <TenantEditModal
         isOpen={isEditOpen}

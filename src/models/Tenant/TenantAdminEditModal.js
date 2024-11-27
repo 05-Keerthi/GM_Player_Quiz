@@ -1,18 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PhoneInput from "react-phone-number-input";
 import { useTenantContext } from "../../context/TenantContext";
 import { toast } from "react-toastify";
 
-const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
-  const { registerTenantAdmin, getTenantAdmins } = useTenantContext();
+const TenantAdminEditModal = ({ isOpen, onClose, admin, tenantId }) => {
+  const { updateTenantAdmin } = useTenantContext();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
-    password: "",
     mobile: "",
-    role: "tenant_admin", // Default role
+    role: "tenant_admin",
   });
   const [loading, setLoading] = useState(false);
+
+  // Populate form data when admin prop changes
+  useEffect(() => {
+    if (admin) {
+      setFormData({
+        username: admin.username || "",
+        email: admin.email || "",
+        mobile: admin.mobile || "",
+        role: admin.role || "tenant_admin",
+      });
+    }
+  }, [admin]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,23 +38,35 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await registerTenantAdmin(tenant._id, formData);
-      toast.success("Admin added successfully!");
-      await getTenantAdmins(tenant._id); // Optionally refresh admin list
-      onClose(); // Close the modal
+      await updateTenantAdmin(tenantId, admin._id, formData);
+      toast.success("Admin updated successfully!");
+      onClose();
     } catch (err) {
-      toast.error("Failed to add admin. Please try again.");
+      toast.error("Failed to update admin. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
+  // Reset form when modal closes
+  const handleClose = () => {
+    setFormData({
+      username: "",
+      email: "",
+      mobile: "",
+      role: "tenant_admin",
+      firstName: "",
+      lastName: "",
+    });
+    onClose();
+  };
+
+  if (!isOpen || !admin) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
-        <h2 className="text-xl font-semibold mb-4">Add Tenant Admin</h2>
+        <h2 className="text-xl font-semibold mb-4">Edit Tenant Admin</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="username" className="block text-sm font-medium">
@@ -74,28 +97,13 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-medium">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              className="w-full mt-1 border rounded-lg p-2"
-            />
-          </div>
-          <div className="mb-4">
             <label htmlFor="mobile" className="block text-sm font-medium">
               Mobile
             </label>
             <PhoneInput
               value={formData.mobile}
               onChange={handleMobileChange}
-              defaultCountry="IN" // Set a default country code
-              required
+              defaultCountry="IN"
               className="w-full mt-1 border rounded-lg p-2"
             />
           </div>
@@ -117,8 +125,8 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={onClose}
-              className="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg"
+              onClick={handleClose}
+              className="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
             >
               Cancel
             </button>
@@ -129,7 +137,7 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
                 loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
-              {loading ? "Adding..." : "Add Admin"}
+              {loading ? "Updating..." : "Update Admin"}
             </button>
           </div>
         </form>
@@ -138,4 +146,4 @@ const TenantAddAdminModal = ({ isOpen, onClose, tenant }) => {
   );
 };
 
-export default TenantAddAdminModal;
+export default TenantAdminEditModal;

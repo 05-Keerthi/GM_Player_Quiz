@@ -12,7 +12,7 @@ import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
 import Navbar from "../components/NavbarComp";
 import UserManagement from "../components/Usercard";
-import TenantManagement from "../components/TenantCard";
+import TenantManagement from "../components/TenantManagement";
 import CreateTenantModal from "../models/Tenant/CreateTenantModel";
 
 export default function HomePage() {

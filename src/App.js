@@ -8,6 +8,8 @@ import { useAuthContext } from "./context/AuthContext";
 import Home from "./pages/Home";
 import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import TenantDetails from "./pages/TenantDetailsPage";
+import TenantDetailsPage from "./pages/TenantDetailsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -31,7 +33,6 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
-
         {/* Protected Routes */}
         <Route
           path="/"
@@ -49,7 +50,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route path="/tenants/:id" element={<TenantDetailsPage />} />
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
