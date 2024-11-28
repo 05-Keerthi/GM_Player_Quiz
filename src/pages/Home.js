@@ -21,15 +21,22 @@ export default function HomePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleNavigation = (path) => {
-    if (isAuthenticated) {
-      navigate(path);
-    } else {
-      navigate("/login");
+    if (path.includes("/join-quiz") || path.includes("-plan")) {
+      // If not authenticated and trying to access these paths, redirect to login
+      if (!isAuthenticated) {
+        navigate("/login");
+        return;
+      }
     }
+    navigate(path);
   };
 
   const handleAction = (action) => {
     if (action.modalAction) {
+      if (!isAuthenticated) {
+        navigate("/login");
+        return;
+      }
       setIsCreateModalOpen(true);
     } else if (action.path) {
       handleNavigation(action.path);
@@ -37,6 +44,21 @@ export default function HomePage() {
   };
 
   const getRoleBasedActions = () => {
+    // If not authenticated, return public actions
+    if (!isAuthenticated) {
+      return [
+        {
+          icon: <Trophy className="text-green-600" size={48} />,
+          title: "Join Quiz",
+          description: "Participate in exciting quizzes",
+          buttonText: "Join Now",
+          buttonColor: "bg-green-500 hover:bg-green-600",
+          path: "/join-quiz",
+        },
+      ];
+    }
+
+    // For authenticated users, return role-based actions
     switch (user?.role) {
       case "superadmin":
         return [
@@ -46,18 +68,11 @@ export default function HomePage() {
             description: "Set up new organization spaces",
             buttonText: "Create Tenant",
             buttonColor: "bg-purple-500 hover:bg-purple-600",
-            modalAction: true, // Added this to indicate it should open a modal
+            modalAction: true,
           },
-          // {
-          //   icon: <LayoutGrid className="text-blue-600" size={48} />,
-          //   title: "Create Quiz",
-          //   description: "Design and launch new quizzes",
-          //   buttonText: "Create Now",
-          //   buttonColor: "bg-blue-500 hover:bg-blue-600",
-          //   path: "/select-category",
-          // },
         ];
-      case "tenant_admin" && "admin":
+      case "tenant_admin":
+      case "admin":
         return [
           {
             icon: <LayoutGrid className="text-blue-600" size={48} />,
@@ -137,51 +152,71 @@ export default function HomePage() {
 
   const roleBasedActions = getRoleBasedActions();
 
-  const renderForSuperAdmin = () => (
-    <>
-      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-        Tenant Management
-      </h2>
-      <TenantManagement />
-    </>
-  );
-
-  const renderForAdmin = () => (
-    <>
-      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-        User Management
-      </h2>
-      <UserManagement />
-    </>
-  );
-
-  const renderForUser = () => (
-    <>
-      <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-        Choose Your Plan
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {plans.map((plan, index) => (
-          <Card
-            key={index}
-            {...plan}
-            onClick={() => handleNavigation(plan.path)}
-          />
-        ))}
-      </div>
-    </>
-  );
-
   const renderSecondSection = () => {
+    // If not authenticated, show plans
+    if (!isAuthenticated) {
+      return (
+        <>
+          <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+            Choose Your Plan
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {plans.map((plan, index) => (
+              <Card
+                key={index}
+                {...plan}
+                onClick={() => handleNavigation(plan.path)}
+              />
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    // For authenticated users, show role-based content
     switch (user?.role) {
       case "superadmin":
-        return renderForSuperAdmin();
-      case "tenant_admin" && "admin":
-        return renderForAdmin();
+        return (
+          <>
+            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+              Tenant Management
+            </h2>
+            <TenantManagement />
+          </>
+        );
+      case "tenant_admin":
+        return (
+          <>
+            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+              User Management
+            </h2>
+            <UserManagement />
+          </>
+        );
+      case "admin":
+        return null;
+      case "user":
+        return (
+          <>
+            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+              Choose Your Plan
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {plans.map((plan, index) => (
+                <Card
+                  key={index}
+                  {...plan}
+                  onClick={() => handleNavigation(plan.path)}
+                />
+              ))}
+            </div>
+          </>
+        );
       default:
-        return renderForUser();
+        return null;
     }
   };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
@@ -216,7 +251,6 @@ export default function HomePage() {
 
         <section>{renderSecondSection()}</section>
 
-        {/* Create Tenant Modal */}
         <CreateTenantModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
