@@ -11,14 +11,10 @@ const Navbar = () => {
   const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
-    // Reset error state when user or tenant changes
     setLogoError(false);
-
-    // Debug log the entire user object
     console.log("Current user data:", user);
 
     try {
-      // Check if we have a valid tenant logo URL
       const tenantLogo = user?.tenantId?.logo;
       console.log("Tenant logo URL:", tenantLogo);
 
@@ -52,14 +48,24 @@ const Navbar = () => {
     }
   };
 
+  // Custom styling based on tenant configuration
+  const navbarStyle = {
+    backgroundColor: user?.tenantId?.primaryColor || "#2929FF",
+  };
+
+  const textStyle = {
+    color: user?.tenantId?.secondaryColor || "#FFFFFF",
+    fontFamily: user?.tenantId?.fontFamily || "inherit",
+  };
+
   return (
-    <div className="border-b-4 p-2">
+    <div className="border-b-4 p-2" style={navbarStyle}>
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
         {/* Left: Logo with Welcome Message */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden">
             <img
-              key={logoSrc} // Add key to force re-render when source changes
+              key={logoSrc}
               src={logoSrc}
               alt={user?.tenantId?.name || "GMI"}
               className="h-full w-full object-cover"
@@ -68,10 +74,12 @@ const Navbar = () => {
             />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-lg font-semibold" style={textStyle}>
               Welcome to {user?.tenantId?.name || "GM Play"}..!
             </h1>
-            <p className="text-sm text-gray-500">Engage, learn, and have fun</p>
+            <p className="text-sm text-gray-500" style={textStyle}>
+              Engage, learn, and have fun
+            </p>
           </div>
         </div>
 
