@@ -8,7 +8,9 @@ const userRoutes = require('./routes/userRoutes');
 const forgetRoutes = require('./routes/forgetRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
-
+const mediaRoutes = require('./routes/mediaRoutes');
+const questionRoutes = require('./routes/questionRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 
 const path = require('path');
 
@@ -25,5 +27,8 @@ app.use('/api', userRoutes);
 app.use('/api', forgetRoutes);
 app.use('/api', tenantRoutes);
 app.use('/api', categoryRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api', questionRoutes);
+app.use('/api', quizRoutes);
 
 module.exports = app;
