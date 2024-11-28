@@ -14,7 +14,7 @@ const slideSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Media',
     required: true },
-  position: { type: Number, required: true },
+  position: { type: Number, required: false },
 });
 
 module.exports = mongoose.model('Slide', slideSchema);
