@@ -1,8 +1,7 @@
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const Tenant = require('../models/Tenant');  // Assuming you have a Tenant model
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const Tenant = require("../models/Tenant"); // Assuming you have a Tenant model
 const { sendPasswordChangeEmail } = require("../services/mailService");
-
 
 // Helper validation functions
 function validateEmail(email) {
@@ -18,9 +17,9 @@ function validateMobileNumber(mobile) {
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({ role: { $in: ["user" , "admin"] } })
+    const users = await User.find({ role: { $in: ["user", "admin"] } })
       .select("-password") // Exclude passwords from the response
-      .populate('tenantId'); // Populate tenantId field with tenant details
+      .populate("tenantId"); // Populate tenantId field with tenant details
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -34,10 +33,12 @@ exports.getUserById = async (req, res) => {
   try {
     // Validate ID
     if (!id) {
-      return res.status(400).json({ field: "id", message: "User ID is required" });
+      return res
+        .status(400)
+        .json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id).populate('tenantId'); // Populate tenantId with tenant details
+    const user = await User.findById(id).populate("tenantId"); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -45,7 +46,11 @@ exports.getUserById = async (req, res) => {
 
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ field: "general", message: "Server error", error: error.message });
+    res.status(500).json({
+      field: "general",
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -57,22 +62,27 @@ exports.updateUser = async (req, res) => {
   try {
     // Validate User ID
     if (!userId) {
-      return res.status(400).json({ field: "id", message: "User ID is required" });
+      return res
+        .status(400)
+        .json({ field: "id", message: "User ID is required" });
     }
 
     // Find the user by ID and populate tenantId
-    const user = await User.findById(userId).populate('tenantId'); // Populate tenantId with tenant details
+    const user = await User.findById(userId).populate("tenantId"); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
     }
 
     // Authorization check
-    const isAdmin = req.user.role === "admin";
+    const isAdminOrTenantAdmin =
+      req.user.role === "admin" || req.user.role === "tenant_admin";
     const isOwner = user._id.toString() === req.user._id.toString();
 
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ field: "authorization", message: "Permission denied" });
+    if (!isAdminOrTenantAdmin && !isOwner) {
+      return res
+        .status(403)
+        .json({ field: "authorization", message: "Permission denied" });
     }
 
     // Validate unique username
@@ -88,23 +98,28 @@ exports.updateUser = async (req, res) => {
 
     // Validate email if provided
     if (email && !validateEmail(email)) {
-      return res.status(400).json({ field: "email", message: "Invalid email format" });
+      return res
+        .status(400)
+        .json({ field: "email", message: "Invalid email format" });
     }
 
     // Validate mobile number if provided
     if (mobile && !validateMobileNumber(mobile)) {
-      return res.status(400).json({ field: "mobile", message: "Invalid mobile number" });
+      return res
+        .status(400)
+        .json({ field: "mobile", message: "Invalid mobile number" });
     }
 
     // Validate password if provided
     if (password && password.length < 8) {
-      return res
-        .status(400)
-        .json({ field: "password", message: "Password must be at least 8 characters" });
+      return res.status(400).json({
+        field: "password",
+        message: "Password must be at least 8 characters",
+      });
     }
 
     // Validate role if provided (admin-only)
-    if (role && isAdmin) {
+    if (role && isAdminOrTenantAdmin) {
       const validRoles = ["user", "admin"];
       if (!validRoles.includes(role)) {
         return res.status(400).json({ field: "role", message: "Invalid role" });
@@ -116,7 +131,7 @@ exports.updateUser = async (req, res) => {
     if (email) user.email = email;
     if (mobile) user.mobile = mobile;
     if (password) user.password = await bcrypt.hash(password, 10);
-    if (role && isAdmin) user.role = role;
+    if (role && isAdminOrTenantAdmin) user.role = role;
 
     // Save updated user
     await user.save();
@@ -134,7 +149,11 @@ exports.updateUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ field: "general", message: "Server error", error: error.message });
+    res.status(500).json({
+      field: "general",
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -145,10 +164,12 @@ exports.deleteUser = async (req, res) => {
   try {
     // Validate ID
     if (!id) {
-      return res.status(400).json({ field: "id", message: "User ID is required" });
+      return res
+        .status(400)
+        .json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id).populate('tenantId'); // Populate tenantId with tenant details
+    const user = await User.findById(id).populate("tenantId"); // Populate tenantId with tenant details
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -158,7 +179,11 @@ exports.deleteUser = async (req, res) => {
 
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ field: "general", message: "Server error", error: error.message });
+    res.status(500).json({
+      field: "general",
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -168,7 +193,9 @@ exports.changePassword = async (req, res) => {
 
     // Validate input
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({ message: "Both old and new passwords are required." });
+      return res
+        .status(400)
+        .json({ message: "Both old and new passwords are required." });
     }
 
     // Fetch the user based on the token
