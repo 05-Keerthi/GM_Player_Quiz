@@ -39,12 +39,26 @@ const registerTenantAdmin = async (req, res) => {
       return res.status(404).json({ message: 'Tenant not found' });
     }
 
-    // Check if the tenant admin email already exists
-    const existingAdmin = await User.findOne({ email: req.body.email });
-    if (existingAdmin) {
+    const { username, email, mobile } = req.body;
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }, { mobile }],
+    });
+
+    if (existingUser) {
+      const errors = [];
+      if (existingUser.username === username) {
+        errors.push({ field: 'username', message: 'Username already taken' });
+      }
+      if (existingUser.email === email) {
+        errors.push({ field: 'email', message: 'Email already registered' });
+      }
+      if (existingUser.mobile === mobile) {
+        errors.push({ field: 'mobile', message: 'Mobile number already registered' });
+      }
+
       return res.status(400).json({
         message: 'Validation Error',
-        errors: [{ field: 'email', message: 'Email already registered' }],
+        errors,
       });
     }
 
