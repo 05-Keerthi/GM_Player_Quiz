@@ -91,7 +91,6 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
               <option value="">Select Role</option>
               <option value="admin">Admin</option>
               <option value="user">User</option>
-              <option value="manager">Superadmin</option>
             </select>
           </div>
           <div className="flex justify-end gap-2">
