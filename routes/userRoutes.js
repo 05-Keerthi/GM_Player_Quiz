@@ -5,18 +5,8 @@ const { auth, isAdminOrTenantAdmin } = require("../middlewares/auth");
 
 // Routes accessible by both admin and tenant_admin
 router.get("/users", auth, isAdminOrTenantAdmin, userController.getAllUsers);
-router.get(
-  "/users/:id",
-  auth,
-  isAdminOrTenantAdmin,
-  userController.getUserById
-);
-router.delete(
-  "/users/:id",
-  auth,
-  isAdminOrTenantAdmin,
-  userController.deleteUser
-);
+router.get("/users/:id", auth, isAdminOrTenantAdmin, userController.getUserById);
+router.delete("/users/:id", auth, isAdminOrTenantAdmin, userController.deleteUser);
 
 // Routes accessible by any authenticated user (for their own profile)
 router.put("/users/:id", auth, userController.updateUser);
