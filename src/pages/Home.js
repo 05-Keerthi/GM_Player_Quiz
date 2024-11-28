@@ -57,7 +57,7 @@ export default function HomePage() {
           //   path: "/select-category",
           // },
         ];
-      case "tenant_admin":
+      case "tenant_admin" || "admin":
         return [
           {
             icon: <LayoutGrid className="text-blue-600" size={48} />,
@@ -176,7 +176,7 @@ export default function HomePage() {
     switch (user?.role) {
       case "superadmin":
         return renderForSuperAdmin();
-      case "tenant_admin":
+      case "tenant_admin" || "admin":
         return renderForAdmin();
       default:
         return renderForUser();
