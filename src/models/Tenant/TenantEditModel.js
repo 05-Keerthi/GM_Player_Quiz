@@ -1,9 +1,10 @@
+// TenantEditModal.js
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../../context/TenantContext";
 
 const TenantEditModal = ({ isOpen, onClose, tenant }) => {
-  const { updateTenant, getAllTenants } = useTenantContext(); // Add getAllTenants here
+  const { updateTenant, getAllTenants } = useTenantContext();
   const [formData, setFormData] = useState({
     name: "",
     customDomain: "",
@@ -11,8 +12,10 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
     primaryColor: "",
     secondaryColor: "",
     fontFamily: "",
+    logo: "",
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (tenant) {
@@ -23,6 +26,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
         primaryColor: tenant.primaryColor || "",
         secondaryColor: tenant.secondaryColor || "",
         fontFamily: tenant.fontFamily || "",
+        logo: tenant.logo || "",
       });
       setErrors({});
     }
@@ -39,9 +43,10 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await updateTenant(tenant._id, formData);
-      await getAllTenants(); // Call getAllTenants here immediately after update
+      await getAllTenants();
       toast.success("Tenant updated successfully!");
       onClose();
     } catch (error) {
@@ -51,11 +56,14 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           return acc;
         }, {});
         setErrors(fieldErrors);
-        if (Object.keys(fieldErrors).length > 0) {
-          return;
-        }
+        error.response.data.errors.forEach((err) =>
+          toast.error(`${err.field}: ${err.message}`)
+        );
+      } else {
+        toast.error(error.response?.data?.message || "Failed to update tenant");
       }
-      toast.error("Failed to update tenant");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,8 +74,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold mb-4">Edit Tenant</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ... rest of the form fields remain the same ... */}
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Name</label>
             <input
               type="text"
@@ -75,7 +82,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               value={formData.name}
               onChange={handleChange}
               className={`w-full border rounded-lg px-4 py-2 ${
-                errors.name ? "border-red-500" : ""
+                errors.name ? "border-red-500" : "border-gray-300"
               }`}
               required
             />
@@ -84,7 +91,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
             )}
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               Custom Domain
             </label>
@@ -94,7 +101,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               value={formData.customDomain}
               onChange={handleChange}
               className={`w-full border rounded-lg px-4 py-2 ${
-                errors.customDomain ? "border-red-500" : ""
+                errors.customDomain ? "border-red-500" : "border-gray-300"
               }`}
               required
             />
@@ -103,13 +110,32 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
             )}
           </div>
 
-          <div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Logo URL</label>
+            <input
+              type="url"
+              name="logo"
+              value={formData.logo}
+              onChange={handleChange}
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.logo ? "border-red-500" : "border-gray-300"
+              }`}
+              required
+            />
+            {errors.logo && (
+              <p className="mt-1 text-sm text-red-500">{errors.logo}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Theme</label>
             <select
               name="theme"
               value={formData.theme}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.theme ? "border-red-500" : "border-gray-300"
+              }`}
               required
             >
               <option value="">Select Theme</option>
@@ -133,6 +159,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
                 onChange={handleChange}
                 className="w-full h-10"
               />
+              {errors.primaryColor && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.primaryColor}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">
@@ -145,10 +176,15 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
                 onChange={handleChange}
                 className="w-full h-10"
               />
+              {errors.secondaryColor && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.secondaryColor}
+                </p>
+              )}
             </div>
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               Font Family
             </label>
@@ -158,7 +194,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               value={formData.fontFamily}
               onChange={handleChange}
               className={`w-full border rounded-lg px-4 py-2 ${
-                errors.fontFamily ? "border-red-500" : ""
+                errors.fontFamily ? "border-red-500" : "border-gray-300"
               }`}
               required
             />
@@ -170,16 +206,20 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           <div className="flex justify-end gap-2 pt-4">
             <button
               type="button"
-              onClick={() => onClose()}
+              onClick={onClose}
               className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              disabled={loading}
+              className={`px-4 py-2 text-white rounded-lg ${
+                loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"
+              }`}
             >
-              Save Changes
+              {loading ? "Updating..." : "Save Changes"}
             </button>
           </div>
         </form>

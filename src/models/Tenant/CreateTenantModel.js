@@ -1,3 +1,4 @@
+// CreateTenantModal.js
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../../context/TenantContext";
@@ -11,8 +12,10 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
     primaryColor: "#000000",
     secondaryColor: "#000000",
     fontFamily: "",
-    logo: "", // Added logo field
+    logo: "",
   });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,10 +23,12 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
       ...prev,
       [name]: value,
     }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await createTenant(formData);
       toast.success("Tenant created successfully!");
@@ -38,11 +43,20 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
       });
       onClose();
     } catch (error) {
-      if (error.errors) {
-        error.errors.forEach((err) => toast.error(err));
+      if (error.response?.data?.errors) {
+        const fieldErrors = error.response.data.errors.reduce((acc, err) => {
+          acc[err.field] = err.message;
+          return acc;
+        }, {});
+        setErrors(fieldErrors);
+        error.response.data.errors.forEach((err) =>
+          toast.error(`${err.field}: ${err.message}`)
+        );
       } else {
-        toast.error("Failed to create tenant");
+        toast.error(error.response?.data?.message || "Failed to create tenant");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,20 +67,25 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold mb-4">Create New Tenant</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Name</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.name ? "border-red-500" : "border-gray-300"
+              }`}
               required
               placeholder="Enter tenant name"
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+            )}
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               Custom Domain
             </label>
@@ -75,38 +94,53 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
               name="customDomain"
               value={formData.customDomain}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.customDomain ? "border-red-500" : "border-gray-300"
+              }`}
               required
               placeholder="e.g., tenant.example.com"
             />
+            {errors.customDomain && (
+              <p className="mt-1 text-sm text-red-500">{errors.customDomain}</p>
+            )}
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Logo URL</label>
             <input
               type="url"
               name="logo"
               value={formData.logo}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.logo ? "border-red-500" : "border-gray-300"
+              }`}
               required
               placeholder="Enter logo URL"
             />
+            {errors.logo && (
+              <p className="mt-1 text-sm text-red-500">{errors.logo}</p>
+            )}
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Theme</label>
             <select
               name="theme"
               value={formData.theme}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.theme ? "border-red-500" : "border-gray-300"
+              }`}
               required
             >
               <option value="">Select Theme</option>
               <option value="light">Light</option>
               <option value="dark">Dark</option>
             </select>
+            {errors.theme && (
+              <p className="mt-1 text-sm text-red-500">{errors.theme}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -121,6 +155,11 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
                 onChange={handleChange}
                 className="w-full h-10"
               />
+              {errors.primaryColor && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.primaryColor}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">
@@ -133,10 +172,15 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
                 onChange={handleChange}
                 className="w-full h-10"
               />
+              {errors.secondaryColor && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.secondaryColor}
+                </p>
+              )}
             </div>
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               Font Family
             </label>
@@ -145,10 +189,15 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
               name="fontFamily"
               value={formData.fontFamily}
               onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2"
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.fontFamily ? "border-red-500" : "border-gray-300"
+              }`}
               required
               placeholder="e.g., Arial, sans-serif"
             />
+            {errors.fontFamily && (
+              <p className="mt-1 text-sm text-red-500">{errors.fontFamily}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
@@ -156,14 +205,18 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
               type="button"
               onClick={onClose}
               className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              disabled={loading}
+              className={`px-4 py-2 text-white rounded-lg ${
+                loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"
+              }`}
             >
-              Create Tenant
+              {loading ? "Creating..." : "Create Tenant"}
             </button>
           </div>
         </form>
