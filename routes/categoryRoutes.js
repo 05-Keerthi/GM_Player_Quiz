@@ -7,6 +7,7 @@ const {
   getCategoryById,
   updateCategory,
   deleteCategory,
+  getQuizCountForCategory
 } = require('../controllers/categoryController');
 
 // Create a new category (admin only)
@@ -25,6 +26,6 @@ router.put('/categories/:id', auth, isAdmin, updateCategory);
 router.delete('/categories/:id', auth, isAdmin, deleteCategory);
 
 // Get a specific category's count according to the quizzes
-router.get('/api/category/:categoryId/quiz-count', protect, admin, getQuizCountForCategory);
+router.get('/api/category/:categoryId/quiz-count', auth, isAdmin, getQuizCountForCategory);
 
 module.exports = router;
