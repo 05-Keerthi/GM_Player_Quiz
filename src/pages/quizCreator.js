@@ -251,35 +251,6 @@ const QuizCreator = () => {
     return data.imageId; // Return the image's ObjectId from the response
   };
 
-  // Function to update the question
-  // const handleUpdateQuestion = async (questionId, updatedData) => {
-  //   let imageId = null;
-
-  //   if (updatedData.imageFile) {
-  //     // Upload the image and get its ObjectId
-  //     imageId = await handleImageUpload(updatedData.imageFile);
-  //   }
-
-  //   const updatePayload = {
-  //     ...updatedData,
-  //     id: questionId,
-  //     imageUrl: imageId,  // Send only the image ObjectId
-  //   };
-
-  //   // Make the PUT request to update the question
-  //   const response = await authenticatedFetch(`http://localhost:5000/api/questions/${questionId}`, {
-  //     method: 'PUT',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify(updatePayload),
-  //   });
-
-  //   if (!response.ok) {
-  //     throw new Error(`Failed to update question: ${response.statusText}`);
-  //   }
-
-  //   const updatedQuestion = await response.json();
-  //   console.log('Updated question:', updatedQuestion);
-  // };
 
   const handleUpdateQuestion = async (questionId, updatedData) => {
     const previousQuestions = [...questions]; // Backup current state
