@@ -1,22 +1,43 @@
+// CreateCategoryModal.js
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { useCategoryContext } from "../../context/categoryContext";
+import { toast } from "react-toastify";
 
 const CreateCategoryModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const { createCategory, loading } = useCategoryContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await createCategory(formData);
+      toast.success("Category created successfully!");
       onClose();
       setFormData({ name: "", description: "" });
+      setFieldErrors({});
     } catch (err) {
-      console.error("Failed to create category:", err);
+      if (err.response?.data?.message === "Category name must be unique") {
+        setFieldErrors((prev) => ({
+          ...prev,
+          name: "This category name already exists",
+        }));
+      } else {
+        toast.error(err.response?.data?.message || "Failed to create category");
+      }
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -39,18 +60,22 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Name
+                Category Name *
               </label>
               <input
                 type="text"
+                name="name"
                 required
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.name ? "border-red-500" : "border-gray-300"
+                }`}
                 placeholder="Enter category name"
               />
+              {fieldErrors.name && (
+                <p className="mt-1 text-sm text-red-500">{fieldErrors.name}</p>
+              )}
             </div>
 
             <div>
@@ -58,13 +83,9 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
                 Description
               </label>
               <textarea
+                name="description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter category description"
                 rows={4}

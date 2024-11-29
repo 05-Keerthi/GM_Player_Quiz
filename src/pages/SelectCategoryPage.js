@@ -19,7 +19,8 @@ const SelectCategoryPage = () => {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15; // 5 rows × 3 columns = 15 items per page
+  const [filteredCategories, setFilteredCategories] = useState([]);
+  const itemsPerPage = 15;
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -29,10 +30,21 @@ const SelectCategoryPage = () => {
     getAllCategories();
   }, []);
 
-  const filteredCategories =
-    categories?.filter((category) =>
-      category.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+  // New useEffect for filtering categories
+  useEffect(() => {
+    if (categories && Array.isArray(categories)) {
+      setFilteredCategories(
+        categories.filter((category) => {
+          if (!category || typeof category.name !== 'string') {
+            return false;
+          }
+          return category.name.toLowerCase().includes(searchTerm.toLowerCase());
+        })
+      );
+    } else {
+      setFilteredCategories([]);
+    }
+  }, [categories, searchTerm]);
 
   const { currentItems, totalPages } = paginateData(
     filteredCategories,
@@ -61,11 +73,15 @@ const SelectCategoryPage = () => {
         categoryId: selectedCategories,
         status: "draft",
       });
-      console.log(response);
       navigate(`/createQuiz/${response.quiz._id}`);
     } catch (err) {
       console.error("Failed to create quiz:", err);
     }
+  };
+
+  const handleCreateModalClose = () => {
+    setShowCreateModal(false);
+    getAllCategories(); // Refresh categories after creation
   };
 
   const handleEdit = (e, categoryId) => {
@@ -188,12 +204,20 @@ const SelectCategoryPage = () => {
                 ))}
               </div>
 
+              {currentItems.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No categories found
+                </div>
+              )}
+
               {/* Pagination Controls */}
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+              {filteredCategories.length > itemsPerPage && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
             </>
           )}
         </div>
@@ -218,7 +242,7 @@ const SelectCategoryPage = () => {
 
       <CreateCategoryModal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={handleCreateModalClose}
       />
 
       <EditCategoryModal

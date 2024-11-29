@@ -56,8 +56,12 @@ const EditCategoryModal = ({ isOpen, onClose, categoryId }) => {
       toast.success("Category updated successfully!");
       onClose();
     } catch (err) {
-      if (err.response?.data?.errors) {
-        // Handle server-side validation errors
+      if (err.response?.data?.message === "Category name must be unique") {
+        setFieldErrors((prev) => ({
+          ...prev,
+          name: "This category name already exists",
+        }));
+      } else if (err.response?.data?.errors) {
         const serverErrors = {};
         err.response.data.errors.forEach((error) => {
           serverErrors[error.field] = error.message;
