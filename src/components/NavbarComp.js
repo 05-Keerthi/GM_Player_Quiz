@@ -12,11 +12,8 @@ const Navbar = () => {
 
   useEffect(() => {
     setLogoError(false);
-    console.log("Current user data:", user);
-
     try {
       const tenantLogo = user?.tenantId?.logo;
-      console.log("Tenant logo URL:", tenantLogo);
 
       if (
         tenantLogo &&
@@ -35,13 +32,6 @@ const Navbar = () => {
   }, [user]);
 
   const handleLogoError = (e) => {
-    console.error("Logo loading failed:", {
-      attemptedSrc: e.target.src,
-      tenantId: user?.tenantId?._id,
-      tenantName: user?.tenantId?.name,
-      fallbackAvailable: !!defaultLogo,
-    });
-
     if (!logoError) {
       setLogoError(true);
       setLogoSrc(defaultLogo);
@@ -86,7 +76,7 @@ const Navbar = () => {
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
         {/* Left: Logo with Welcome Message */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer">
             <img
               key={logoSrc}
               src={logoSrc}

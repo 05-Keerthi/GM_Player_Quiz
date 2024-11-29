@@ -19,6 +19,7 @@ import QuestionEditor from "../components/QuestionEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
 import SlideTypeModal from "../models/SlideTypeModal";
+import ConfirmationModal from "../models/ConfirmationModal";
 
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
@@ -54,6 +55,11 @@ const QuizCreator = () => {
   const [alert, setAlert] = useState({ message: "", type: "error" });
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
+  const [showDeleteSlideModal, setShowDeleteSlideModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
   const [quiz, setQuiz] = useState({
     title: "",
     description: "",
@@ -172,19 +178,27 @@ const QuizCreator = () => {
     }
   };
 
-  const handleDeleteSlide = async (slideId) => {
-    if (!window.confirm("Are you sure you want to delete this slide?")) {
-      return;
-    }
+  const handleDeleteSlide = async (e, slideId) => {
+    e.stopPropagation();
+    setItemToDelete(slideId);
+    setShowDeleteSlideModal(true);
+  };
 
+  // Add new function to handle slide deletion confirmation
+  const handleConfirmDeleteSlide = async () => {
     try {
       setLoading(true);
-      await authenticatedFetch(`http://localhost:5000/api/slides/${slideId}`, {
-        method: "DELETE",
-      });
+      await authenticatedFetch(
+        `http://localhost:5000/api/slides/${itemToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-      setSlides((prevSlides) => prevSlides.filter((s) => s.id !== slideId));
-      if (currentSlide?.id === slideId) {
+      setSlides((prevSlides) =>
+        prevSlides.filter((s) => s.id !== itemToDelete)
+      );
+      if (currentSlide?.id === itemToDelete) {
         setCurrentSlide(null);
       }
       showAlert("Slide deleted successfully", "success");
@@ -192,6 +206,8 @@ const QuizCreator = () => {
       handleApiError(err);
     } finally {
       setLoading(false);
+      setShowDeleteSlideModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -251,7 +267,6 @@ const QuizCreator = () => {
     return data.imageId; // Return the image's ObjectId from the response
   };
 
-
   const handleUpdateQuestion = async (questionId, updatedData) => {
     const previousQuestions = [...questions]; // Backup current state
     let imageId = null;
@@ -295,24 +310,18 @@ const QuizCreator = () => {
     }
   };
 
-  const handleDeleteQuestion = async (questionId) => {
-    console.log("Deleting question:", questionId);
+  const handleDeleteQuestion = async (e, questionId) => {
+    e.stopPropagation();
+    setItemToDelete(questionId);
+    setShowDeleteQuestionModal(true);
+  };
 
-    if (!questionId) {
-      console.error("Missing question ID for deletion:", questionId);
-      showAlert("Cannot delete question: Invalid question ID");
-      return;
-    }
-
-    if (!window.confirm("Are you sure you want to delete this question?")) {
-      return;
-    }
-
+  // Add new function to handle question deletion confirmation
+  const handleConfirmDeleteQuestion = async () => {
     try {
       setLoading(true);
-
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/questions/${questionId}`,
+        `http://localhost:5000/api/questions/${itemToDelete}`,
         {
           method: "DELETE",
           headers: {
@@ -325,16 +334,15 @@ const QuizCreator = () => {
         throw new Error(`Failed to delete question: ${response.statusText}`);
       }
 
-      // Update local state to remove the question
       setQuestions((prevQuestions) =>
-        prevQuestions.filter((q) => q.id !== questionId && q._id !== questionId)
+        prevQuestions.filter(
+          (q) => q.id !== itemToDelete && q._id !== itemToDelete
+        )
       );
 
-      // Clear current question if it was deleted
       if (
-        currentQuestion &&
-        (currentQuestion.id === questionId ||
-          currentQuestion._id === questionId)
+        currentQuestion?.id === itemToDelete ||
+        currentQuestion?._id === itemToDelete
       ) {
         setCurrentQuestion(null);
       }
@@ -345,8 +353,11 @@ const QuizCreator = () => {
       handleApiError(err);
     } finally {
       setLoading(false);
+      setShowDeleteQuestionModal(false);
+      setItemToDelete(null);
     }
   };
+
   const handleSaveQuiz = async () => {
     if (!quizId) {
       showAlert("Cannot save quiz: Invalid quiz ID");
@@ -487,10 +498,12 @@ const QuizCreator = () => {
                             Question {index + 1}
                           </span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteQuestion(question.id || question._id);
-                            }}
+                            onClick={(e) =>
+                              handleDeleteQuestion(
+                                e,
+                                question.id || question._id
+                              )
+                            }
                             className="p-1 text-gray-400 hover:text-red-500 rounded-full"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -516,10 +529,7 @@ const QuizCreator = () => {
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Slide {index + 1}</span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteSlide(slide.id);
-                            }}
+                            onClick={(e) => handleDeleteSlide(e, slide.id)}
                             className="p-1 text-gray-400 hover:text-red-500 rounded-full"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -606,6 +616,28 @@ const QuizCreator = () => {
               title: quiz?.title || "",
               description: quiz?.description || "",
             }}
+          />
+
+          <ConfirmationModal
+            isOpen={showDeleteQuestionModal}
+            onClose={() => {
+              setShowDeleteQuestionModal(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={handleConfirmDeleteQuestion}
+            title="Delete Question"
+            message="Are you sure you want to delete this question? This action cannot be undone."
+          />
+
+          <ConfirmationModal
+            isOpen={showDeleteSlideModal}
+            onClose={() => {
+              setShowDeleteSlideModal(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={handleConfirmDeleteSlide}
+            title="Delete Slide"
+            message="Are you sure you want to delete this slide? This action cannot be undone."
           />
         </div>
       </>

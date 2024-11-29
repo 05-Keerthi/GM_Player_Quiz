@@ -178,6 +178,9 @@ import {
   PlayCircle,
   XCircle,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import Navbar from "./NavbarComp";
+import ConfirmationModal from "../models/ConfirmationModal";
 
 const QuizStatusBadge = ({ status }) => {
   const statusColors = {
@@ -202,6 +205,8 @@ const QuizList = () => {
   const { quizzes, getAllQuizzes, deleteQuiz, publishQuiz, closeQuiz } =
     useQuizContext();
   const [filter, setFilter] = useState("all");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState(null);
 
   useEffect(() => {
     getAllQuizzes();
@@ -216,9 +221,18 @@ const QuizList = () => {
     navigate(`/createQuiz/${quizId}`);
   };
 
-  const handleDeleteQuiz = async (quizId) => {
-    if (window.confirm("Are you sure you want to delete this quiz?")) {
-      await deleteQuiz(quizId);
+  const handleDeleteQuiz = (e, quizId) => {
+    e.stopPropagation();
+    setQuizToDelete(quizId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (quizToDelete) {
+      await deleteQuiz(quizToDelete);
+      toast.success("Quiz deleted successfully!");
+      setShowDeleteModal(false);
+      setQuizToDelete(null);
     }
   };
 
@@ -263,119 +277,138 @@ const QuizList = () => {
   ];
 
   return (
-    <div className="flex bg-gray-100 min-h-screen">
-      {/* Sticky Sidebar */}
-      <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-0 h-screen overflow-y-auto">
-        <div className="sticky top-0 bg-white z-10">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">
-            Quiz Filters
-          </h1>
-          <div className="space-y-2">
-            {quizStatusConfig.map(({ status, icon, color }) => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
-                  filter === status
-                    ? `${color} font-semibold`
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {icon}
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </button>
-            ))}
-          </div>
+    <>
+      <>
+        <div className="fixed top-0 w-full z-50">
+          <Navbar />
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 ml-64 p-8">
-        <div className="sticky top-0 z-10 flex justify-between items-center mb-6 bg-gray-100 p-5">
-          <h1 className="text-2xl font-bold text-gray-800">My Quizzes</h1>
-          <button
-            onClick={() => navigate("/select-category")}
-            className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Create New Quiz
-          </button>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredQuizzes.map((quiz, index) => (
-            <div
-              key={quiz._id}
-              className={`${quizCardColors[index % quizCardColors.length]} 
-                border rounded-xl p-6 shadow-md hover:shadow-xl transition-all 
-                transform hover:-translate-y-2 relative overflow-hidden`}
-            >
-              <div className="absolute top-0 right-0 p-2">
-                <QuizStatusBadge status={quiz.status} />
-              </div>
-
-              <h2 className="text-xl font-bold mb-3 text-gray-800">
-                {quiz.title}
-              </h2>
-              <p className="text-gray-600 mb-4 line-clamp-3">
-                {quiz.description}
-              </p>
-
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex items-center gap-2 text-gray-700">
-                  <ListChecks className="w-5 h-5" />
-                  <span>{quiz.questions?.length || 0} Questions</span>
-                </div>
-
-                <div className="flex gap-2">
+      </>
+      <>
+        <div className="flex bg-gray-100 min-h-screen pt-16">
+          {/* Sticky Sidebar */}
+          <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40">
+            <div className="sticky top-0 bg-white">
+              <h1 className="text-2xl font-bold text-gray-800 mb-6">
+                Quiz Filters
+              </h1>
+              <div className="space-y-2">
+                {quizStatusConfig.map(({ status, icon, color }) => (
                   <button
-                    onClick={() => handleEditQuiz(quiz._id)}
-                    className="text-blue-600 hover:text-blue-800"
-                    title="Edit Quiz"
+                    key={status}
+                    onClick={() => setFilter(status)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
+                      filter === status
+                        ? `${color} font-semibold`
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
                   >
-                    <FileEdit className="w-5 h-5" />
+                    {icon}
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
-                  <button
-                    onClick={() => handleDeleteQuiz(quiz._id)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Delete Quiz"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 border-t pt-3">
-                {quiz.status === "draft" && (
-                  <button
-                    onClick={() => handlePublishQuiz(quiz._id)}
-                    className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
-                  >
-                    <CheckSquare className="w-4 h-4" />
-                    Publish Quiz
-                  </button>
-                )}
-                {quiz.status === "active" && (
-                  <button
-                    onClick={() => handleCloseQuiz(quiz._id)}
-                    className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
-                  >
-                    <Lock className="w-4 h-4" />
-                    Close Quiz
-                  </button>
-                )}
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-
-        {filteredQuizzes.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No quizzes found for this status.
           </div>
-        )}
-      </div>
-    </div>
+
+          {/* Main Content */}
+          <div className="flex-1 ml-64 p-8">
+            <div className="sticky top-16 z-30 flex justify-between items-center mb-6 bg-gray-100 p-5">
+              <h1 className="text-2xl font-bold text-gray-800">My Quizzes</h1>
+              <button
+                onClick={() => navigate("/select-category")}
+                className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Create New Quiz
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredQuizzes.map((quiz, index) => (
+                <div
+                  key={quiz._id}
+                  className={`${quizCardColors[index % quizCardColors.length]} 
+                border rounded-xl p-6 shadow-md hover:shadow-xl transition-all 
+                transform hover:-translate-y-2 relative overflow-hidden`}
+                >
+                  <div className="absolute top-0 right-0 p-2">
+                    <QuizStatusBadge status={quiz.status} />
+                  </div>
+
+                  <h2 className="text-xl font-bold mb-3 text-gray-800">
+                    {quiz.title}
+                  </h2>
+                  <p className="text-gray-600 mb-4 line-clamp-3">
+                    {quiz.description}
+                  </p>
+
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <ListChecks className="w-5 h-5" />
+                      <span>{quiz.questions?.length || 0} Questions</span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditQuiz(quiz._id)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit Quiz"
+                      >
+                        <FileEdit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteQuiz(e, quiz._id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete Quiz"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 border-t pt-3">
+                    {quiz.status === "draft" && (
+                      <button
+                        onClick={() => handlePublishQuiz(quiz._id)}
+                        className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                        Publish Quiz
+                      </button>
+                    )}
+                    {quiz.status === "active" && (
+                      <button
+                        onClick={() => handleCloseQuiz(quiz._id)}
+                        className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        Close Quiz
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredQuizzes.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                No quizzes found for this status.
+              </div>
+            )}
+          </div>
+        </div>
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setQuizToDelete(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          title="Delete Quiz"
+          message="Are you sure you want to delete this quiz? This action cannot be undone."
+        />
+      </>
+    </>
   );
 };
 
