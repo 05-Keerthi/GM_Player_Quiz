@@ -11,7 +11,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const quizRoutes = require('./routes/quizRoutes');
-
+const slideRoutes = require('./routes/slideRoutes');
 
 const path = require('path');
 
@@ -31,7 +31,7 @@ app.use('/api', categoryRoutes);
 app.use('/api', mediaRoutes);
 app.use('/api', questionRoutes);
 app.use('/api', quizRoutes);
-
+app.use('/api', slideRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
