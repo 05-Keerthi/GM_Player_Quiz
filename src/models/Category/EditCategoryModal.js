@@ -1,33 +1,74 @@
-// CreateCategoryModal.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { useCategoryContext } from "../../context/categoryContext";
 import { toast } from "react-toastify";
+import { useCategoryContext } from "../../context/categoryContext";
 
-const CreateCategoryModal = ({ isOpen, onClose }) => {
+const EditCategoryModal = ({ isOpen, onClose, categoryId }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   });
   const [fieldErrors, setFieldErrors] = useState({});
-  const { createCategory, loading } = useCategoryContext();
+  const { updateCategory, getCategoryById, loading } = useCategoryContext();
+
+  useEffect(() => {
+    if (isOpen && categoryId) {
+      loadCategoryData();
+    }
+  }, [isOpen, categoryId]);
+
+  const loadCategoryData = async () => {
+    try {
+      const category = await getCategoryById(categoryId);
+      setFormData({
+        name: category.name,
+        description: category.description || "",
+      });
+      setFieldErrors({});
+    } catch (err) {
+      toast.error("Failed to load category data");
+      onClose();
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.name.trim()) {
+      errors.name = "Category name is required";
+    } else if (formData.name.length < 3) {
+      errors.name = "Category name must be at least 3 characters";
+    }
+
+    if (formData.description && formData.description.length > 500) {
+      errors.description = "Description must be less than 500 characters";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     try {
-      await createCategory(formData);
-      toast.success("Category created successfully!");
+      await updateCategory(categoryId, formData);
+      toast.success("Category updated successfully!");
       onClose();
-      setFormData({ name: "", description: "" });
-      setFieldErrors({});
     } catch (err) {
       if (err.response?.data?.message === "Category name must be unique") {
         setFieldErrors((prev) => ({
           ...prev,
           name: "This category name already exists",
         }));
+      } else if (err.response?.data?.errors) {
+        const serverErrors = {};
+        err.response.data.errors.forEach((error) => {
+          serverErrors[error.field] = error.message;
+        });
+        setFieldErrors(serverErrors);
       } else {
-        toast.error(err.response?.data?.message || "Failed to create category");
+        toast.error(err.response?.data?.message || "Failed to update category");
       }
     }
   };
@@ -47,7 +88,7 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg w-full max-w-md">
         <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-800">Create Category</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Edit Category</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -65,7 +106,6 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
               <input
                 type="text"
                 name="name"
-                required
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -86,10 +126,17 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.description ? "border-red-500" : "border-gray-300"
+                }`}
                 placeholder="Enter category description"
                 rows={4}
               />
+              {fieldErrors.description && (
+                <p className="mt-1 text-sm text-red-500">
+                  {fieldErrors.description}
+                </p>
+              )}
             </div>
           </div>
 
@@ -110,7 +157,7 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
                   : "bg-blue-500 hover:bg-blue-600"
               }`}
             >
-              {loading ? "Creating..." : "Create Category"}
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -119,4 +166,4 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
   );
 };
 
-export default CreateCategoryModal;
+export default EditCategoryModal;

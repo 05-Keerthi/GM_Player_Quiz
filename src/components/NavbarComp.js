@@ -48,15 +48,38 @@ const Navbar = () => {
     }
   };
 
+  // Get primary and secondary colors
+  const primaryColor = user?.tenantId?.primaryColor || "#2929FF";
+  const secondaryColor = user?.tenantId?.secondaryColor || "#FFFFFF";
+
+  // Check if colors are the same
+  const areColorsSame =
+    primaryColor.toLowerCase() === secondaryColor.toLowerCase();
+
   // Custom styling based on tenant configuration
   const navbarStyle = {
-    backgroundColor: user?.tenantId?.primaryColor || "#2929FF",
+    backgroundColor: primaryColor,
   };
 
   const textStyle = {
-    color: user?.tenantId?.secondaryColor || "#FFFFFF",
+    // If colors are the same, use white or black based on background brightness
+    color: areColorsSame ? getContrastColor(primaryColor) : secondaryColor,
     fontFamily: user?.tenantId?.fontFamily || "inherit",
   };
+
+  // Function to determine if background is dark
+  function getContrastColor(hexColor) {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+
+    // Calculate brightness (YIQ formula)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    // Return white for dark backgrounds, black for light backgrounds
+    return brightness < 128 ? "#FFFFFF" : "#000000";
+  }
 
   return (
     <div className="border-b-4 p-2" style={navbarStyle}>
@@ -77,7 +100,7 @@ const Navbar = () => {
             <h1 className="text-lg font-semibold" style={textStyle}>
               Welcome to {user?.tenantId?.name || "GM Play"}..!
             </h1>
-            <p className="text-sm text-gray-500" style={textStyle}>
+            <p className="text-sm" style={textStyle}>
               Engage, learn, and have fun
             </p>
           </div>
