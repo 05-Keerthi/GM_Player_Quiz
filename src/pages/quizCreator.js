@@ -18,6 +18,7 @@ import SettingsModal from "../models/SettingsModal";
 import QuestionEditor from "../components/QuestionEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
+import SlideTypeModal from "../models/SlideTypeModal";
 
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
@@ -44,6 +45,9 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 };
 
 const QuizCreator = () => {
+  const [slides, setSlides] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(null);
+  const [isAddSlideOpen, setIsAddSlideOpen] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -113,6 +117,82 @@ const QuizCreator = () => {
     setQuiz(updatedQuiz);
     setIsSettingsOpen(false);
     showAlert("Quiz settings updated successfully", "success");
+  };
+
+  // Add these new handlers in the QuizCreator component
+  const handleAddSlide = async (slideData) => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/quizzes/${quizId}/slides`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...slideData,
+            quizId: quizId,
+          }),
+        }
+      );
+
+      const newSlide = await response.json();
+      setSlides((prevSlides) => [...prevSlides, newSlide]);
+      setCurrentSlide(newSlide);
+      setIsAddSlideOpen(false);
+      showAlert("Slide added successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateSlide = async (slideId, updatedData) => {
+    const previousSlides = [...slides];
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/slides/${slideId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(updatedData),
+        }
+      );
+
+      const updatedSlide = await response.json();
+      setSlides((prevSlides) =>
+        prevSlides.map((s) => (s.id === slideId ? updatedSlide : s))
+      );
+      setCurrentSlide(updatedSlide);
+      showAlert("Slide updated successfully", "success");
+    } catch (err) {
+      setSlides(previousSlides);
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSlide = async (slideId) => {
+    if (!window.confirm("Are you sure you want to delete this slide?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await authenticatedFetch(`http://localhost:5000/api/slides/${slideId}`, {
+        method: "DELETE",
+      });
+
+      setSlides((prevSlides) => prevSlides.filter((s) => s.id !== slideId));
+      if (currentSlide?.id === slideId) {
+        setCurrentSlide(null);
+      }
+      showAlert("Slide deleted successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddQuestion = async (questionData) => {
@@ -322,6 +402,7 @@ const QuizCreator = () => {
   };
 
   useEffect(() => {
+    // Update the loadQuizData function to also fetch slides
     const loadQuizData = async () => {
       if (!quizId) {
         showAlert("Invalid quiz ID");
@@ -330,24 +411,25 @@ const QuizCreator = () => {
 
       try {
         setLoading(true);
-        const response = await authenticatedFetch(
-          `http://localhost:5000/api/quizzes/${quizId}`
-        );
+        const [quizResponse, slidesResponse] = await Promise.all([
+          authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`),
+        ]);
 
-        const data = await response.json();
+        const quizData = await quizResponse.json();
+
         setQuiz({
-          title: data.title || "",
-          description: data.description || "",
+          title: quizData.title || "",
+          description: quizData.description || "",
         });
-        setQuestions(data.questions || []);
+        setQuestions(quizData.questions || []);
+        setSlides(quizData.slides || []);
       } catch (err) {
         handleApiError(err);
-        navigate("/quizzes"); // Redirect on error
+        navigate("/quizzes");
       } finally {
         setLoading(false);
       }
     };
-
     loadQuizData();
   }, [quizId, navigate]);
 
@@ -449,14 +531,57 @@ const QuizCreator = () => {
                       </div>
                     ))}
                   </div>
+                  <div className="space-y-2">
+                    {slides.map((slide, index) => (
+                      <div
+                        key={slide.id}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          currentSlide?.id === slide.id
+                            ? "bg-blue-50 border-2 border-blue-500"
+                            : "hover:bg-gray-50 border border-gray-200"
+                        }`}
+                        onClick={() => setCurrentSlide(slide)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Slide {index + 1}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteSlide(slide.id);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-gray-500 truncate">
+                          {slide.title}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                   <button
                     className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={() => setIsAddQuestionOpen(true)}
                   >
                     Add Question
                   </button>
+                  <button
+                    className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    onClick={() => setIsAddSlideOpen(true)}
+                  >
+                    Add Slide
+                  </button>
                 </div>
               </div>
+
+              {/* Slides List */}
+              {/* <div className="md:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <h2 className="font-medium text-lg mb-4">Slides</h2>
+             
+                </div>
+              </div> */}
 
               {/* Question Editor */}
               <div className="md:col-span-2">
@@ -492,6 +617,12 @@ const QuizCreator = () => {
             isOpen={isAddQuestionOpen}
             onClose={() => setIsAddQuestionOpen(false)}
             onAddQuestion={handleAddQuestion}
+          />
+
+          <SlideTypeModal
+            isOpen={isAddSlideOpen}
+            onClose={() => setIsAddSlideOpen(false)}
+            onAddSlide={handleAddSlide}
           />
 
           {/* Settings Modal */}
