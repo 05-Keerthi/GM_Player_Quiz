@@ -10,7 +10,8 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
-import CreateQuiz from "./pages/CreateQuiz";
+
+import QuizCreator from "./pages/quizCreator";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -56,7 +57,8 @@ export default function App() {
 
         <Route path="/select-category" element={<SelectCategoryPage />} />
 
-        <Route path="/createQuiz/:id" element={<CreateQuiz />} />
+      
+        <Route path="/create/:quizId" element={<QuizCreator />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
