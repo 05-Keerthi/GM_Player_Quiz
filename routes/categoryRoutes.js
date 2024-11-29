@@ -24,4 +24,7 @@ router.put('/categories/:id', auth, isAdmin, updateCategory);
 // Delete a category (admin only)
 router.delete('/categories/:id', auth, isAdmin, deleteCategory);
 
+// Get a specific category's count according to the quizzes
+router.get('/api/category/:categoryId/quiz-count', protect, admin, getQuizCountForCategory);
+
 module.exports = router;
