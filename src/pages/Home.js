@@ -82,6 +82,15 @@ export default function HomePage() {
             buttonColor: "bg-blue-500 hover:bg-blue-600",
             path: "/select-category",
           },
+
+          {
+            icon: <Rocket className="text-orange-600" size={48} />,
+            title: "View Quizzes",
+            description: "Manage and monitor all quizzes",
+            buttonText: "Go to Quizzes",
+            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            path: "/quizzes",
+          },
         ];
       case "user":
         return [
