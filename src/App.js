@@ -57,8 +57,7 @@ export default function App() {
 
         <Route path="/select-category" element={<SelectCategoryPage />} />
 
-      
-        <Route path="/create/:quizId" element={<QuizCreator />} />
+        <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
