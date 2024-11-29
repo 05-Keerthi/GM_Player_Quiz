@@ -11,20 +11,30 @@ exports.addSlide = async (req, res) => {
     // Check if quiz exists
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
-      return res.status(404).json({ message: "Quiz not found" });
+      return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    // Fetch the image document by ID (using Media model)
-    const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
-    if (!image) {
-      return res.status(404).json({ message: 'Image not found' });
+    // Validate the type
+    const validTypes = ['classic', 'big_title', 'bullet_points'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: `Invalid type. Valid types are: ${validTypes.join(', ')}` });
     }
 
-    // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    let fullImageUrl = null;
 
-    // Construct the full image URL (from the Media path)
-    const fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split('\\').pop())}`;
+    if (imageUrl) {
+      // Fetch the image document by ID (using Media model)
+      const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
+      if (!image) {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+
+      // Base URL for constructing the full image path
+      const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+
+      // Construct the full image URL (from the Media path)
+      fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split('\\').pop())}`;
+    }
 
     // Create new slide
     const newSlide = new Slide({
@@ -49,16 +59,15 @@ exports.addSlide = async (req, res) => {
     };
 
     return res.status(201).json({
-      message: "Slide added successfully",
+      message: 'Slide added successfully',
       slide: responseSlide,
     });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Get details of all specific slide
 
