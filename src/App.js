@@ -10,6 +10,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
+import QuizList from './components/QuizList';
 
 import QuizCreator from "./pages/quizCreator";
 
@@ -58,7 +59,14 @@ export default function App() {
         <Route path="/select-category" element={<SelectCategoryPage />} />
 
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
-
+        <Route 
+            path="/quizzes" 
+            element={
+              
+                <QuizList />
+          
+            } 
+          />
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
