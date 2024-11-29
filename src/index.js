@@ -7,6 +7,8 @@ import { AuthProvider } from "./context/AuthContext";
 import { UserProvider } from "./context/userContext";
 import { PasswordResetProvider } from "./context/passwordResetContext";
 import { TenantProvider } from "./context/TenantContext";
+import { CategoryProvider } from "./context/categoryContext";
+import { QuizProvider } from "./context/quizContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -14,9 +16,13 @@ root.render(
     <UserProvider>
       <PasswordResetProvider>
         <TenantProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <CategoryProvider>
+            <QuizProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </QuizProvider>
+          </CategoryProvider>
         </TenantProvider>
       </PasswordResetProvider>
     </UserProvider>

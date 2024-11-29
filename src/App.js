@@ -9,6 +9,8 @@ import Home from "./pages/Home";
 import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
+import SelectCategoryPage from "./pages/SelectCategoryPage";
+import CreateQuiz from "./pages/CreateQuiz";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -51,6 +53,11 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/select-category" element={<SelectCategoryPage />} />
+
+        <Route path="/createQuiz/:id" element={<CreateQuiz />} />
+
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
