@@ -15,7 +15,7 @@ const SelectCategoryPage = () => {
   const { categories, getAllCategories, deleteCategory, loading, error } =
     useCategoryContext();
   const { createQuiz } = useQuizContext();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,19 +32,14 @@ const SelectCategoryPage = () => {
 
   // New useEffect for filtering categories
   useEffect(() => {
-    if (categories && Array.isArray(categories)) {
+    if (categories) {
       setFilteredCategories(
-        categories.filter((category) => {
-          if (!category || typeof category.name !== 'string') {
-            return false;
-          }
-          return category.name.toLowerCase().includes(searchTerm.toLowerCase());
-        })
+        categories.filter((category) =>
+          category?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
       );
-    } else {
-      setFilteredCategories([]);
     }
-  }, [categories, searchTerm]);
+  }, [categories, searchQuery]);
 
   const { currentItems, totalPages } = paginateData(
     filteredCategories,
@@ -137,8 +132,8 @@ const SelectCategoryPage = () => {
               <input
                 type="text"
                 placeholder="Search categories..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
