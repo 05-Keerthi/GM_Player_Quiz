@@ -26,20 +26,26 @@ const SelectCategoryPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
 
+  // Load categories on mount
   useEffect(() => {
     getAllCategories();
-  }, []);
+  }, []); // Add getAllCategories to dependency array
 
-  // New useEffect for filtering categories
+  
+  // Filter categories when search query or categories change
   useEffect(() => {
     if (categories) {
       setFilteredCategories(
         categories.filter((category) =>
-          category?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+          category?.name
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase().trim())
         )
       );
+      setCurrentPage(1);
     }
   }, [categories, searchQuery]);
+
 
   const { currentItems, totalPages } = paginateData(
     filteredCategories,
@@ -47,6 +53,7 @@ const SelectCategoryPage = () => {
     itemsPerPage
   );
 
+  // Rest of the component remains the same...
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
