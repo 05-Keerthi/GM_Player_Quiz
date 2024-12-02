@@ -1272,7 +1272,11 @@ const handleConfirmDeleteSlide = async () => {
                             ? "bg-blue-50 border-2 border-blue-500"
                             : "hover:bg-gray-50 border border-gray-200"
                         }`}
-                        onClick={() => setCurrentQuestion(question)}
+                       onClick={()=>{
+                        setCurrentQuestion(question);
+                        setCurrentSlide(null)
+                       }}
+
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">
@@ -1305,7 +1309,11 @@ const handleConfirmDeleteSlide = async () => {
                             ? "bg-blue-50 border-2 border-blue-500"
                             : "hover:bg-gray-50 border border-gray-200"
                         }`}
-                        onClick={() => setCurrentSlide(slide)}
+                        onClick={()=>{
+                          setCurrentSlide(slide)
+                          setCurrentQuestion(null);
+                        
+                       }}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Slide {index + 1}</span>
