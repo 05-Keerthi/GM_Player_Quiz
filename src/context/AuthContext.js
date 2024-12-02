@@ -24,10 +24,18 @@ export const AuthContext = createContext(initialState);
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Debug logging function
   const debugLog = (message, ...args) => {
     console.log(`[AuthContext Debug] ${message}`, ...args);
+  };
+
+  // Handle session expiry
+  const handleSessionExpiry = async () => {
+    debugLog("Session expired, logging out user");
+    setSessionExpired(true);
+    await logout();
   };
 
   // Update axios authorization header
@@ -49,6 +57,11 @@ export const AuthProvider = ({ children }) => {
 
       if (storedUser && storedToken && storedRefreshToken) {
         try {
+          // Verify token validity
+          const response = await api.get("/auth/me", {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+
           dispatch({
             type: ACTIONS.LOGIN,
             payload: { user: storedUser, token: storedToken },
@@ -82,8 +95,8 @@ export const AuthProvider = ({ children }) => {
             });
             updateAuthHeader(newToken);
           } catch (refreshError) {
-            // If refresh fails, logout
-            await logout();
+            // If refresh fails, trigger session expiry
+            await handleSessionExpiry();
           }
         }
       }
@@ -97,7 +110,6 @@ export const AuthProvider = ({ children }) => {
       async (error) => {
         const originalRequest = error.config;
 
-        // Only retry once and for 401 errors
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
@@ -116,7 +128,6 @@ export const AuthProvider = ({ children }) => {
             const { token: refreshedToken, user: refreshedUser } =
               response.data;
 
-            // Update local storage and headers
             localStorage.setItem("token", refreshedToken);
             localStorage.setItem("user", JSON.stringify(refreshedUser));
 
@@ -127,7 +138,6 @@ export const AuthProvider = ({ children }) => {
               "Authorization"
             ] = `Bearer ${refreshedToken}`;
 
-            // Update state with new user and token
             dispatch({
               type: ACTIONS.LOGIN,
               payload: {
@@ -136,20 +146,27 @@ export const AuthProvider = ({ children }) => {
               },
             });
 
-            // Retry the original request
             return api(originalRequest);
           } catch (refreshError) {
-            // If refresh fails, logout
-            await logout();
+            // If refresh fails, trigger session expiry
+            await handleSessionExpiry();
             return Promise.reject(refreshError);
           }
+        }
+
+        // Check for specific token expiration error messages
+        if (
+          error.response?.status === 401 &&
+          (error.response?.data?.message === "Token validation failed." ||
+            error.response?.data?.message === "Invalid or expired token.")
+        ) {
+          await handleSessionExpiry();
         }
 
         return Promise.reject(error);
       }
     );
 
-    // Cleanup interceptor on component unmount
     return () => api.interceptors.response.eject(interceptor);
   }, []);
 

@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoginPage from "./pages/LoginPage";
@@ -10,7 +11,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
-import QuizList from './components/QuizList';
+import QuizList from "./components/QuizList";
 
 import QuizCreator from "./pages/quizCreator";
 
@@ -22,6 +23,16 @@ const ProtectedRoute = ({ children }) => {
 
 export default function App() {
   const { isAuthenticated } = useAuthContext();
+  const { sessionExpired, setSessionExpired } = useAuthContext();
+
+  useEffect(() => {
+    if (sessionExpired) {
+      // Show your preferred notification method (toast, modal, etc.)
+      toast.error("Your session has expired. Please log in again.");
+      // Or use your modal system
+      setSessionExpired(false); // Reset the state after showing the message
+    }
+  }, [sessionExpired]);
 
   return (
     <>
@@ -59,14 +70,7 @@ export default function App() {
         <Route path="/select-category" element={<SelectCategoryPage />} />
 
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
-        <Route 
-            path="/quizzes" 
-            element={
-              
-                <QuizList />
-          
-            } 
-          />
+        <Route path="/quizzes" element={<QuizList />} />
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
