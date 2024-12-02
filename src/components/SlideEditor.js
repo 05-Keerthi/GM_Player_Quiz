@@ -22,33 +22,40 @@ const ImageUploadArea = ({ image, setImage, currentImageUrl }) => {
   };
 
   return (
-    <div className="space-y-2">
-      {!image?.preview && !currentImageUrl ? (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-          <label className="flex flex-col items-center justify-center cursor-pointer">
-            <Upload className="w-8 h-8 text-gray-400 mb-2" />
-            <span className="text-sm text-gray-500">Click to upload image</span>
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </label>
-        </div>
-      ) : (
-        <div className="relative">
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <input
+          type="file"
+          className="hidden"
+          id="image-upload"
+          accept="image/*"
+          onChange={handleImageUpload}
+        />
+        <label
+          htmlFor="image-upload"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+        >
+          <Upload className="w-5 h-5" />
+          Upload Image
+        </label>
+        {(image?.preview || currentImageUrl) && (
+          <button
+            onClick={() => setImage(null)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+          >
+            <Trash2 className="w-5 h-5" />
+            Remove
+          </button>
+        )}
+      </div>
+
+      {(image?.preview || currentImageUrl) && (
+        <div className="relative mt-4 group">
           <img
             src={image?.preview || currentImageUrl}
             alt="Slide"
-            className="w-full h-48 object-cover rounded-lg"
+            className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
           />
-          <button
-            onClick={() => setImage(null)}
-            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
       )}
     </div>
@@ -110,48 +117,44 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="bg-white rounded-lg shadow-sm p-8"
+      className="bg-gray-50 rounded-xl shadow-2xl p-8 w-full max-w-2xl mx-auto relative"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-8 border-b pb-4">
+        <div className="flex items-center gap-4">
           {getSlideTypeIcon(slide.type)}
-          <h2 className="text-xl font-semibold">Edit Slide</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Edit Slide</h2>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-full"
+          className="p-2 hover:bg-gray-200 rounded-full transition-colors group"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
           {error}
         </div>
       )}
 
       <div className="space-y-6">
-        {/* Title input - different styling based on slide type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Slide Title
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-              slide.type === "big_title" ? "text-4xl font-bold" : "text-xl"
-            }`}
-            placeholder="Enter title..."
+            className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300"
+            placeholder="Enter slide title..."
           />
         </div>
 
-        {/* Image Upload Section */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Slide Image (Optional)
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Slide Image
           </label>
           <ImageUploadArea
             image={image}
@@ -160,16 +163,15 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           />
         </div>
 
-        {/* Content Section - varies by slide type */}
         {slide.type === "classic" && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Content
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[150px]"
+              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300 min-h-[150px]"
               placeholder="Enter slide content..."
             />
           </div>
@@ -177,13 +179,16 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
 
         {slide.type === "bullet_points" && (
           <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-gray-700">
               Bullet Points
             </label>
             <div className="space-y-3">
               {points.map((point, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <span className="text-gray-500">•</span>
+                <div
+                  key={index}
+                  className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+                >
+                  <span className="text-gray-500 font-bold">•</span>
                   <input
                     type="text"
                     value={point}
@@ -192,7 +197,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
                       newPoints[index] = e.target.value;
                       setPoints(newPoints);
                     }}
-                    className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
                     placeholder={`Point ${index + 1}`}
                   />
                   {points.length > 1 && (
@@ -201,37 +206,33 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
                         const newPoints = points.filter((_, i) => i !== index);
                         setPoints(newPoints);
                       }}
-                      className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                      className="text-red-500 hover:bg-red-100 p-2 rounded-full"
                     >
-                      <X className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   )}
                 </div>
               ))}
-              {points.length < 6 && (
-                <button
-                  onClick={() => setPoints([...points, ""])}
-                  className="w-full px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50"
-                >
-                  Add Bullet Point
-                </button>
-              )}
+              <button
+                onClick={() => setPoints([...points, ""])}
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+              >
+                Add Bullet Point
+              </button>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-4 mt-8">
+        <div className="flex justify-end gap-4 mt-6">
           <button
             onClick={handleSave}
-            disabled={!title}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
           >
-            Save Changes
+            Save
           </button>
           <button
             onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
           >
             Cancel
           </button>
