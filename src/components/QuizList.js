@@ -350,12 +350,51 @@ const QuizList = () => {
     }
   };
 
+  // const handleDragEnd = async (result) => {
+  //   const { source, destination, draggableId } = result;
+  
+  //   if (!destination) return;
+  
+  //   // Check if the source and destination are the same, in which case no action is needed
+  //   if (source.droppableId === destination.droppableId) return;
+  
+  //   const statusMap = {
+  //     draft: "draft",
+  //     active: "active",
+  //     closed: "closed",
+  //   };
+  
+  //   // Get the new status from the destination
+  //   const newStatus = statusMap[destination.droppableId];
+  
+  //   if (newStatus) {
+  //     try {
+  //       if (newStatus === "draft") {
+  //         // Use the method from quizContext to move back to draft
+  //         await publishQuiz(draggableId, "draft");
+  //         toast.success("Quiz moved back to draft successfully!");
+  //       } else if (newStatus === "active") {
+  //         await publishQuiz(draggableId);
+  //         toast.success("Quiz published successfully!");
+  //       } else if (newStatus === "closed") {
+  //         await closeQuiz(draggableId);
+  //         toast.success("Quiz closed successfully!");
+  //       }
+  
+  //       // Update quizzes after status change
+  //       await getAllQuizzes();
+  //     } catch (error) {
+  //       toast.error("Failed to update quiz status");
+  //       console.error(error);
+  //     }
+  //   }
+  // };
   const handleDragEnd = async (result) => {
     const { source, destination, draggableId } = result;
   
     if (!destination) return;
   
-    // Check if the source and destination are the same, in which case no action is needed
+    // Check if the source and destination are the same
     if (source.droppableId === destination.droppableId) return;
   
     const statusMap = {
@@ -364,13 +403,19 @@ const QuizList = () => {
       closed: "closed",
     };
   
-    // Get the new status from the destination
     const newStatus = statusMap[destination.droppableId];
   
     if (newStatus) {
       try {
         if (newStatus === "draft") {
-          // Use the method from quizContext to move back to draft
+          // Assume we have some condition to check if moving to draft is not allowed
+          const isAllowedToDraft = false; // Replace with actual logic if applicable
+  
+          if (!isAllowedToDraft) {
+            toast.error("Cannot move quiz back to draft.");
+            return;
+          }
+  
           await publishQuiz(draggableId, "draft");
           toast.success("Quiz moved back to draft successfully!");
         } else if (newStatus === "active") {
@@ -381,7 +426,6 @@ const QuizList = () => {
           toast.success("Quiz closed successfully!");
         }
   
-        // Update quizzes after status change
         await getAllQuizzes();
       } catch (error) {
         toast.error("Failed to update quiz status");
@@ -389,7 +433,7 @@ const QuizList = () => {
       }
     }
   };
-
+  
   const quizStatusConfig = [
     {
       status: "all",
