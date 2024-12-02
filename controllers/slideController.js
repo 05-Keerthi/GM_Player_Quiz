@@ -214,14 +214,15 @@ exports.updateSlide = async (req, res) => {
 exports.deleteSlide = async (req, res) => {
   try {
     const { id } = req.params;
-
+    
     const slide = await Slide.findById(id);
     if (!slide) {
       return res.status(404).json({ message: "Slide not found" });
     }
-
-    await slide.deleteOne({ _id: id });
-
+    
+    // Correct way to delete the slide
+    await Slide.deleteOne({ _id: id });
+    
     return res.status(200).json({
       message: "Slide deleted successfully",
     });
