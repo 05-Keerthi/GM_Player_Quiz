@@ -61,11 +61,6 @@ export const AuthProvider = ({ children }) => {
 
       if (storedUser && storedToken && storedRefreshToken) {
         try {
-          // Verify token validity
-          const response = await api.get("/auth/me", {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
-
           dispatch({
             type: ACTIONS.LOGIN,
             payload: { user: storedUser, token: storedToken },

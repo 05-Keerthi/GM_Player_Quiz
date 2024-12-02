@@ -14,6 +14,7 @@ import SelectCategoryPage from "./pages/SelectCategoryPage";
 import QuizList from "./components/QuizList";
 
 import QuizCreator from "./pages/quizCreator";
+import QuizDetails from "./pages/QuizDetails";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -66,11 +67,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route path="/select-category" element={<SelectCategoryPage />} />
-
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
+
+
+        {/* Admin routes */}
+        <Route path="/quiz-details" element={<QuizDetails />} />
+
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

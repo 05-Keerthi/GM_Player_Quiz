@@ -181,6 +181,7 @@ import {
 import { toast } from "react-toastify";
 import Navbar from "./NavbarComp";
 import ConfirmationModal from "../models/ConfirmationModal";
+import { useAuthContext } from "../context/AuthContext";
 
 const QuizStatusBadge = ({ status }) => {
   const statusColors = {
@@ -202,6 +203,7 @@ const QuizStatusBadge = ({ status }) => {
 
 const QuizList = () => {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { quizzes, getAllQuizzes, deleteQuiz, publishQuiz, closeQuiz } =
     useQuizContext();
   const [filter, setFilter] = useState("all");
@@ -237,7 +239,14 @@ const QuizList = () => {
   };
 
   const handlePublishQuiz = async (quizId) => {
-    await publishQuiz(quizId);
+    try {
+      const response = await publishQuiz(quizId, user.id);
+
+      navigate(`/quiz-details?quizId=${quizId}&hostId=${user.id}`);
+    } catch (error) {
+      toast.error("Failed to publish quiz. Please try again.");
+      console.error("Error publishing quiz:", error);
+    }
   };
 
   const handleCloseQuiz = async (quizId) => {
