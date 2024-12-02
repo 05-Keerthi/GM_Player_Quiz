@@ -22,8 +22,8 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { isAuthenticated } = useAuthContext();
-  const { sessionExpired, setSessionExpired } = useAuthContext();
+  const { isAuthenticated, sessionExpired, setSessionExpired } =
+    useAuthContext();
 
   useEffect(() => {
     if (sessionExpired) {

@@ -24,7 +24,6 @@ export const AuthContext = createContext(initialState);
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [loading, setLoading] = useState(true);
-  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Debug logging function
   const debugLog = (message, ...args) => {
@@ -34,8 +33,13 @@ export const AuthProvider = ({ children }) => {
   // Handle session expiry
   const handleSessionExpiry = async () => {
     debugLog("Session expired, logging out user");
-    setSessionExpired(true);
+    dispatch({ type: ACTIONS.SESSION_EXPIRED });
     await logout();
+  };
+
+  // Reset session expired state
+  const resetSessionState = () => {
+    dispatch({ type: ACTIONS.RESET_SESSION_STATE });
   };
 
   // Update axios authorization header
@@ -158,7 +162,8 @@ export const AuthProvider = ({ children }) => {
         if (
           error.response?.status === 401 &&
           (error.response?.data?.message === "Token validation failed." ||
-            error.response?.data?.message === "Invalid or expired token.")
+            error.response?.data?.message === "Invalid or expired token." ||
+            error.response?.data?.message === "Token has been invalidated.")
         ) {
           await handleSessionExpiry();
         }
@@ -209,60 +214,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Enhanced refresh token method with more robust error handling
-  const refreshToken = async () => {
-    try {
-      const refresh_token = localStorage.getItem("refresh_token");
-      debugLog("Attempting to refresh token", {
-        hasRefreshToken: !!refresh_token,
-      });
-
-      if (!refresh_token) {
-        debugLog("No refresh token available");
-        throw new Error("No refresh token available");
-      }
-
-      const response = await axios.post(
-        `${BASE_URL}/auth/refresh-token`,
-        { refresh_token },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const { token: newToken, user: refreshedUser } = response.data;
-
-      debugLog("Token refreshed successfully", { newToken, refreshedUser });
-
-      // Update local storage and header
-      localStorage.setItem("token", newToken);
-      localStorage.setItem("user", JSON.stringify(refreshedUser));
-      updateAuthHeader(newToken);
-
-      // Dispatch login action to update the user details
-      dispatch({
-        type: ACTIONS.LOGIN,
-        payload: {
-          user: refreshedUser,
-          token: newToken,
-        },
-      });
-
-      return newToken;
-    } catch (error) {
-      debugLog("Token refresh failed", {
-        errorMessage: error.message,
-        errorResponse: error.response?.data,
-      });
-
-      await logout();
-      throw error;
-    }
-  };
-
-  // Logout method with comprehensive cleanup
   const logout = async () => {
     try {
       debugLog("Logout initiated");
@@ -329,7 +280,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Rest of the context remains the same
   return (
     <AuthContext.Provider
       value={{
@@ -338,8 +288,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         register,
         getProfile,
-        refreshToken, // Expose refreshToken method if needed
         loading,
+        resetSessionState,
       }}
     >
       {children}
