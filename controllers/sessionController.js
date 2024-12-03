@@ -215,11 +215,14 @@ exports.startSession = async (req, res) => {
 
 // get the session questions
 exports.getSessionQuestions = async (req, res) => {
-  const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
+  const { joinCode, sessionId } = req.params;
 
   try {
-    // Find the session using both joinCode and sessionId
-    const session = await Session.findOne({ joinCode, _id: sessionId }).populate('questions');
+    // Find the session and populate both questions and quiz (to get slides)
+    const session = await Session.findOne({ joinCode, _id: sessionId })
+      .populate('questions')
+      .populate('quiz');
+      
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -228,8 +231,13 @@ exports.getSessionQuestions = async (req, res) => {
       return res.status(400).json({ message: 'Session is not in progress' });
     }
 
-    // Process the questions to add full, encoded image URLs
+    // Fetch slides using the quiz's slides array
+    const slides = await Slide.find({ _id: { $in: session.quiz.slides } });
+
+    // Construct base URL for media
     const baseUrl = `${req.protocol}://${req.get('host')}/`;
+
+    // Process questions to add full, encoded image URLs
     const questionsWithImageUrls = await Promise.all(
       session.questions.map(async (question) => {
         let fullImageUrl = null;
@@ -237,23 +245,45 @@ exports.getSessionQuestions = async (req, res) => {
         if (question.imageUrl) {
           const media = await Media.findById(question.imageUrl);
           if (media && media.path) {
-            // Encode spaces and normalize slashes in the media path
             const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
 
         return {
-          ...question.toObject(), // Convert the Mongoose document to a plain object
-          imageUrl: fullImageUrl, // Replace ObjectId with the encoded full image URL
+          ...question.toObject(),
+          imageUrl: fullImageUrl,
         };
       })
     );
 
-    res.status(200).json({ questions: questionsWithImageUrls });
+    // Process slides to add full, encoded image URLs
+    const slidesWithImageUrls = await Promise.all(
+      slides.map(async (slide) => {
+        let fullImageUrl = null;
+
+        if (slide.imageUrl) {
+          const media = await Media.findById(slide.imageUrl);
+          if (media && media.path) {
+            const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+            fullImageUrl = `${baseUrl}${encodedPath}`;
+          }
+        }
+
+        return {
+          ...slide.toObject(),
+          imageUrl: fullImageUrl,
+        };
+      })
+    );
+
+    res.status(200).json({
+      questions: questionsWithImageUrls,
+      slides: slidesWithImageUrls
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error fetching questions', error });
+    res.status(500).json({ message: 'Error fetching questions and slides', error });
   }
 };
 
