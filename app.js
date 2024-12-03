@@ -14,7 +14,7 @@ const quizRoutes = require('./routes/quizRoutes');
 const slideRoutes = require('./routes/slideRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const answerRoutes = require('./routes/answerRoutes');
-
+const leaderBoardRoutes = require('./routes/leaderBoardRoutes')
 
 
 const path = require('path');
@@ -38,7 +38,7 @@ app.use('/api', quizRoutes);
 app.use('/api', slideRoutes);
 app.use('/api', sessionRoutes);
 app.use('/api', answerRoutes);
-
+app.use('/api', leaderBoardRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
