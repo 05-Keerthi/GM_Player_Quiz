@@ -182,6 +182,7 @@ import {
 import { toast } from "react-toastify";
 import Navbar from "./NavbarComp";
 import ConfirmationModal from "../models/ConfirmationModal";
+import { useAuthContext } from "../context/AuthContext";
 
 const QuizStatusBadge = ({ status }) => {
   const statusColors = {
@@ -205,6 +206,7 @@ const QuizList = () => {
   const navigate = useNavigate();
   const { quizzes, getAllQuizzes, deleteQuiz, publishQuiz, closeQuiz } =
     useQuizContext();
+  const { user } = useAuthContext();
   const [filter, setFilter] = useState("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
@@ -241,14 +243,25 @@ const QuizList = () => {
     }
   };
 
+  // const handlePublishQuiz = async (quizId) => {
+  //   try {
+  //     await publishQuiz(quizId);
+  //     toast.success("Quiz published successfully!");
+  //     await getAllQuizzes();
+  //   } catch (error) {
+  //     toast.error("Failed to publish quiz");
+  //     console.error(error);
+  //   }
+  // };
+
   const handlePublishQuiz = async (quizId) => {
     try {
-      await publishQuiz(quizId);
-      toast.success("Quiz published successfully!");
-      await getAllQuizzes();
+      const response = await publishQuiz(quizId, user.id);
+
+      navigate(`/quiz-details?quizId=${quizId}&hostId=${user.id}`);
     } catch (error) {
-      toast.error("Failed to publish quiz");
-      console.error(error);
+      toast.error("Failed to publish quiz. Please try again.");
+      console.error("Error publishing quiz:", error);
     }
   };
 
@@ -265,21 +278,21 @@ const QuizList = () => {
 
   // const handleDragEnd = async (result) => {
   //   const { source, destination, draggableId } = result;
-  
+
   //   if (!destination) return;
-  
+
   //   // Check if the source and destination are the same, in which case no action is needed
   //   if (source.droppableId === destination.droppableId) return;
-  
+
   //   const statusMap = {
   //     draft: "draft",
   //     active: "active",
   //     closed: "closed",
   //   };
-  
+
   //   // Get the new status from the destination
   //   const newStatus = statusMap[destination.droppableId];
-  
+
   //   if (newStatus) {
   //     try {
   //       if (newStatus === "draft") {
@@ -293,7 +306,7 @@ const QuizList = () => {
   //         await closeQuiz(draggableId);
   //         toast.success("Quiz closed successfully!");
   //       }
-  
+
   //       // Update quizzes after status change
   //       await getAllQuizzes();
   //     } catch (error) {
@@ -304,31 +317,31 @@ const QuizList = () => {
   // };
   const handleDragEnd = async (result) => {
     const { source, destination, draggableId } = result;
-  
+
     if (!destination) return;
-  
+
     // Check if the source and destination are the same
     if (source.droppableId === destination.droppableId) return;
-  
+
     const statusMap = {
       draft: "draft",
       active: "active",
       closed: "closed",
     };
-  
+
     const newStatus = statusMap[destination.droppableId];
-  
+
     if (newStatus) {
       try {
         if (newStatus === "draft") {
           // Assume we have some condition to check if moving to draft is not allowed
           const isAllowedToDraft = false; // Replace with actual logic if applicable
-  
+
           if (!isAllowedToDraft) {
             toast.error("Cannot move quiz back to draft.");
             return;
           }
-  
+
           await publishQuiz(draggableId, "draft");
           toast.success("Quiz moved back to draft successfully!");
         } else if (newStatus === "active") {
@@ -338,7 +351,7 @@ const QuizList = () => {
           await closeQuiz(draggableId);
           toast.success("Quiz closed successfully!");
         }
-  
+
         await getAllQuizzes();
       } catch (error) {
         toast.error("Failed to update quiz status");
@@ -346,7 +359,7 @@ const QuizList = () => {
       }
     }
   };
-  
+
   const quizStatusConfig = [
     {
       status: "all",
@@ -388,7 +401,9 @@ const QuizList = () => {
       <div className="flex bg-gray-100 min-h-screen pt-16">
         <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40">
           <div className="sticky top-0 bg-white">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">Quiz Filters</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-6">
+              Quiz Filters
+            </h1>
             <div className="space-y-2">
               {quizStatusConfig.map(({ status, icon, color }) => (
                 <button
@@ -448,7 +463,9 @@ const QuizList = () => {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={`${
-                                    quizCardColors[index % quizCardColors.length]
+                                    quizCardColors[
+                                      index % quizCardColors.length
+                                    ]
                                   } border rounded-xl p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden`}
                                 >
                                   <div className="absolute top-0 right-0 p-2">
@@ -465,7 +482,9 @@ const QuizList = () => {
                                   <div className="flex justify-between items-center mt-4">
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <ListChecks className="w-5 h-5" />
-                                      <span>{quiz.questions?.length || 0} Questions</span>
+                                      <span>
+                                        {quiz.questions?.length || 0} Questions
+                                      </span>
                                     </div>
 
                                     <div className="flex gap-2">
@@ -477,7 +496,9 @@ const QuizList = () => {
                                         <FileEdit className="w-5 h-5" />
                                       </button>
                                       <button
-                                        onClick={(e) => handleDeleteQuiz(e, quiz._id)}
+                                        onClick={(e) =>
+                                          handleDeleteQuiz(e, quiz._id)
+                                        }
                                         className="text-red-600 hover:text-red-800"
                                         title="Delete Quiz"
                                       >
@@ -489,7 +510,9 @@ const QuizList = () => {
                                   <div className="mt-4 border-t pt-3">
                                     {quiz.status === "draft" && (
                                       <button
-                                        onClick={() => handlePublishQuiz(quiz._id)}
+                                        onClick={() =>
+                                          handlePublishQuiz(quiz._id)
+                                        }
                                         className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
                                       >
                                         <CheckSquare className="w-4 h-4" />
@@ -498,7 +521,9 @@ const QuizList = () => {
                                     )}
                                     {quiz.status === "active" && (
                                       <button
-                                        onClick={() => handleCloseQuiz(quiz._id)}
+                                        onClick={() =>
+                                          handleCloseQuiz(quiz._id)
+                                        }
                                         className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
                                       >
                                         <Lock className="w-4 h-4" />
@@ -528,21 +553,17 @@ const QuizList = () => {
       </div>
 
       <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setQuizToDelete(null);
-          }}
-          onConfirm={handleConfirmDelete}
-          title="Delete Quiz"
-          message="Are you sure you want to delete this quiz? This action cannot be undone."
-          />
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setQuizToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Quiz"
+        message="Are you sure you want to delete this quiz? This action cannot be undone."
+      />
     </>
   );
 };
 
 export default QuizList;
-
-
-
-
