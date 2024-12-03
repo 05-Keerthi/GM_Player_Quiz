@@ -81,6 +81,19 @@ exports.submitAnswer = async (req, res) => {
         isCorrect,
         timeTaken,
       });
+
+      // Emit socket event
+      const io = req.app.get('socketio');
+      io.to(sessionId).emit('answer-updated', {
+        sessionId,
+        questionId,
+        answer: {
+          userId,
+          answer,
+          isCorrect,
+          timeTaken,
+        },
+      });
   
       // Update the leaderboard
       const pointsAwarded = isCorrect ? question.points : 0;

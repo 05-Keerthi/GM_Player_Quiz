@@ -54,6 +54,13 @@ module.exports = (io) => {
     //   callback({ success: true });
     // });
 
+    // Emit updates when an answer is submitted
+    socket.on('answer-submitted', ({ sessionId, answerDetails }, callback) => {
+        console.log(`Answer submitted in session ${sessionId}`);
+        io.to(sessionId).emit('answer-updated', answerDetails);
+        callback({ success: true });
+        });
+
     // Handle session ending
     socket.on('end-session', ({ sessionId }, callback) => {
       io.to(sessionId).emit('session-ended', { message: 'Session has ended' });
