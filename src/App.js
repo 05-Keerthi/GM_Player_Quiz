@@ -15,6 +15,9 @@ import QuizList from "./components/QuizList";
 
 import QuizCreator from "./pages/quizCreator";
 import QuizDetails from "./pages/QuizDetails";
+import Lobby from "./pages/Session/AdminLobby";
+import JoinQuiz from "./pages/Session/JoinQuiz";
+import UserLobby from "./pages/Session/UserLobby";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -71,9 +74,11 @@ export default function App() {
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
 
-
         {/* Admin routes */}
         <Route path="/quiz-details" element={<QuizDetails />} />
+        <Route path="/lobby" element={<Lobby />} />
+        <Route path="/join" element={<JoinQuiz />} />
+        <Route path="/user-lobby" element={<UserLobby />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />

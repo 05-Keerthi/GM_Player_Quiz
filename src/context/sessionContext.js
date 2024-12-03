@@ -38,7 +38,10 @@ export const SessionProvider = ({ children }) => {
       console.log("Create Session", response.data);
       dispatch({
         type: SESSION_ACTIONS.CREATE_SESSION_SUCCESS,
-        payload: response.data,
+        payload: {
+          ...response.data,
+          qrCodeImageUrl: response.data.qrCodeImageUrl,
+        },
       });
       return response.data;
     } catch (error) {
@@ -52,12 +55,11 @@ export const SessionProvider = ({ children }) => {
     }
   };
 
-  const joinSession = async (joinCode, sessionId) => {
+  const joinSession = async (joinCode) => {
     dispatch({ type: SESSION_ACTIONS.JOIN_SESSION_START });
     try {
-      const response = await api.post(
-        `/sessions/${joinCode}/${sessionId}/join`
-      );
+      // Changed URL to match the route defined in sessionRoutes.js
+      const response = await api.post(`/sessions/${joinCode}/join`);
       dispatch({
         type: SESSION_ACTIONS.JOIN_SESSION_SUCCESS,
         payload: response.data,
@@ -82,7 +84,10 @@ export const SessionProvider = ({ children }) => {
       );
       dispatch({
         type: SESSION_ACTIONS.GET_PLAYERS_SUCCESS,
-        payload: response.data,
+        payload: {
+          players: response.data.players,
+          playerCount: response.data.playerCount,
+        },
       });
       return response.data;
     } catch (error) {
@@ -104,7 +109,11 @@ export const SessionProvider = ({ children }) => {
       );
       dispatch({
         type: SESSION_ACTIONS.START_SESSION_SUCCESS,
-        payload: response.data,
+        payload: {
+          session: response.data.session,
+          questions: response.data.questions,
+          slides: response.data.slides,
+        },
       });
       return response.data;
     } catch (error) {
@@ -126,7 +135,10 @@ export const SessionProvider = ({ children }) => {
       );
       dispatch({
         type: SESSION_ACTIONS.GET_QUESTIONS_SUCCESS,
-        payload: response.data,
+        payload: {
+          questions: response.data.questions,
+          slides: response.data.slides,
+        },
       });
       return response.data;
     } catch (error) {
@@ -134,6 +146,56 @@ export const SessionProvider = ({ children }) => {
         error.response?.data?.message || "Failed to fetch questions";
       dispatch({
         type: SESSION_ACTIONS.GET_QUESTIONS_FAILURE,
+        payload: errorMessage,
+      });
+      throw error;
+    }
+  };
+
+  const getCurrentQuestion = async (joinCode, sessionId) => {
+    dispatch({ type: SESSION_ACTIONS.GET_CURRENT_QUESTION_START });
+    try {
+      const response = await api.get(
+        `/sessions/${joinCode}/${sessionId}/current-question`
+      );
+      dispatch({
+        type: SESSION_ACTIONS.GET_CURRENT_QUESTION_SUCCESS,
+        payload: response.data.currentQuestion,
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to fetch current question";
+      dispatch({
+        type: SESSION_ACTIONS.GET_CURRENT_QUESTION_FAILURE,
+        payload: errorMessage,
+      });
+      throw error;
+    }
+  };
+
+  const changeQuestion = async (
+    joinCode,
+    sessionId,
+    questionId,
+    questionData
+  ) => {
+    dispatch({ type: SESSION_ACTIONS.CHANGE_QUESTION_START });
+    try {
+      const response = await api.put(
+        `/sessions/${joinCode}/${sessionId}/questions/${questionId}`,
+        questionData
+      );
+      dispatch({
+        type: SESSION_ACTIONS.CHANGE_QUESTION_SUCCESS,
+        payload: response.data.question,
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to change question";
+      dispatch({
+        type: SESSION_ACTIONS.CHANGE_QUESTION_FAILURE,
         payload: errorMessage,
       });
       throw error;
@@ -171,6 +233,8 @@ export const SessionProvider = ({ children }) => {
     getSessionPlayers,
     startSession,
     getSessionQuestions,
+    getCurrentQuestion,
+    changeQuestion,
     endSession,
     clearError,
   };

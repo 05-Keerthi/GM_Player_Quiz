@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuizContext } from "../context/quizContext";
+import { useSessionContext } from "../context/sessionContext";
 import { PlayCircle } from "lucide-react";
 import Navbar from "../components/NavbarComp";
 
@@ -8,6 +9,7 @@ const QuizDetails = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentQuiz, getQuizById } = useQuizContext();
+  const { createSession, loading, error } = useSessionContext();
   const quizId = searchParams.get("quizId");
   const hostId = searchParams.get("hostId");
 
@@ -17,6 +19,16 @@ const QuizDetails = () => {
     }
   }, [quizId]);
 
+  const handleStartQuiz = async () => {
+    try {
+      const sessionData = await createSession(quizId);
+      // Assuming the session data includes the necessary information
+      navigate(`/lobby?quizId=${quizId}`);
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      // You might want to show an error message to the user here
+    }
+  };
 
   if (!currentQuiz) {
     return (
@@ -60,11 +72,23 @@ const QuizDetails = () => {
 
           <div className="flex justify-center">
             <button
-              className={`flex items-center gap-2 px-8 py-4  text-white rounded-lg text-lg font-semibold transform transition`}
+              onClick={handleStartQuiz}
+              disabled={loading}
+              className={`flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold transform transition 
+                ${
+                  loading
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-blue-700 active:scale-95"
+                }`}
             >
               <PlayCircle className="w-6 h-6" />
+              {loading ? "Starting..." : "Host Live"}
             </button>
           </div>
+
+          {error && (
+            <div className="mt-4 text-center text-red-600">{error}</div>
+          )}
         </div>
       </div>
     </div>

@@ -100,7 +100,7 @@ export default function HomePage() {
             description: "Participate in exciting quizzes",
             buttonText: "Join Now",
             buttonColor: "bg-green-500 hover:bg-green-600",
-            path: "/join-quiz",
+            path: "/join",
           },
         ];
       default:
