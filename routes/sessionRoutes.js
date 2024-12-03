@@ -16,7 +16,7 @@ const {
 router.post('/sessions/:quizId/publiz', auth, isAdmin, createSession);
 
 // Join a session
-router.post('/sessions/:joinCode/:sessionId/join', auth, joinSession);
+router.post('/sessions/:joinCode/join', auth, joinSession);
 
 // Get players who joined a session
 router.get('/sessions/:joinCode/:sessionId/players', auth, isAdmin, getSessionPlayers);

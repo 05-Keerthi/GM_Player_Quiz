@@ -58,12 +58,12 @@ exports.createSession = async (req, res) => {
 
 // join a session(user)
 exports.joinSession = async (req, res) => {
-  const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId
+  const { joinCode } = req.params; // Extract joinCode only
   const userId = req.user._id;
 
   try {
-    // Find the session using both joinCode and sessionId
-    const session = await Session.findOne({ joinCode, _id: sessionId });
+    // Find the session using joinCode
+    const session = await Session.findOne({ joinCode });
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -145,7 +145,7 @@ exports.startSession = async (req, res) => {
     }
 
     // Fetch both questions and slides
-    const questions = await Question.find({ quiz: session.quiz });
+    const questions = await Question.find({ _id: { $in: session.quiz.questions } });
     const slides = await Slide.find({ _id: { $in: session.quiz.slides } });
 
     session.status = 'in_progress';
