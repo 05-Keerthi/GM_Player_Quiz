@@ -25,20 +25,16 @@ router.get('/sessions/:joinCode/:sessionId/players', auth, isAdmin, getSessionPl
 router.post('/sessions/:joinCode/:sessionId/start', auth, isAdmin, startSession);
 
 // Fetch questions for a session
-router.get('/sessions/:joinCode/:sessionId/questions', auth, isAdmin, getSessionQuestions);
+router.get('/sessions/:joinCode/:sessionId/questions', auth, getSessionQuestions);
 
 // Route: Change a question in the session by joinCode, sessionId, and questionId
 router.post('/sessions/:joinCode/:sessionId/:questionId/change', auth, isAdmin, changeQuestionByCodeAndSession);
 
 // Route: Get the current question in the session by joinCode and sessionId
-router.get('/sessions/:joinCode/:sessionId/current-question', auth, isAdmin, getCurrentQuestionInSession);
-
+router.get('/sessions/:joinCode/:sessionId/current-question', auth,  getCurrentQuestionInSession);
 
 // End the session 
 router.post('/sessions/:joinCode/:sessionId/end', auth, isAdmin, endSession);
-
-
-
 
 module.exports = router;
 

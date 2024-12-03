@@ -5,6 +5,7 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const Media = require('../models/Media');
 
+// create a new session for quiz
 exports.createSession = async (req, res) => {
   const { quizId } = req.params;
   const hostId = req.user._id;
@@ -54,7 +55,7 @@ exports.createSession = async (req, res) => {
 };
 
 
-
+// join a session(user)
 exports.joinSession = async (req, res) => {
   const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId
   const userId = req.user._id;
@@ -93,6 +94,7 @@ exports.joinSession = async (req, res) => {
   }
 };
 
+// get the players list for the session
 exports.getSessionPlayers = async (req, res) => {
   const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId
 
@@ -126,6 +128,8 @@ exports.getSessionPlayers = async (req, res) => {
   }
 };
 
+
+// start the session
 exports.startSession = async (req, res) => {
   const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
 
@@ -187,8 +191,7 @@ exports.startSession = async (req, res) => {
 };
 
 
-
-
+// get the session questions
 exports.getSessionQuestions = async (req, res) => {
   const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
 
@@ -281,6 +284,10 @@ exports.changeQuestionByCodeAndSession = async (req, res) => {
       }
     }
 
+    // Update session's currentQuestion field after changing the question
+   session.currentQuestion = question._id;
+   await session.save();
+
     // Return the updated question with the full image URL
     res.status(200).json({
       message: 'Question changed successfully',
@@ -296,37 +303,37 @@ exports.changeQuestionByCodeAndSession = async (req, res) => {
 };
 
 
-
-
-
+// get the current question for the user 
 exports.getCurrentQuestionInSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
     // Find the session by joinCode and sessionId
-    const session = await Session.findOne({ joinCode, _id: sessionId }).populate('questions');
+    const session = await Session.findOne({ joinCode, _id: sessionId })
+      .populate('questions') // Populate questions
+      .populate('currentQuestion'); // Populate currentQuestion
+
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
 
-    // Ensure the session is in progress and has questions
+    // Ensure the session is in progress
     if (session.status !== 'in_progress') {
       return res.status(400).json({ message: 'Session is not in progress' });
     }
 
-    // Find the current question in the session (assumed to be the first question in the array for this example)
-    const currentQuestion = session.questions[0]; // Adjust this logic based on your session flow (e.g., based on time or a current question flag)
-
-    if (!currentQuestion) {
-      return res.status(404).json({ message: 'No questions found in session' });
+    // Check if the session has a current question
+    if (!session.currentQuestion) {
+      return res.status(404).json({ message: 'Current question not found in session' });
     }
+
+    const currentQuestion = session.currentQuestion.toObject();
 
     // Construct the full image URL if the current question has an imageUrl
     let fullImageUrl = null;
     if (currentQuestion.imageUrl) {
       const media = await Media.findById(currentQuestion.imageUrl); // Find the media by its ObjectId
       if (media && media.path) {
-        // Construct the full URL, encoding spaces and normalizing slashes
         const baseUrl = `${req.protocol}://${req.get('host')}/`;
         const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
         fullImageUrl = `${baseUrl}${encodedPath.split('/').pop()}`;
@@ -336,7 +343,7 @@ exports.getCurrentQuestionInSession = async (req, res) => {
     // Return the current question with the full image URL
     res.status(200).json({
       currentQuestion: {
-        ...currentQuestion.toObject(),
+        ...currentQuestion,
         imageUrl: fullImageUrl, // Return the full URL instead of the ObjectId
       },
     });
@@ -346,9 +353,7 @@ exports.getCurrentQuestionInSession = async (req, res) => {
   }
 };
 
-
-
-
+// end the session
 exports.endSession = async (req, res) => {
   const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
 
