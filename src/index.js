@@ -9,6 +9,7 @@ import { PasswordResetProvider } from "./context/passwordResetContext";
 import { TenantProvider } from "./context/TenantContext";
 import { CategoryProvider } from "./context/categoryContext";
 import { QuizProvider } from "./context/quizContext";
+import { SessionProvider } from "./context/sessionContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -18,9 +19,11 @@ root.render(
         <TenantProvider>
           <CategoryProvider>
             <QuizProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
+              <SessionProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </SessionProvider>
             </QuizProvider>
           </CategoryProvider>
         </TenantProvider>
