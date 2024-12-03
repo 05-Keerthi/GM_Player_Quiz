@@ -165,6 +165,7 @@
 // export default QuizList;
 
 import React, { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { useNavigate } from "react-router-dom";
 import { useQuizContext } from "../context/quizContext";
 import {
@@ -181,7 +182,6 @@ import {
 import { toast } from "react-toastify";
 import Navbar from "./NavbarComp";
 import ConfirmationModal from "../models/ConfirmationModal";
-import { useAuthContext } from "../context/AuthContext";
 
 const QuizStatusBadge = ({ status }) => {
   const statusColors = {
@@ -203,21 +203,24 @@ const QuizStatusBadge = ({ status }) => {
 
 const QuizList = () => {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
   const { quizzes, getAllQuizzes, deleteQuiz, publishQuiz, closeQuiz } =
     useQuizContext();
   const [filter, setFilter] = useState("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
+  const [filteredQuizList, setFilteredQuizList] = useState([]);
 
   useEffect(() => {
     getAllQuizzes();
   }, []);
 
-  const filteredQuizzes = quizzes.filter((quiz) => {
-    if (filter === "all") return true;
-    return quiz.status === filter;
-  });
+  useEffect(() => {
+    const filtered = quizzes.filter((quiz) => {
+      if (filter === "all") return true;
+      return quiz.status === filter;
+    });
+    setFilteredQuizList(filtered);
+  }, [quizzes, filter]);
 
   const handleEditQuiz = (quizId) => {
     navigate(`/createQuiz/${quizId}`);
@@ -240,19 +243,110 @@ const QuizList = () => {
 
   const handlePublishQuiz = async (quizId) => {
     try {
-      const response = await publishQuiz(quizId, user.id);
-
-      navigate(`/quiz-details?quizId=${quizId}&hostId=${user.id}`);
+      await publishQuiz(quizId);
+      toast.success("Quiz published successfully!");
+      await getAllQuizzes();
     } catch (error) {
-      toast.error("Failed to publish quiz. Please try again.");
-      console.error("Error publishing quiz:", error);
+      toast.error("Failed to publish quiz");
+      console.error(error);
     }
   };
 
   const handleCloseQuiz = async (quizId) => {
-    await closeQuiz(quizId);
+    try {
+      await closeQuiz(quizId);
+      toast.success("Quiz closed successfully!");
+      await getAllQuizzes();
+    } catch (error) {
+      toast.error("Failed to close quiz");
+      console.error(error);
+    }
   };
 
+  // const handleDragEnd = async (result) => {
+  //   const { source, destination, draggableId } = result;
+  
+  //   if (!destination) return;
+  
+  //   // Check if the source and destination are the same, in which case no action is needed
+  //   if (source.droppableId === destination.droppableId) return;
+  
+  //   const statusMap = {
+  //     draft: "draft",
+  //     active: "active",
+  //     closed: "closed",
+  //   };
+  
+  //   // Get the new status from the destination
+  //   const newStatus = statusMap[destination.droppableId];
+  
+  //   if (newStatus) {
+  //     try {
+  //       if (newStatus === "draft") {
+  //         // Use the method from quizContext to move back to draft
+  //         await publishQuiz(draggableId, "draft");
+  //         toast.success("Quiz moved back to draft successfully!");
+  //       } else if (newStatus === "active") {
+  //         await publishQuiz(draggableId);
+  //         toast.success("Quiz published successfully!");
+  //       } else if (newStatus === "closed") {
+  //         await closeQuiz(draggableId);
+  //         toast.success("Quiz closed successfully!");
+  //       }
+  
+  //       // Update quizzes after status change
+  //       await getAllQuizzes();
+  //     } catch (error) {
+  //       toast.error("Failed to update quiz status");
+  //       console.error(error);
+  //     }
+  //   }
+  // };
+  const handleDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+  
+    if (!destination) return;
+  
+    // Check if the source and destination are the same
+    if (source.droppableId === destination.droppableId) return;
+  
+    const statusMap = {
+      draft: "draft",
+      active: "active",
+      closed: "closed",
+    };
+  
+    const newStatus = statusMap[destination.droppableId];
+  
+    if (newStatus) {
+      try {
+        if (newStatus === "draft") {
+          // Assume we have some condition to check if moving to draft is not allowed
+          const isAllowedToDraft = false; // Replace with actual logic if applicable
+  
+          if (!isAllowedToDraft) {
+            toast.error("Cannot move quiz back to draft.");
+            return;
+          }
+  
+          await publishQuiz(draggableId, "draft");
+          toast.success("Quiz moved back to draft successfully!");
+        } else if (newStatus === "active") {
+          await publishQuiz(draggableId);
+          toast.success("Quiz published successfully!");
+        } else if (newStatus === "closed") {
+          await closeQuiz(draggableId);
+          toast.success("Quiz closed successfully!");
+        }
+  
+        await getAllQuizzes();
+      } catch (error) {
+        toast.error("Failed to update quiz status");
+        console.error(error);
+      }
+    }
+  };
+  
   const quizStatusConfig = [
     {
       status: "all",
@@ -287,39 +381,34 @@ const QuizList = () => {
 
   return (
     <>
-      <>
-        <div className="fixed top-0 w-full z-50">
-          <Navbar />
-        </div>
-      </>
-      <>
-        <div className="flex bg-gray-100 min-h-screen pt-16">
-          {/* Sticky Sidebar */}
-          <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40">
-            <div className="sticky top-0 bg-white">
-              <h1 className="text-2xl font-bold text-gray-800 mb-6">
-                Quiz Filters
-              </h1>
-              <div className="space-y-2">
-                {quizStatusConfig.map(({ status, icon, color }) => (
-                  <button
-                    key={status}
-                    onClick={() => setFilter(status)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
-                      filter === status
-                        ? `${color} font-semibold`
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    {icon}
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </button>
-                ))}
-              </div>
+      <div className="fixed top-0 w-full z-50">
+        <Navbar />
+      </div>
+
+      <div className="flex bg-gray-100 min-h-screen pt-16">
+        <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40">
+          <div className="sticky top-0 bg-white">
+            <h1 className="text-2xl font-bold text-gray-800 mb-6">Quiz Filters</h1>
+            <div className="space-y-2">
+              {quizStatusConfig.map(({ status, icon, color }) => (
+                <button
+                  key={status}
+                  onClick={() => setFilter(status)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
+                    filter === status
+                      ? `${color} font-semibold`
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {icon}
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
             </div>
           </div>
+        </div>
 
-          {/* Main Content */}
+        <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 ml-64 p-8">
             <div className="sticky top-16 z-30 flex justify-between items-center mb-6 bg-gray-100 p-5">
               <h1 className="text-2xl font-bold text-gray-800">My Quizzes</h1>
@@ -332,81 +421,113 @@ const QuizList = () => {
               </button>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredQuizzes.map((quiz, index) => (
-                <div
-                  key={quiz._id}
-                  className={`${quizCardColors[index % quizCardColors.length]} 
-                border rounded-xl p-6 shadow-md hover:shadow-xl transition-all 
-                transform hover:-translate-y-2 relative overflow-hidden`}
-                >
-                  <div className="absolute top-0 right-0 p-2">
-                    <QuizStatusBadge status={quiz.status} />
-                  </div>
-
-                  <h2 className="text-xl font-bold mb-3 text-gray-800">
-                    {quiz.title}
-                  </h2>
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {quiz.description}
-                  </p>
-
-                  <div className="flex justify-between items-center mt-4">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <ListChecks className="w-5 h-5" />
-                      <span>{quiz.questions?.length || 0} Questions</span>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditQuiz(quiz._id)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit Quiz"
+            <div className="grid grid-cols-3 gap-6">
+              {["draft", "active", "closed"].map((status) =>
+                filter === "all" || filter === status ? (
+                  <Droppable key={status} droppableId={status}>
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="bg-white rounded-lg shadow-md p-4"
                       >
-                        <FileEdit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteQuiz(e, quiz._id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete Quiz"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
+                        <h2 className="text-lg font-semibold mb-4 capitalize">
+                          {status} Quizzes
+                        </h2>
+                        {filteredQuizList
+                          .filter((quiz) => quiz.status === status)
+                          .map((quiz, index) => (
+                            <Draggable
+                              key={quiz._id}
+                              draggableId={quiz._id}
+                              index={index}
+                            >
+                              {(provided) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`${
+                                    quizCardColors[index % quizCardColors.length]
+                                  } border rounded-xl p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden`}
+                                >
+                                  <div className="absolute top-0 right-0 p-2">
+                                    <QuizStatusBadge status={quiz.status} />
+                                  </div>
 
-                  <div className="mt-4 border-t pt-3">
-                    {quiz.status === "draft" && (
-                      <button
-                        onClick={() => handlePublishQuiz(quiz._id)}
-                        className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
-                      >
-                        <CheckSquare className="w-4 h-4" />
-                        Publish Quiz
-                      </button>
+                                  <h2 className="text-xl font-bold mb-3 text-gray-800">
+                                    {quiz.title}
+                                  </h2>
+                                  <p className="text-gray-600 mb-4 line-clamp-3">
+                                    {quiz.description}
+                                  </p>
+
+                                  <div className="flex justify-between items-center mt-4">
+                                    <div className="flex items-center gap-2 text-gray-700">
+                                      <ListChecks className="w-5 h-5" />
+                                      <span>{quiz.questions?.length || 0} Questions</span>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleEditQuiz(quiz._id)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        title="Edit Quiz"
+                                      >
+                                        <FileEdit className="w-5 h-5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => handleDeleteQuiz(e, quiz._id)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete Quiz"
+                                      >
+                                        <Trash2 className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 border-t pt-3">
+                                    {quiz.status === "draft" && (
+                                      <button
+                                        onClick={() => handlePublishQuiz(quiz._id)}
+                                        className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
+                                      >
+                                        <CheckSquare className="w-4 h-4" />
+                                        Publish Quiz
+                                      </button>
+                                    )}
+                                    {quiz.status === "active" && (
+                                      <button
+                                        onClick={() => handleCloseQuiz(quiz._id)}
+                                        className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
+                                      >
+                                        <Lock className="w-4 h-4" />
+                                        Close Quiz
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                        {provided.placeholder}
+                      </div>
                     )}
-                    {quiz.status === "active" && (
-                      <button
-                        onClick={() => handleCloseQuiz(quiz._id)}
-                        className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
-                      >
-                        <Lock className="w-4 h-4" />
-                        Close Quiz
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  </Droppable>
+                ) : null
+              )}
             </div>
 
-            {filteredQuizzes.length === 0 && (
+            {filteredQuizList.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 No quizzes found for this status.
               </div>
             )}
           </div>
-        </div>
-        <ConfirmationModal
+        </DragDropContext>
+      </div>
+
+      <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => {
             setShowDeleteModal(false);
@@ -415,10 +536,13 @@ const QuizList = () => {
           onConfirm={handleConfirmDelete}
           title="Delete Quiz"
           message="Are you sure you want to delete this quiz? This action cannot be undone."
-        />
-      </>
+          />
     </>
   );
 };
 
 export default QuizList;
+
+
+
+
