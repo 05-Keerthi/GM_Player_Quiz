@@ -913,13 +913,11 @@ const QuizCreator = () => {
         }
       );
 
-<<<<<<< HEAD
 
-=======
       if (!response.ok) {
         throw new Error(`Failed to delete slide: ${response.statusText}`);
       }
->>>>>>> 4b6f3a135118c14339bc8d0d94f465274b24311d
+
 
       setSlides((prevSlides) =>
         prevSlides.filter((s) => s._id !== itemToDelete)
