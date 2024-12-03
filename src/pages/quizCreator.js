@@ -560,7 +560,7 @@
 //               {/* <div className="md:col-span-1">
 //                 <div className="bg-white rounded-lg shadow-sm p-4">
 //                   <h2 className="font-medium text-lg mb-4">Slides</h2>
-
+             
 //                 </div>
 //               </div> */}
 
@@ -646,6 +646,7 @@
 // };
 
 // export default QuizCreator;
+
 
 import React, { useState, useEffect } from "react";
 import {
@@ -778,7 +779,7 @@ const QuizCreator = () => {
   const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
-
+  
       const response = await authenticatedFetch(
         `http://localhost:5000/api/quizzes/${quizId}/slides`,
         {
@@ -792,16 +793,28 @@ const QuizCreator = () => {
           }),
         }
       );
-
+  
       if (!response.ok) {
         throw new Error(`Failed to add slide: ${response.statusText}`);
       }
-
+  
       const newSlide = await response.json();
-      setSlides((prevSlides) => [...prevSlides, newSlide]);
-      setCurrentSlide(newSlide);
-
+  
+      // Update the state immediately with the new slide
+      const slideWithId = {
+        ...newSlide,
+        id: newSlide.id || newSlide._id,
+      };
+  
+      setSlides((prevSlides) => [...prevSlides, slideWithId]);
+      setCurrentSlide(slideWithId);
+  
+      // Optionally log the new slide for debugging
+      console.log("New slide added:", slideWithId);
+  
+      // Fetch updated slides from the server to ensure complete sync
       await refreshSlides();
+  
       setIsAddSlideOpen(false);
       showAlert("Slide added successfully", "success");
     } catch (err) {
@@ -811,7 +824,7 @@ const QuizCreator = () => {
       setLoading(false);
     }
   };
-
+  
   // Define the refreshSlides function outside the handleAddSlide function
   const refreshSlides = async () => {
     try {
@@ -827,120 +840,134 @@ const QuizCreator = () => {
       console.error("Error refreshing slides:", err);
     }
   };
+  
+  
+ // Optimized handleUpdateSlide
+const handleUpdateSlide = async (slideId, updatedData) => {
+  const previousSlides = [...slides]; 
+  let imageId = null;
 
-  // Optimized handleUpdateSlide
-  const handleUpdateSlide = async (slideId, updatedData) => {
-    const previousSlides = [...slides];
-    let imageId = null;
+  try {
+    setLoading(true); // Show loading spinner if applicable
+    
+    // Handle image upload if imageFile exists in updatedData
+    if (updatedData.imageFile) {
+      imageId = await handleImageUpload(updatedData.imageFile);
+    }
 
-    try {
-      setLoading(true);
+    const updatePayload = {
+      ...updatedData,
+      imageUrl: imageId || updatedData.imageUrl, // Use new or old image URL
+    };
 
-      if (updatedData.imageFile) {
-        imageId = await handleImageUpload(updatedData.imageFile);
+    const response = await authenticatedFetch(
+      `http://localhost:5000/api/slides/${slideId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatePayload),
       }
+    );
 
-      const updatePayload = {
-        ...updatedData,
-        imageUrl: imageId || updatedData.imageUrl,
-      };
+    if (!response.ok) {
+      throw new Error(`Failed to update slide: ${response.statusText}`);
+    }
 
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${slideId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatePayload),
-        }
-      );
+    const result = await response.json();
+    const { updatedFields, message } = result; // Ensure this matches response from the server
 
-      if (!response.ok) {
-        throw new Error(`Failed to update slide: ${response.statusText}`);
+    // Update slide in state
+    setSlides((prevSlides) =>
+      prevSlides.map((slide) =>
+        slide._id === slideId
+          ? { ...slide, ...updatedFields }
+          : slide
+      )
+    );
+
+    setCurrentSlide({
+      ...updatedFields,
+      id: updatedFields.id || slideId,
+    });
+
+    showAlert(message || "Slide updated successfully", "success");
+  } catch (error) {
+    setSlides(previousSlides); // Rollback state on failure
+    handleApiError(error);
+  } finally {
+    setLoading(false); // Hide loading spinner
+  }
+};
+
+// Optimized handleDeleteSlide
+const handleDeleteSlide = (e, slideId) => {
+  e.stopPropagation();
+
+  const normalizedId = slideId?._id || slideId?.id || slideId;
+  if (!normalizedId) {
+    showAlert("Invalid slide ID", "error");
+    return;
+  }
+
+  setItemToDelete(normalizedId);
+  setShowDeleteSlideModal(true); // Show confirmation modal
+};
+
+const handleConfirmDeleteSlide = async () => {
+  if (!itemToDelete) {
+    showAlert("No slide selected for deletion", "error");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await authenticatedFetch(
+      `http://localhost:5000/api/slides/${itemToDelete}`,
+      {
+        method: "DELETE",
       }
+    );
 
-      const result = await response.json();
-      const { updatedFields, message } = result;
+<<<<<<< HEAD
 
-      setSlides((prevSlides) =>
-        prevSlides.map((slide) =>
-          slide._id === slideId ? { ...slide, ...updatedFields } : slide
-        )
-      );
-
-      setCurrentSlide({
-        ...updatedFields,
-        _id: slideId,
-      });
-
-      showAlert(message || "Slide updated successfully", "success");
-    } catch (error) {
-      setSlides(previousSlides);
-      handleApiError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Optimized handleDeleteSlide
-  const handleDeleteSlide = (e, slideId) => {
-    e.stopPropagation();
-
-    const normalizedId = slideId?._id || slideId;
-    if (!normalizedId) {
-      showAlert("Invalid slide ID", "error");
-      return;
-    }
-
-    setItemToDelete(normalizedId);
-    setShowDeleteSlideModal(true);
-  };
-
-  const handleConfirmDeleteSlide = async () => {
-    if (!itemToDelete) {
-      showAlert("No slide selected for deletion", "error");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${itemToDelete}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-
+=======
       if (!response.ok) {
         throw new Error(`Failed to delete slide: ${response.statusText}`);
       }
+>>>>>>> 4b6f3a135118c14339bc8d0d94f465274b24311d
 
+    // Optimistically update state to remove the deleted slide
+    setSlides((prevSlides) => prevSlides.filter((s) => s._id !== itemToDelete));
 
-      setSlides((prevSlides) =>
-        prevSlides.filter((s) => s._id !== itemToDelete)
-      );
-
-      if (currentSlide?._id === itemToDelete) {
-        setCurrentSlide(null);
-      }
-
-      await refreshSlides();
-      showAlert("Slide deleted successfully", "success");
-    } catch (err) {
-      console.error("Error deleting slide:", err);
-      showAlert(err.message || "Failed to delete slide", "error");
-    } finally {
-      setLoading(false);
-      setShowDeleteSlideModal(false);
-      setItemToDelete(null);
+    // Clear the current slide if it matches the deleted one
+    if (currentSlide?._id === itemToDelete) {
+      setCurrentSlide(null);
     }
-  };
 
-  // Refresh slides function
+    // Fetch updated slides from the server to ensure complete synchronization
+    await refreshSlides();
 
+    showAlert("Slide deleted successfully", "success");
+  } catch (err) {
+    console.error("Error deleting slide:", err);
+    showAlert(err.message || "Failed to delete slide", "error");
+  } finally {
+    setLoading(false);
+    setShowDeleteSlideModal(false); // Close the delete confirmation modal
+    setItemToDelete(null); // Clear the selected slide for deletion
+  }
+};
+
+
+
+
+    
+
+
+  
   const handleAddQuestion = async (questionData) => {
     try {
       setLoading(true);
@@ -1119,25 +1146,23 @@ const QuizCreator = () => {
         showAlert("Invalid quiz ID");
         return;
       }
-
+  
       try {
         setLoading(true);
-        const quizResponse = await authenticatedFetch(
-          `http://localhost:5000/api/quizzes/${quizId}`
-        );
+        const quizResponse = await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`);
         const quizData = await quizResponse.json();
-
+  
         setQuiz({
           title: quizData.title || "",
           description: quizData.description || "",
         });
-
+        
         // Normalize slides to ensure consistent ID
-        const normalizedSlides = (quizData.slides || []).map((slide) => ({
+        const normalizedSlides = (quizData.slides || []).map(slide => ({
           ...slide,
-          id: slide._id || slide.id,
+          id: slide._id || slide.id
         }));
-
+        
         setSlides(normalizedSlides);
         setQuestions(quizData.questions || []);
       } catch (err) {
@@ -1147,18 +1172,19 @@ const QuizCreator = () => {
         setLoading(false);
       }
     };
-
+    
     loadQuizData();
   }, [quizId, navigate]);
+
 
   const handleReorderQuestions = (sourceIndex, targetIndex) => {
     if (sourceIndex === targetIndex) return;
 
     const reorderedQuestions = [...questions];
-
+    
     // Remove the question from its original position
     const [movedQuestion] = reorderedQuestions.splice(sourceIndex, 1);
-
+    
     // Insert the question at the new position
     reorderedQuestions.splice(targetIndex, 0, movedQuestion);
 
@@ -1234,20 +1260,14 @@ const QuizCreator = () => {
                         key={question.id || question._id}
                         draggable
                         onDragStart={(e) => {
-                          e.dataTransfer.setData(
-                            "text/plain",
-                            index.toString()
-                          );
+                          e.dataTransfer.setData('text/plain', index.toString());
                         }}
                         onDragOver={(e) => {
                           e.preventDefault(); // Allow dropping
                         }}
                         onDrop={(e) => {
                           e.preventDefault();
-                          const sourceIndex = parseInt(
-                            e.dataTransfer.getData("text/plain"),
-                            10
-                          );
+                          const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
                           handleReorderQuestions(sourceIndex, index);
                         }}
                         className={`p-3 rounded-lg cursor-move transition-colors ${
@@ -1256,10 +1276,11 @@ const QuizCreator = () => {
                             ? "bg-blue-50 border-2 border-blue-500"
                             : "hover:bg-gray-50 border border-gray-200"
                         }`}
-                        onClick={() => {
-                          setCurrentQuestion(question);
-                          setCurrentSlide(null);
-                        }}
+                       onClick={()=>{
+                        setCurrentQuestion(question);
+                        setCurrentSlide(null)
+                       }}
+
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">
@@ -1286,21 +1307,22 @@ const QuizCreator = () => {
                   <div className="space-y-2">
                     {slides.map((slide, index) => (
                       <div
-                        key={slide._id}
+                        key={slide.id}
                         className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          currentSlide?._id === slide._id
+                          currentSlide?.id === slide.id
                             ? "bg-blue-50 border-2 border-blue-500"
                             : "hover:bg-gray-50 border border-gray-200"
                         }`}
-                        onClick={() => {
-                          setCurrentSlide(slide);
+                        onClick={()=>{
+                          setCurrentSlide(slide)
                           setCurrentQuestion(null);
-                        }}
+                        
+                       }}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Slide {index + 1}</span>
                           <button
-                            onClick={(e) => handleDeleteSlide(e, slide._id)}
+                            onClick={(e) => handleDeleteSlide(e, slide.id)}
                             className="p-1 text-gray-400 hover:text-red-500 rounded-full"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1327,46 +1349,51 @@ const QuizCreator = () => {
                 </div>
               </div>
 
-              {/* Question and Slide Editor Container */}
-              <div className="md:col-span-2">
-                <AnimatePresence>
-                  {currentQuestion ? (
-                    // Render the QuestionEditor if there's a current question
-                    <QuestionEditor
-                      question={currentQuestion}
-                      onUpdate={(updatedData) =>
-                        handleUpdateQuestion(
-                          currentQuestion.id || currentQuestion._id,
-                          updatedData
-                        )
-                      }
-                      onClose={() => setCurrentQuestion(null)}
-                    />
-                  ) : currentSlide ? (
-                    // Render the SlideEditor if there's a current slide
-                    <SlideEditor
-                      slide={currentSlide}
-                      onUpdate={(updatedData) =>
-                        handleUpdateSlide(currentSlide._id, updatedData)
-                      }
-                      onClose={() => setCurrentSlide(null)}
-                    />
-                  ) : (
-                    // Show placeholder message when no editor is selected
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500"
-                    >
-                      Select a question or slide to edit or create a new one
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+
+            {/* Question and Slide Editor Container */}
+<div className="md:col-span-2">
+  <AnimatePresence>
+    {currentQuestion ? (
+      // Render the QuestionEditor if there's a current question
+      <QuestionEditor
+        question={currentQuestion}
+        onUpdate={(updatedData) =>
+          handleUpdateQuestion(
+            currentQuestion.id || currentQuestion._id,
+            updatedData
+          )
+        }
+        onClose={() => setCurrentQuestion(null)}
+      />
+    ) : currentSlide ? (
+      // Render the SlideEditor if there's a current slide
+      <SlideEditor
+        slide={currentSlide}
+        onUpdate={(updatedData) =>
+          handleUpdateSlide(
+            currentSlide.id || currentSlide._id,
+            updatedData
+          )
+        }
+        onClose={() => setCurrentSlide(null)}
+      />
+    ) : (
+      // Show placeholder message when no editor is selected
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500"
+      >
+        Select a question or slide to edit or create a new one
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
+
             </div>
           </div>
-
+          
           {/* Add Question Modal */}
           <QuestionTypeModal
             isOpen={isAddQuestionOpen}
@@ -1390,7 +1417,8 @@ const QuizCreator = () => {
               title: quiz?.title || "",
               description: quiz?.description || "",
             }}
-          />
+          />  
+
 
           <ConfirmationModal
             isOpen={showDeleteQuestionModal}
