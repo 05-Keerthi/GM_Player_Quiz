@@ -4,6 +4,7 @@ const Question = require('../models/question');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 const Media = require('../models/Media');
+const Slide = require('../models/slide'); 
 
 // create a new session for quiz
 exports.createSession = async (req, res) => {
@@ -131,10 +132,9 @@ exports.getSessionPlayers = async (req, res) => {
 
 // start the session
 exports.startSession = async (req, res) => {
-  const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
+  const { joinCode, sessionId } = req.params;
 
   try {
-    // Find the session using both joinCode and sessionId
     const session = await Session.findOne({ joinCode, _id: sessionId }).populate('quiz');
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
@@ -144,17 +144,20 @@ exports.startSession = async (req, res) => {
       return res.status(400).json({ message: 'Session cannot be started' });
     }
 
+    // Fetch both questions and slides
     const questions = await Question.find({ quiz: session.quiz });
+    const slides = await Slide.find({ _id: { $in: session.quiz.slides } });
 
     session.status = 'in_progress';
     session.questions = questions.map((q) => q._id);
+    session.slides = slides.map((s) => s._id);
     session.startTime = Date.now();
     await session.save();
 
     // Construct Base URL
     const baseUrl = `${req.protocol}://${req.get('host')}/`;
 
-    // Process questions to include full image URLs with encoding
+    // Process questions to include full image URLs
     const questionsWithImageUrls = await Promise.all(
       questions.map(async (question) => {
         let fullImageUrl = null;
@@ -162,15 +165,34 @@ exports.startSession = async (req, res) => {
         if (question.imageUrl) {
           const media = await Media.findById(question.imageUrl);
           if (media && media.path) {
-            // Encode spaces and normalize slashes in the media path
             const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
 
         return {
-          ...question.toObject(), // Convert the Mongoose document to a plain object
-          imageUrl: fullImageUrl, // Replace ObjectId with the encoded full image URL
+          ...question.toObject(),
+          imageUrl: fullImageUrl,
+        };
+      })
+    );
+
+    // Process slides to include full image URLs
+    const slidesWithImageUrls = await Promise.all(
+      slides.map(async (slide) => {
+        let fullImageUrl = null;
+
+        if (slide.imageUrl) {
+          const media = await Media.findById(slide.imageUrl);
+          if (media && media.path) {
+            const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+            fullImageUrl = `${baseUrl}${encodedPath}`;
+          }
+        }
+
+        return {
+          ...slide.toObject(),
+          imageUrl: fullImageUrl,
         };
       })
     );
@@ -182,14 +204,14 @@ exports.startSession = async (req, res) => {
     res.status(200).json({
       message: 'Session started successfully',
       session,
-      questions: questionsWithImageUrls, // Return the questions with full encoded image URLs
+      questions: questionsWithImageUrls,
+      slides: slidesWithImageUrls, // Add slides to the response
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error starting the session', error });
   }
 };
-
 
 // get the session questions
 exports.getSessionQuestions = async (req, res) => {
