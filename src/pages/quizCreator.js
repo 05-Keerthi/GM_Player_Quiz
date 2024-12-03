@@ -66,6 +66,12 @@ const QuizCreator = () => {
   });
   const { quizId } = useParams();
   const navigate = useNavigate();
+  const handleReorderItems = (items, setItems, sourceIndex, destinationIndex) => {
+    const updatedItems = [...items];
+    const [movedItem] = updatedItems.splice(sourceIndex, 1);
+    updatedItems.splice(destinationIndex, 0, movedItem);
+    setItems(updatedItems);
+  };
 
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
@@ -633,19 +639,33 @@ const QuizCreator = () => {
                     ))}
                   </div>
                   <div className="space-y-2">
-                    {slides.map((slide, index) => (
-                      <div
-                        key={slide._id}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          currentSlide?._id === slide._id
-                            ? "bg-blue-50 border-2 border-blue-500"
-                            : "hover:bg-gray-50 border border-gray-200"
-                        }`}
-                        onClick={() => {
+                  <h2 className="font-medium text-lg mb-4 mt-4">Slides</h2>
+        {slides.map((slide, index) => (
+          <div
+            key={slide._id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", index.toString());
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const sourceIndex = parseInt(
+                e.dataTransfer.getData("text/plain"),
+                10
+              );
+              handleReorderItems(slides, setSlides, sourceIndex, index);
+            }}
+            className={`p-3 rounded-lg cursor-pointer transition-colors ${
+              currentSlide?._id === slide._id
+                ? "bg-blue-50 border-2 border-blue-500"
+                : "hover:bg-gray-50 border border-gray-200"
+            }`}
+            onClick={() => {
                           setCurrentSlide(slide);
                           setCurrentQuestion(null);
                         }}
-                      >
+          >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Slide {index + 1}</span>
                           <button
