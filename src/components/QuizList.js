@@ -178,6 +178,8 @@ import {
   Layers,
   PlayCircle,
   XCircle,
+  Menu,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import Navbar from "./NavbarComp";
@@ -211,6 +213,18 @@ const QuizList = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
   const [filteredQuizList, setFilteredQuizList] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+
+  // Check screen size and update isMobile state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     getAllQuizzes();
@@ -243,21 +257,9 @@ const QuizList = () => {
     }
   };
 
-  // const handlePublishQuiz = async (quizId) => {
-  //   try {
-  //     await publishQuiz(quizId);
-  //     toast.success("Quiz published successfully!");
-  //     await getAllQuizzes();
-  //   } catch (error) {
-  //     toast.error("Failed to publish quiz");
-  //     console.error(error);
-  //   }
-  // };
-
   const handlePublishQuiz = async (quizId) => {
     try {
       const response = await publishQuiz(quizId, user.id);
-
       navigate(`/quiz-details?quizId=${quizId}&hostId=${user.id}`);
     } catch (error) {
       toast.error("Failed to publish quiz. Please try again.");
@@ -276,45 +278,6 @@ const QuizList = () => {
     }
   };
 
-  // const handleDragEnd = async (result) => {
-  //   const { source, destination, draggableId } = result;
-
-  //   if (!destination) return;
-
-  //   // Check if the source and destination are the same, in which case no action is needed
-  //   if (source.droppableId === destination.droppableId) return;
-
-  //   const statusMap = {
-  //     draft: "draft",
-  //     active: "active",
-  //     closed: "closed",
-  //   };
-
-  //   // Get the new status from the destination
-  //   const newStatus = statusMap[destination.droppableId];
-
-  //   if (newStatus) {
-  //     try {
-  //       if (newStatus === "draft") {
-  //         // Use the method from quizContext to move back to draft
-  //         await publishQuiz(draggableId, "draft");
-  //         toast.success("Quiz moved back to draft successfully!");
-  //       } else if (newStatus === "active") {
-  //         await publishQuiz(draggableId);
-  //         toast.success("Quiz published successfully!");
-  //       } else if (newStatus === "closed") {
-  //         await closeQuiz(draggableId);
-  //         toast.success("Quiz closed successfully!");
-  //       }
-
-  //       // Update quizzes after status change
-  //       await getAllQuizzes();
-  //     } catch (error) {
-  //       toast.error("Failed to update quiz status");
-  //       console.error(error);
-  //     }
-  //   }
-  // };
   const handleDragEnd = async (result) => {
     const { source, destination, draggableId } = result;
 
@@ -399,16 +362,47 @@ const QuizList = () => {
       </div>
 
       <div className="flex bg-gray-100 min-h-screen pt-16">
-        <div className="w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40">
+        {/* Mobile Filter Toggle */}
+        {isMobile && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <button 
+              onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+              className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
+            >
+              {isFilterMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        )}
+
+        {/* Sidebar Filter - Responsive */}
+        <div className={`
+          ${isMobile 
+            ? `fixed inset-0 bg-white z-40 pt-16 transform transition-transform duration-300 ${
+                isFilterMenuOpen ? 'translate-x-0' : 'translate-x-full'
+              }` 
+            : `w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40`
+          }
+        `}>
           <div className="sticky top-0 bg-white">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">
-              Quiz Filters
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-800">Quiz Filters</h1>
+              {isMobile && (
+                <button 
+                  onClick={() => setIsFilterMenuOpen(false)}
+                  className="text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              )}
+            </div>
             <div className="space-y-2">
               {quizStatusConfig.map(({ status, icon, color }) => (
                 <button
                   key={status}
-                  onClick={() => setFilter(status)}
+                  onClick={() => {
+                    setFilter(status);
+                    isMobile && setIsFilterMenuOpen(false);
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
                     filter === status
                       ? `${color} font-semibold`
@@ -424,9 +418,9 @@ const QuizList = () => {
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex-1 ml-64 p-8">
-            <div className="sticky top-16 z-30 flex justify-between items-center mb-6 bg-gray-100 p-5">
-              <h1 className="text-2xl font-bold text-gray-800">My Quizzes</h1>
+          <div className={`flex-1 p-4 ${isMobile ? 'mt-0' : 'ml-64'}`}>
+            <div className="sticky top-16 z-30 flex flex-col sm:flex-row justify-between items-center mb-6 bg-gray-100 p-5">
+              <h1 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">My Quizzes</h1>
               <button
                 onClick={() => navigate("/select-category")}
                 className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
@@ -436,7 +430,12 @@ const QuizList = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
+            <div className={`
+              ${isMobile 
+                ? 'grid grid-cols-1 gap-4' 
+                : 'grid grid-cols-3 gap-6'
+              }
+            `}>
               {["draft", "active", "closed"].map((status) =>
                 filter === "all" || filter === status ? (
                   <Droppable key={status} droppableId={status}>
@@ -466,7 +465,7 @@ const QuizList = () => {
                                     quizCardColors[
                                       index % quizCardColors.length
                                     ]
-                                  } border rounded-xl p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden`}
+                                  } border rounded-xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden mb-4`}
                                 >
                                   <div className="absolute top-0 right-0 p-2">
                                     <QuizStatusBadge status={quiz.status} />
