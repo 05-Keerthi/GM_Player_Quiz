@@ -931,9 +931,13 @@ const handleConfirmDeleteSlide = async () => {
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`Failed to delete slide: ${response.statusText}`);
-    }
+<<<<<<< HEAD
+
+=======
+      if (!response.ok) {
+        throw new Error(`Failed to delete slide: ${response.statusText}`);
+      }
+>>>>>>> 4b6f3a135118c14339bc8d0d94f465274b24311d
 
     // Optimistically update state to remove the deleted slide
     setSlides((prevSlides) => prevSlides.filter((s) => s._id !== itemToDelete));
