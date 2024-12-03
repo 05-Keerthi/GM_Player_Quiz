@@ -726,7 +726,7 @@ const QuizCreator = () => {
     showAlert(error.message || "An error occurred");
     setLoading(false);
   };
-
+    
   const authenticatedFetch = async (url, options = {}) => {
     const token = localStorage.getItem("token");
 
@@ -957,7 +957,7 @@ const handleConfirmDeleteSlide = async () => {
   }
 };
 
-// Refresh slides function
+
 
 
     
