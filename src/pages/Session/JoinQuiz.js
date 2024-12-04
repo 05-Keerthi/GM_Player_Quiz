@@ -1,3 +1,4 @@
+// JoinQuiz.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
@@ -20,7 +21,6 @@ const JoinQuiz = () => {
 
     try {
       const response = await joinSession(joinCode);
-      // Store the session data and navigate
       if (response.session) {
         navigate(
           `/user-lobby?code=${joinCode}&sessionId=${response.session._id}`

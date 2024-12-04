@@ -9,7 +9,8 @@ const UserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [currentItemType, setCurrentItemType] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
   const { joinSession, loading } = useSessionContext();
@@ -31,16 +32,6 @@ const UserLobby = () => {
 
       newSocket.emit("join-session", { sessionId, joinCode });
 
-      newSocket.on("update-session", async (data) => {
-        console.log("Session update:", data);
-        try {
-          await joinSession(joinCode, sessionId);
-        } catch (err) {
-          console.error("Failed to join session:", err);
-        }
-      });
-
-      // Clean up socket connection
       return () => newSocket.disconnect();
     }
   }, [isAuthenticated, joinCode, sessionId]);
@@ -48,49 +39,52 @@ const UserLobby = () => {
   // Listen for game events
   useEffect(() => {
     if (socket) {
-      socket.on("session-started", () => {
-        console.log("Quiz started!");
+      socket.on("session-started", (data) => {
+        console.log("Session started data:", data);
+        if (data.questions && data.questions.length > 0) {
+          setCurrentItem(data.questions[0]);
+          setCurrentItemType("question");
+        } else if (data.slides && data.slides.length > 0) {
+          setCurrentItem(data.slides[0]);
+          setCurrentItemType("slide");
+        }
       });
 
-      socket.on("question-changed", ({ question }) => {
-        console.log("New question received:", question);
-        setCurrentQuestion(question);
+      socket.on("next-item", ({ type, item }) => {
+        console.log("Next item received:", { type, item });
+        setCurrentItem(item);
+        setCurrentItemType(type);
         setSelectedAnswer(null);
       });
 
       socket.on("session-ended", () => {
-        console.log("Quiz ended");
-        navigate("/results"); // Make sure you have a results route
+        navigate("/results");
       });
 
-      // Clean up event listeners
       return () => {
         socket.off("session-started");
-        socket.off("question-changed");
+        socket.off("next-item");
         socket.off("session-ended");
       };
     }
   }, [socket, navigate]);
 
-  const handleAnswerSubmit = async (answer) => {
-    setSelectedAnswer(answer);
-    try {
-      if (socket) {
-        socket.emit("answer-submitted", {
-          sessionId,
-          answerDetails: {
-            answer,
-            questionId: currentQuestion._id,
-            userId: localStorage.getItem("userId"),
-          },
-        });
-      }
-    } catch (err) {
-      console.error("Failed to submit answer:", err);
+  const handleAnswerSubmit = (option) => {
+    if (currentItemType !== "question" || selectedAnswer) return;
+
+    setSelectedAnswer(option);
+    if (socket) {
+      socket.emit("answer-submitted", {
+        sessionId,
+        answerDetails: {
+          answer: option.text,
+          questionId: currentItem._id,
+          userId: localStorage.getItem("userId"),
+        },
+      });
     }
   };
 
-  // Authentication check
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
@@ -122,7 +116,6 @@ const UserLobby = () => {
     );
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
@@ -134,8 +127,7 @@ const UserLobby = () => {
     );
   }
 
-  // Waiting for quiz to start
-  if (!currentQuestion) {
+  if (!currentItem) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
@@ -152,31 +144,55 @@ const UserLobby = () => {
     );
   }
 
-  // Quiz question display
   return (
     <div className="min-h-screen bg-purple-100 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-bold">{currentQuestion.question}</h2>
+          {currentItemType === "question" ? (
+            <>
+              <h2 className="text-xl font-bold">{currentItem.title}</h2>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt="Question"
+                  className="mt-4 rounded-lg w-full"
+                />
+              )}
+            </>
+          ) : (
+            <div>
+              <h2 className="text-xl font-bold mb-2">{currentItem.title}</h2>
+              <p className="text-gray-700">{currentItem.content}</p>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt={currentItem.title}
+                  className="mt-4 rounded-lg w-full"
+                />
+              )}
+            </div>
+          )}
         </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 gap-4">
-            {currentQuestion.options?.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={selectedAnswer !== null}
-                className={`h-24 text-lg rounded-lg border transition-colors ${
-                  selectedAnswer === option
-                    ? "bg-blue-100 border-blue-500 text-blue-700"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
+        {currentItemType === "question" && (
+          <div className="p-6">
+            <div className="grid grid-cols-2 gap-4">
+              {currentItem.options?.map((option) => (
+                <button
+                  key={option._id}
+                  onClick={() => handleAnswerSubmit(option)}
+                  disabled={selectedAnswer !== null}
+                  className={`h-24 text-lg rounded-lg border transition-colors ${
+                    selectedAnswer === option
+                      ? "bg-blue-100 border-blue-500 text-blue-700"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  {option.text}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

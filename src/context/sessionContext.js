@@ -9,7 +9,6 @@ import {
 
 const BASE_URL = "http://localhost:5000/api";
 
-// Create axios instance
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -17,7 +16,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to always get fresh token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -35,7 +33,6 @@ export const SessionProvider = ({ children }) => {
     dispatch({ type: SESSION_ACTIONS.CREATE_SESSION_START });
     try {
       const response = await api.post(`/sessions/${quizId}/publiz`);
-      console.log("Create Session", response.data);
       dispatch({
         type: SESSION_ACTIONS.CREATE_SESSION_SUCCESS,
         payload: {
@@ -58,7 +55,6 @@ export const SessionProvider = ({ children }) => {
   const joinSession = async (joinCode) => {
     dispatch({ type: SESSION_ACTIONS.JOIN_SESSION_START });
     try {
-      // Changed URL to match the route defined in sessionRoutes.js
       const response = await api.post(`/sessions/${joinCode}/join`);
       dispatch({
         type: SESSION_ACTIONS.JOIN_SESSION_SUCCESS,
@@ -70,31 +66,6 @@ export const SessionProvider = ({ children }) => {
         error.response?.data?.message || "Failed to join session";
       dispatch({
         type: SESSION_ACTIONS.JOIN_SESSION_FAILURE,
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const getSessionPlayers = async (joinCode, sessionId) => {
-    dispatch({ type: SESSION_ACTIONS.GET_PLAYERS_START });
-    try {
-      const response = await api.get(
-        `/sessions/${joinCode}/${sessionId}/players`
-      );
-      dispatch({
-        type: SESSION_ACTIONS.GET_PLAYERS_SUCCESS,
-        payload: {
-          players: response.data.players,
-          playerCount: response.data.playerCount,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to fetch players";
-      dispatch({
-        type: SESSION_ACTIONS.GET_PLAYERS_FAILURE,
         payload: errorMessage,
       });
       throw error;
@@ -127,75 +98,25 @@ export const SessionProvider = ({ children }) => {
     }
   };
 
-  const getSessionQuestions = async (joinCode, sessionId) => {
-    dispatch({ type: SESSION_ACTIONS.GET_QUESTIONS_START });
+  const nextQuestion = async (joinCode, sessionId) => {
+    dispatch({ type: SESSION_ACTIONS.NEXT_QUESTION_START });
     try {
-      const response = await api.get(
-        `/sessions/${joinCode}/${sessionId}/questions`
+      const response = await api.post(
+        `/sessions/${joinCode}/${sessionId}/next`
       );
       dispatch({
-        type: SESSION_ACTIONS.GET_QUESTIONS_SUCCESS,
+        type: SESSION_ACTIONS.NEXT_QUESTION_SUCCESS,
         payload: {
-          questions: response.data.questions,
-          slides: response.data.slides,
+          type: response.data.type,
+          item: response.data.item,
         },
       });
       return response.data;
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message || "Failed to fetch questions";
+        error.response?.data?.message || "Failed to get next question";
       dispatch({
-        type: SESSION_ACTIONS.GET_QUESTIONS_FAILURE,
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const getCurrentQuestion = async (joinCode, sessionId) => {
-    dispatch({ type: SESSION_ACTIONS.GET_CURRENT_QUESTION_START });
-    try {
-      const response = await api.get(
-        `/sessions/${joinCode}/${sessionId}/current-question`
-      );
-      dispatch({
-        type: SESSION_ACTIONS.GET_CURRENT_QUESTION_SUCCESS,
-        payload: response.data.currentQuestion,
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to fetch current question";
-      dispatch({
-        type: SESSION_ACTIONS.GET_CURRENT_QUESTION_FAILURE,
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const changeQuestion = async (
-    joinCode,
-    sessionId,
-    questionId,
-    questionData
-  ) => {
-    dispatch({ type: SESSION_ACTIONS.CHANGE_QUESTION_START });
-    try {
-      const response = await api.put(
-        `/sessions/${joinCode}/${sessionId}/questions/${questionId}`,
-        questionData
-      );
-      dispatch({
-        type: SESSION_ACTIONS.CHANGE_QUESTION_SUCCESS,
-        payload: response.data.question,
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to change question";
-      dispatch({
-        type: SESSION_ACTIONS.CHANGE_QUESTION_FAILURE,
+        type: SESSION_ACTIONS.NEXT_QUESTION_FAILURE,
         payload: errorMessage,
       });
       throw error;
@@ -230,11 +151,8 @@ export const SessionProvider = ({ children }) => {
     ...state,
     createSession,
     joinSession,
-    getSessionPlayers,
     startSession,
-    getSessionQuestions,
-    getCurrentQuestion,
-    changeQuestion,
+    nextQuestion,
     endSession,
     clearError,
   };
@@ -244,7 +162,6 @@ export const SessionProvider = ({ children }) => {
   );
 };
 
-// Custom Hook for using SessionContext
 export const useSessionContext = () => {
   const context = useContext(SessionContext);
   if (!context) {

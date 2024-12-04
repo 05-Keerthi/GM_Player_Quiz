@@ -21,12 +21,10 @@ const QuizDetails = () => {
 
   const handleStartQuiz = async () => {
     try {
-      const sessionData = await createSession(quizId);
-      // Assuming the session data includes the necessary information
+      await createSession(quizId);
       navigate(`/lobby?quizId=${quizId}`);
     } catch (error) {
       console.error("Failed to create session:", error);
-      // You might want to show an error message to the user here
     }
   };
 

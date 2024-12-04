@@ -1,8 +1,7 @@
-// AdminLobby.js
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../components/NavbarComp";
 
@@ -10,18 +9,15 @@ const AdminLobby = () => {
   const [searchParams] = useSearchParams();
   const [showPin, setShowPin] = useState(false);
   const [sessionData, setSessionData] = useState(null);
-  const [players, setPlayers] = useState([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
-  const [questions, setQuestions] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [currentItemType, setCurrentItemType] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [slides, setSlides] = useState([]);
+  const [players, setPlayers] = useState([]);
 
-  const {
-    createSession,
-    getSessionPlayers,
-    startSession,
-    getSessionQuestions,
-    loading,
-  } = useSessionContext();
+  const { createSession, startSession, nextQuestion, loading } =
+    useSessionContext();
 
   const quizId = searchParams.get("quizId");
 
@@ -38,26 +34,21 @@ const AdminLobby = () => {
     const initSession = async () => {
       try {
         const data = await createSession(quizId);
+        console.log("Session created:", data);
         setSessionData(data);
+
+        if (data.players) {
+          setPlayers(data.players);
+        }
 
         if (socket) {
           socket.emit("create-session", {
             sessionId: data._id,
             joinCode: data.joinCode,
           });
-
-          socket.on("session-created", (sessionInfo) => {
-            console.log("Session created:", sessionInfo);
-          });
         }
 
         setTimeout(() => setShowPin(true), 1000);
-
-        const questionsData = await getSessionQuestions(
-          data.joinCode,
-          data._id
-        );
-        setQuestions(questionsData.questions);
       } catch (error) {
         console.error("Failed to initialize session:", error);
       }
@@ -71,44 +62,76 @@ const AdminLobby = () => {
   // Listen for player updates
   useEffect(() => {
     if (socket && sessionData) {
-      socket.on("update-session", async () => {
-        try {
-          const response = await getSessionPlayers(
-            sessionData.joinCode,
-            sessionData._id
-          );
-          setPlayers(response?.players || []);
-        } catch (error) {
-          console.error("Failed to fetch players:", error);
-        }
+      socket.on("player-joined", (data) => {
+        console.log("Player joined:", data);
+        setPlayers((currentPlayers) => {
+          // Check the structure of the incoming data
+          const newPlayer = data.user || data; // Handle both possible structures
+          if (!newPlayer) return currentPlayers;
+
+          // Only add if player isn't already in the list
+          if (!currentPlayers.some((p) => p._id === newPlayer._id)) {
+            return [...currentPlayers, newPlayer];
+          }
+          return currentPlayers;
+        });
       });
 
-      socket.on("answer-updated", (answerDetails) => {
+      socket.on("player-left", (data) => {
+        console.log("Player left:", data);
+        setPlayers((currentPlayers) =>
+          currentPlayers.filter((p) => p._id !== data.userId)
+        );
+      });
+
+      socket.on("answer-submitted", (answerDetails) => {
         console.log("Answer received:", answerDetails);
-        // Handle answer updates if needed
+        // Handle answer submission if needed
       });
-    }
 
-    return () => {
-      if (socket) {
-        socket.off("update-session");
-        socket.off("answer-updated");
-      }
-    };
+      return () => {
+        socket.off("player-joined");
+        socket.off("player-left");
+        socket.off("answer-submitted");
+      };
+    }
   }, [socket, sessionData]);
 
   const handleStartSession = async () => {
     try {
-      await startSession(sessionData.joinCode, sessionData._id);
-      setCurrentQuestionIndex(0);
+      const response = await startSession(
+        sessionData.joinCode,
+        sessionData._id
+      );
+      console.log("Start session response:", response);
 
-      if (socket) {
-        socket.emit("start-session", { sessionId: sessionData._id });
+      setQuestions(response.questions || []);
+      setSlides(response.slides || []);
 
-        if (questions.length > 0) {
-          socket.emit("change-question", {
+      if (response.questions && response.questions.length > 0) {
+        const firstItem = response.questions[0];
+        setCurrentItem(firstItem);
+        setCurrentItemType("question");
+
+        if (socket) {
+          socket.emit("session-started", {
             sessionId: sessionData._id,
-            question: questions[0],
+            questions: response.questions,
+            slides: response.slides,
+            firstItem,
+          });
+        }
+      } else if (response.slides && response.slides.length > 0) {
+        const firstItem = response.slides[0];
+        setCurrentItem(firstItem);
+        setCurrentItemType("slide");
+
+        if (socket) {
+          socket.emit("session-started", {
+            sessionId: sessionData._id,
+            questions: response.questions,
+            slides: response.slides,
+            firstItem,
           });
         }
       }
@@ -117,128 +140,219 @@ const AdminLobby = () => {
     }
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
+  const handleNextItem = async () => {
+    try {
+      const response = await nextQuestion(
+        sessionData.joinCode,
+        sessionData._id
+      );
+      console.log("Next item response:", response);
 
-      if (socket) {
-        socket.emit("change-question", {
-          sessionId: sessionData._id,
-          question: questions[nextIndex],
-        });
+      if (response.item) {
+        setCurrentItem(response.item);
+        setCurrentItemType(response.type);
+
+        if (socket) {
+          socket.emit("next-item", {
+            sessionId: sessionData._id,
+            type: response.type,
+            item: response.item,
+          });
+        }
       }
+    } catch (error) {
+      console.error("Failed to get next item:", error);
     }
   };
+
+  const renderCurrentItem = () => {
+    if (!currentItem) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold">
+            Current {currentItemType === "question" ? "Question" : "Slide"}
+          </h3>
+          <button
+            onClick={handleNextItem}
+            disabled={loading}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Next <ChevronRight className="ml-2" />
+          </button>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          {currentItemType === "question" ? (
+            <div>
+              <h4 className="font-medium text-xl mb-4">{currentItem.title}</h4>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt="Question"
+                  className="mb-4 rounded-lg max-w-full h-auto"
+                />
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                {currentItem.options?.map((option) => (
+                  <div
+                    key={option._id}
+                    className={`p-4 rounded-lg border ${
+                      option.isCorrect
+                        ? "bg-green-50 border-green-500"
+                        : "bg-white"
+                    }`}
+                  >
+                    <span className={option.isCorrect ? "text-green-700" : ""}>
+                      {option.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-sm text-gray-500">
+                Points: {currentItem.points} | Timer: {currentItem.timer}s
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h4 className="font-medium text-xl mb-2">{currentItem.title}</h4>
+              <p className="text-gray-700 mb-4">{currentItem.content}</p>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt={currentItem.title}
+                  className="rounded-lg max-w-full h-auto"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Update the renderPlayers function with safer data handling
+  const renderPlayers = () => (
+    <div className="space-y-6">
+      <div className="bg-indigo-600 text-white p-4 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-6 h-6" />
+            <span className="text-xl font-semibold">
+              Players ({players?.length || 0})
+            </span>
+          </div>
+          {!currentItem && (
+            <button
+              onClick={handleStartSession}
+              disabled={loading || !players?.length}
+              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Starting...
+                </div>
+              ) : (
+                "Start Game"
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg p-6 shadow-lg">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {players?.map((player) => {
+            // Extract display information safely
+            const playerId = player?._id || player?.id || "unknown";
+            const username = player?.username || player?.name || "Anonymous";
+            const initial = username[0]?.toUpperCase() || "?";
+
+            return (
+              <div
+                key={playerId}
+                className="bg-indigo-50 rounded-lg p-4 flex items-center justify-center"
+              >
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-lg font-bold">
+                      {initial}
+                    </span>
+                  </div>
+                  <p className="text-indigo-900 font-semibold truncate">
+                    {username}
+                  </p>
+                </div>
+              </div>
+            );
+          }) || null}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-purple-100">
       <div className="fixed top-0 w-full z-50">
         <Navbar />
       </div>
 
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        {!showPin ? (
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-800 mb-8">
-              Setting up session
-            </h1>
-            <div className="flex items-center gap-2 text-xl text-gray-600">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              Loading Game PIN
-            </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-3xl">
-            {/* Game PIN Card */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <h2 className="text-xl text-gray-700">Join at</h2>
-                  <p className="text-2xl font-bold text-gray-900">
-                    www.gmplay.com
-                  </p>
-                </div>
-
-                <div className="text-center px-8">
-                  <p className="text-xl text-gray-600">Game PIN:</p>
-                  <h1 className="text-5xl font-bold tracking-wider text-gray-900">
-                    {sessionData?.joinCode?.match(/.{1,3}/g)?.join(" ")}
-                  </h1>
-                </div>
-
-                <div className="w-32 h-32">
-                  <img
-                    src={sessionData?.qrCodeImageUrl}
-                    alt="QR Code"
-                    className="w-full h-full"
-                  />
+      <div className="pt-16 p-4">
+        <div className="max-w-3xl mx-auto">
+          {!showPin ? (
+            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-800 mb-8">
+                  Setting up session
+                </h1>
+                <div className="flex items-center gap-2 text-xl text-gray-600">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  Loading Game PIN
                 </div>
               </div>
             </div>
-
-            {/* Session Controls */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              {currentQuestionIndex === -1 ? (
-                <button
-                  onClick={handleStartSession}
-                  disabled={players.length === 0}
-                  className="w-full py-6 text-xl bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  Start Session
-                </button>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold">
-                      Question {currentQuestionIndex + 1} of {questions.length}
-                    </h3>
-                    <button
-                      onClick={handleNextQuestion}
-                      disabled={currentQuestionIndex === questions.length - 1}
-                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      Next Question <ChevronRight className="ml-2" />
-                    </button>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="font-medium">
-                      {questions[currentQuestionIndex]?.question}
+          ) : (
+            <div className="space-y-8">
+              {/* Game PIN Card */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <h2 className="text-xl text-gray-700">Join at</h2>
+                    <p className="text-2xl font-bold text-gray-900">
+                      www.gmplay.com
                     </p>
                   </div>
+
+                  <div className="text-center px-8">
+                    <p className="text-xl text-gray-600">Game PIN:</p>
+                    <h1 className="text-5xl font-bold tracking-wider text-gray-900">
+                      {sessionData?.joinCode?.match(/.{1,3}/g)?.join(" ")}
+                    </h1>
+                  </div>
+
+                  <div className="w-32 h-32">
+                    <img
+                      src={sessionData?.qrCodeImageUrl}
+                      alt="QR Code"
+                      className="w-full h-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Players Section */}
+              {renderPlayers()}
+
+              {/* Current Item Display */}
+              {currentItem && (
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  {renderCurrentItem()}
                 </div>
               )}
             </div>
-
-            {/* Players Section */}
-            <div className="space-y-6">
-              <div className="bg-indigo-600 text-white text-xl font-semibold py-4 px-6 rounded-lg text-center">
-                Players ({players.length})
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {players.map((player, index) => (
-                    <div
-                      key={index}
-                      className="bg-indigo-100 rounded-lg p-4 flex items-center justify-center"
-                    >
-                      <div className="text-center">
-                        <div className="w-12 h-12 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-lg font-bold">
-                            {player.username.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-indigo-900 font-semibold truncate">
-                          {player.username}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

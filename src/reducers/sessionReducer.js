@@ -8,17 +8,13 @@ export const SESSION_ACTIONS = {
   JOIN_SESSION_SUCCESS: "JOIN_SESSION_SUCCESS",
   JOIN_SESSION_FAILURE: "JOIN_SESSION_FAILURE",
 
-  GET_PLAYERS_START: "GET_PLAYERS_START",
-  GET_PLAYERS_SUCCESS: "GET_PLAYERS_SUCCESS",
-  GET_PLAYERS_FAILURE: "GET_PLAYERS_FAILURE",
-
   START_SESSION_START: "START_SESSION_START",
   START_SESSION_SUCCESS: "START_SESSION_SUCCESS",
   START_SESSION_FAILURE: "START_SESSION_FAILURE",
 
-  GET_QUESTIONS_START: "GET_QUESTIONS_START",
-  GET_QUESTIONS_SUCCESS: "GET_QUESTIONS_SUCCESS",
-  GET_QUESTIONS_FAILURE: "GET_QUESTIONS_FAILURE",
+  NEXT_QUESTION_START: "NEXT_QUESTION_START",
+  NEXT_QUESTION_SUCCESS: "NEXT_QUESTION_SUCCESS",
+  NEXT_QUESTION_FAILURE: "NEXT_QUESTION_FAILURE",
 
   END_SESSION_START: "END_SESSION_START",
   END_SESSION_SUCCESS: "END_SESSION_SUCCESS",
@@ -29,18 +25,23 @@ export const SESSION_ACTIONS = {
 
 export const initialState = {
   currentSession: null,
-  players: [],
+  currentItem: null,
+  currentItemType: null,
   questions: [],
+  slides: [],
   loading: false,
   error: null,
-  playerCount: 0,
 };
 
 export const sessionReducer = (state, action) => {
   switch (action.type) {
-    // Create Session
     case SESSION_ACTIONS.CREATE_SESSION_START:
+    case SESSION_ACTIONS.JOIN_SESSION_START:
+    case SESSION_ACTIONS.START_SESSION_START:
+    case SESSION_ACTIONS.NEXT_QUESTION_START:
+    case SESSION_ACTIONS.END_SESSION_START:
       return { ...state, loading: true, error: null };
+
     case SESSION_ACTIONS.CREATE_SESSION_SUCCESS:
       return {
         ...state,
@@ -48,12 +49,7 @@ export const sessionReducer = (state, action) => {
         currentSession: action.payload,
         error: null,
       };
-    case SESSION_ACTIONS.CREATE_SESSION_FAILURE:
-      return { ...state, loading: false, error: action.payload };
 
-    // Join Session
-    case SESSION_ACTIONS.JOIN_SESSION_START:
-      return { ...state, loading: true, error: null };
     case SESSION_ACTIONS.JOIN_SESSION_SUCCESS:
       return {
         ...state,
@@ -61,53 +57,26 @@ export const sessionReducer = (state, action) => {
         currentSession: action.payload.session,
         error: null,
       };
-    case SESSION_ACTIONS.JOIN_SESSION_FAILURE:
-      return { ...state, loading: false, error: action.payload };
 
-    // Get Players
-    case SESSION_ACTIONS.GET_PLAYERS_START:
-      return { ...state, loading: true, error: null };
-    case SESSION_ACTIONS.GET_PLAYERS_SUCCESS:
-      return {
-        ...state,
-        loading: false,
-        players: action.payload.players,
-        playerCount: action.payload.playerCount,
-        error: null,
-      };
-    case SESSION_ACTIONS.GET_PLAYERS_FAILURE:
-      return { ...state, loading: false, error: action.payload };
-
-    // Start Session
-    case SESSION_ACTIONS.START_SESSION_START:
-      return { ...state, loading: true, error: null };
     case SESSION_ACTIONS.START_SESSION_SUCCESS:
       return {
         ...state,
         loading: false,
         currentSession: action.payload.session,
         questions: action.payload.questions,
+        slides: action.payload.slides,
         error: null,
       };
-    case SESSION_ACTIONS.START_SESSION_FAILURE:
-      return { ...state, loading: false, error: action.payload };
 
-    // Get Questions
-    case SESSION_ACTIONS.GET_QUESTIONS_START:
-      return { ...state, loading: true, error: null };
-    case SESSION_ACTIONS.GET_QUESTIONS_SUCCESS:
+    case SESSION_ACTIONS.NEXT_QUESTION_SUCCESS:
       return {
         ...state,
         loading: false,
-        questions: action.payload.questions,
+        currentItem: action.payload.item,
+        currentItemType: action.payload.type,
         error: null,
       };
-    case SESSION_ACTIONS.GET_QUESTIONS_FAILURE:
-      return { ...state, loading: false, error: action.payload };
 
-    // End Session
-    case SESSION_ACTIONS.END_SESSION_START:
-      return { ...state, loading: true, error: null };
     case SESSION_ACTIONS.END_SESSION_SUCCESS:
       return {
         ...state,
@@ -115,6 +84,11 @@ export const sessionReducer = (state, action) => {
         currentSession: action.payload.session,
         error: null,
       };
+
+    case SESSION_ACTIONS.CREATE_SESSION_FAILURE:
+    case SESSION_ACTIONS.JOIN_SESSION_FAILURE:
+    case SESSION_ACTIONS.START_SESSION_FAILURE:
+    case SESSION_ACTIONS.NEXT_QUESTION_FAILURE:
     case SESSION_ACTIONS.END_SESSION_FAILURE:
       return { ...state, loading: false, error: action.payload };
 
