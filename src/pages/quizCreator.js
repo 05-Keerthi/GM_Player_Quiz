@@ -66,12 +66,6 @@ const QuizCreator = () => {
   });
   const { quizId } = useParams();
   const navigate = useNavigate();
-  const handleReorderItems = (items, setItems, sourceIndex, destinationIndex) => {
-    const updatedItems = [...items];
-    const [movedItem] = updatedItems.splice(sourceIndex, 1);
-    updatedItems.splice(destinationIndex, 0, movedItem);
-    setItems(updatedItems);
-  };
 
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
@@ -131,196 +125,24 @@ const QuizCreator = () => {
     showAlert("Quiz settings updated successfully", "success");
   };
 
-  // Add these new handlers in the QuizCreator component
-  const handleAddSlide = async (slideData) => {
-    try {
-      setLoading(true);
-
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}/slides`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...slideData,
-            quizId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to add slide: ${response.statusText}`);
-      }
-
-      const newSlide = await response.json();
-      setSlides((prevSlides) => [...prevSlides, newSlide]);
-      setCurrentSlide(newSlide);
-
-      await refreshSlides();
-      setIsAddSlideOpen(false);
-      showAlert("Slide added successfully", "success");
-    } catch (err) {
-      console.error("Error adding slide:", err);
-      handleApiError(err);
-    } finally {
-      setLoading(false);
+  const handleSaveQuiz = async () => {
+    if (!quizId) {
+      showAlert("Cannot save quiz: Invalid quiz ID");
+      return;
     }
-  };
-
-  // Define the refreshSlides function outside the handleAddSlide function
-  const refreshSlides = async () => {
-    try {
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}/slides`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch slides: ${response.statusText}`);
-      }
-      const updatedSlides = await response.json();
-      setSlides(updatedSlides); // Refresh state with updated slides
-    } catch (err) {
-      console.error("Error refreshing slides:", err);
-    }
-  };
-
-  // Optimized handleUpdateSlide
-  const handleUpdateSlide = async (slideId, updatedData) => {
-    const previousSlides = [...slides];
-    let imageId = null;
 
     try {
       setLoading(true);
-
-      if (updatedData.imageFile) {
-        imageId = await handleImageUpload(updatedData.imageFile);
-      }
-
-      const updatePayload = {
-        ...updatedData,
-        imageUrl: imageId || updatedData.imageUrl,
-      };
-
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${slideId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatePayload),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update slide: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      const { updatedFields, message } = result;
-
-      setSlides((prevSlides) =>
-        prevSlides.map((slide) =>
-          slide._id === slideId ? { ...slide, ...updatedFields } : slide
-        )
-      );
-
-      setCurrentSlide({
-        ...updatedFields,
-        _id: slideId,
+      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: quiz.title,
+          description: quiz.description,
+          questions,
+        }),
       });
 
-      showAlert(message || "Slide updated successfully", "success");
-    } catch (error) {
-      setSlides(previousSlides);
-      handleApiError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Optimized handleDeleteSlide
-  const handleDeleteSlide = (e, slideId) => {
-    e.stopPropagation();
-
-    const normalizedId = slideId?._id || slideId;
-    if (!normalizedId) {
-      showAlert("Invalid slide ID", "error");
-      return;
-    }
-
-    setItemToDelete(normalizedId);
-    setShowDeleteSlideModal(true);
-  };
-
-  const handleConfirmDeleteSlide = async () => {
-    if (!itemToDelete) {
-      showAlert("No slide selected for deletion", "error");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${itemToDelete}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete slide: ${response.statusText}`);
-      }
-
-      setSlides((prevSlides) =>
-        prevSlides.filter((s) => s._id !== itemToDelete)
-      );
-
-      if (currentSlide?._id === itemToDelete) {
-        setCurrentSlide(null);
-      }
-
-      await refreshSlides();
-      showAlert("Slide deleted successfully", "success");
-    } catch (err) {
-      console.error("Error deleting slide:", err);
-      showAlert(err.message || "Failed to delete slide", "error");
-    } finally {
-      setLoading(false);
-      setShowDeleteSlideModal(false);
-      setItemToDelete(null);
-    }
-  };
-
-  // Refresh slides function
-
-  const handleAddQuestion = async (questionData) => {
-    try {
-      setLoading(true);
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}/questions`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            ...questionData,
-            quizId: quizId, // Ensure quizId is included
-          }),
-        }
-      );
-
-      const newQuestion = await response.json();
-      // Make sure we're using the ID from the server response
-      const questionWithId = {
-        ...newQuestion,
-        id: newQuestion.id || newQuestion._id, // Handle both possible ID formats
-      };
-
-      setQuestions((prevQuestions) => [...prevQuestions, questionWithId]);
-      setCurrentQuestion(questionWithId);
-      setIsAddQuestionOpen(false);
-      showAlert("Question added successfully", "success");
+      showAlert("Quiz saved successfully", "success");
     } catch (err) {
       handleApiError(err);
     } finally {
@@ -352,19 +174,188 @@ const QuizCreator = () => {
     return data.imageId; // Return the image's ObjectId from the response
   };
 
-  const handleUpdateQuestion = async (questionId, updatedData) => {
-    const previousQuestions = [...questions]; // Backup current state
-    let imageId = null;
-
+  // Define the refreshSlides
+  const refreshSlides = async () => {
     try {
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/quizzes/${quizId}/slides`
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch slides: ${response.statusText}`);
+      }
+      const updatedSlides = await response.json();
+      setSlides(updatedSlides); // Refresh state with updated slides
+    } catch (err) {
+      console.error("Error refreshing slides:", err);
+    }
+  };
+
+  // Slide Functions
+  const handleAddSlide = async (slideData) => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/quizzes/${quizId}/slides`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...slideData,
+            quizId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to add slide: ${response.statusText}`);
+      }
+
+      const newSlide = await response.json();
+      setSlides((prevSlides) => [...prevSlides, newSlide]);
+      setCurrentSlide(newSlide);
+      await refreshSlides();
+      setIsAddSlideOpen(false);
+      showAlert("Slide added successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateSlide = async (slideId, updatedData) => {
+    try {
+      setLoading(true);
+      let imageId = null;
+
       if (updatedData.imageFile) {
         imageId = await handleImageUpload(updatedData.imageFile);
       }
 
       const updatePayload = {
         ...updatedData,
-        id: questionId,
-        imageUrl: imageId,
+        imageUrl: imageId || updatedData.imageUrl,
+      };
+
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/slides/${slideId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatePayload),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update slide: ${response.statusText}`);
+      }
+
+      const updatedSlide = await response.json();
+      setSlides((prevSlides) =>
+        prevSlides.map((s) => (s._id === slideId ? updatedSlide : s))
+      );
+      setCurrentSlide(updatedSlide);
+      showAlert("Slide updated successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSlide = async (e, slideId) => {
+    e.stopPropagation();
+    setItemToDelete(slideId);
+    setShowDeleteSlideModal(true);
+  };
+
+  const handleConfirmDeleteSlide = async () => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/slides/${itemToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete slide: ${response.statusText}`);
+      }
+
+      setSlides((prevSlides) =>
+        prevSlides.filter((s) => s._id !== itemToDelete)
+      );
+      if (currentSlide?._id === itemToDelete) {
+        setCurrentSlide(null);
+      }
+      showAlert("Slide deleted successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+      setShowDeleteSlideModal(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const handleReorderSlides = (sourceIndex, destinationIndex) => {
+    if (sourceIndex === destinationIndex) return;
+
+    const reorderedSlides = [...slides];
+    const [movedSlide] = reorderedSlides.splice(sourceIndex, 1);
+    reorderedSlides.splice(destinationIndex, 0, movedSlide);
+    setSlides(reorderedSlides);
+  };
+
+  // Question Functions
+  const handleAddQuestion = async (questionData) => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `http://localhost:5000/api/quizzes/${quizId}/questions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...questionData,
+            quizId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to add question: ${response.statusText}`);
+      }
+
+      const newQuestion = await response.json();
+      setQuestions((prevQuestions) => [...prevQuestions, newQuestion]);
+      setCurrentQuestion(newQuestion);
+      setIsAddQuestionOpen(false);
+      showAlert("Question added successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateQuestion = async (questionId, updatedData) => {
+    try {
+      setLoading(true);
+      let imageId = null;
+
+      if (updatedData.imageFile) {
+        imageId = await handleImageUpload(updatedData.imageFile);
+      }
+
+      const updatePayload = {
+        ...updatedData,
+        imageUrl: imageId || updatedData.imageUrl,
       };
 
       const response = await authenticatedFetch(
@@ -376,22 +367,20 @@ const QuizCreator = () => {
         }
       );
 
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`Failed to update question: ${response.statusText}`);
+      }
 
       const updatedQuestion = await response.json();
-
       setQuestions((prevQuestions) =>
-        prevQuestions.map((q) =>
-          q.id === questionId || q._id === questionId ? updatedQuestion : q
-        )
+        prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
       );
-
       setCurrentQuestion(updatedQuestion);
       showAlert("Question updated successfully", "success");
     } catch (err) {
-      setQuestions(previousQuestions); // Rollback on failure
       handleApiError(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -401,7 +390,6 @@ const QuizCreator = () => {
     setShowDeleteQuestionModal(true);
   };
 
-  // Add new function to handle question deletion confirmation
   const handleConfirmDeleteQuestion = async () => {
     try {
       setLoading(true);
@@ -409,9 +397,6 @@ const QuizCreator = () => {
         `http://localhost:5000/api/questions/${itemToDelete}`,
         {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
         }
       );
 
@@ -420,21 +405,13 @@ const QuizCreator = () => {
       }
 
       setQuestions((prevQuestions) =>
-        prevQuestions.filter(
-          (q) => q.id !== itemToDelete && q._id !== itemToDelete
-        )
+        prevQuestions.filter((q) => q._id !== itemToDelete)
       );
-
-      if (
-        currentQuestion?.id === itemToDelete ||
-        currentQuestion?._id === itemToDelete
-      ) {
+      if (currentQuestion?._id === itemToDelete) {
         setCurrentQuestion(null);
       }
-
       showAlert("Question deleted successfully", "success");
     } catch (err) {
-      console.error("Delete error:", err);
       handleApiError(err);
     } finally {
       setLoading(false);
@@ -443,29 +420,13 @@ const QuizCreator = () => {
     }
   };
 
-  const handleSaveQuiz = async () => {
-    if (!quizId) {
-      showAlert("Cannot save quiz: Invalid quiz ID");
-      return;
-    }
+  const handleReorderQuestions = (sourceIndex, destinationIndex) => {
+    if (sourceIndex === destinationIndex) return;
 
-    try {
-      setLoading(true);
-      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: quiz.title,
-          description: quiz.description,
-          questions,
-        }),
-      });
-
-      showAlert("Quiz saved successfully", "success");
-    } catch (err) {
-      handleApiError(err);
-    } finally {
-      setLoading(false);
-    }
+    const reorderedQuestions = [...questions];
+    const [movedQuestion] = reorderedQuestions.splice(sourceIndex, 1);
+    reorderedQuestions.splice(destinationIndex, 0, movedQuestion);
+    setQuestions(reorderedQuestions);
   };
 
   useEffect(() => {
@@ -487,13 +448,7 @@ const QuizCreator = () => {
           description: quizData.description || "",
         });
 
-        // Normalize slides to ensure consistent ID
-        const normalizedSlides = (quizData.slides || []).map((slide) => ({
-          ...slide,
-          id: slide._id || slide.id,
-        }));
-
-        setSlides(normalizedSlides);
+        setSlides(quizData.slides || []);
         setQuestions(quizData.questions || []);
       } catch (err) {
         handleApiError(err);
@@ -505,21 +460,6 @@ const QuizCreator = () => {
 
     loadQuizData();
   }, [quizId, navigate]);
-
-  const handleReorderQuestions = (sourceIndex, targetIndex) => {
-    if (sourceIndex === targetIndex) return;
-
-    const reorderedQuestions = [...questions];
-
-    // Remove the question from its original position
-    const [movedQuestion] = reorderedQuestions.splice(sourceIndex, 1);
-
-    // Insert the question at the new position
-    reorderedQuestions.splice(targetIndex, 0, movedQuestion);
-
-    // Update the questions state
-    setQuestions(reorderedQuestions);
-  };
 
   return (
     <>
@@ -586,7 +526,7 @@ const QuizCreator = () => {
                   <div className="space-y-2">
                     {questions.map((question, index) => (
                       <div
-                        key={question.id || question._id}
+                        key={question._id}
                         draggable
                         onDragStart={(e) => {
                           e.dataTransfer.setData(
@@ -594,9 +534,7 @@ const QuizCreator = () => {
                             index.toString()
                           );
                         }}
-                        onDragOver={(e) => {
-                          e.preventDefault(); // Allow dropping
-                        }}
+                        onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           e.preventDefault();
                           const sourceIndex = parseInt(
@@ -606,7 +544,6 @@ const QuizCreator = () => {
                           handleReorderQuestions(sourceIndex, index);
                         }}
                         className={`p-3 rounded-lg cursor-move transition-colors ${
-                          currentQuestion?.id === question.id ||
                           currentQuestion?._id === question._id
                             ? "bg-blue-50 border-2 border-blue-500"
                             : "hover:bg-gray-50 border border-gray-200"
@@ -622,10 +559,7 @@ const QuizCreator = () => {
                           </span>
                           <button
                             onClick={(e) =>
-                              handleDeleteQuestion(
-                                e,
-                                question.id || question._id
-                              )
+                              handleDeleteQuestion(e, question._id)
                             }
                             className="p-1 text-gray-400 hover:text-red-500 rounded-full"
                           >
@@ -639,33 +573,36 @@ const QuizCreator = () => {
                     ))}
                   </div>
                   <div className="space-y-2">
-                  <h2 className="font-medium text-lg mb-4 mt-4">Slides</h2>
-        {slides.map((slide, index) => (
-          <div
-            key={slide._id}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData("text/plain", index.toString());
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const sourceIndex = parseInt(
-                e.dataTransfer.getData("text/plain"),
-                10
-              );
-              handleReorderItems(slides, setSlides, sourceIndex, index);
-            }}
-            className={`p-3 rounded-lg cursor-pointer transition-colors ${
-              currentSlide?._id === slide._id
-                ? "bg-blue-50 border-2 border-blue-500"
-                : "hover:bg-gray-50 border border-gray-200"
-            }`}
-            onClick={() => {
+                    <h2 className="font-medium text-lg mb-4 mt-4">Slides</h2>
+                    {slides.map((slide, index) => (
+                      <div
+                        key={slide._id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData(
+                            "text/plain",
+                            index.toString()
+                          );
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const sourceIndex = parseInt(
+                            e.dataTransfer.getData("text/plain"),
+                            10
+                          );
+                          handleReorderSlides(sourceIndex, index);
+                        }}
+                        className={`p-3 rounded-lg cursor-move transition-colors ${
+                          currentSlide?._id === slide._id
+                            ? "bg-blue-50 border-2 border-blue-500"
+                            : "hover:bg-gray-50 border border-gray-200"
+                        }`}
+                        onClick={() => {
                           setCurrentSlide(slide);
                           setCurrentQuestion(null);
                         }}
-          >
+                      >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Slide {index + 1}</span>
                           <button
