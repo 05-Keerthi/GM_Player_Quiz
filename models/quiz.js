@@ -10,7 +10,6 @@ const quizSchema = new mongoose.Schema({
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: { type: String, enum: ['draft', 'active', 'closed'], default: 'draft' },
-  order: [{ type: String }],
   duration: { type: Number, default: 60 },
   createdAt: { type: Date, default: Date.now },
 });
