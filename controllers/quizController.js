@@ -8,10 +8,14 @@ const Media = require('../models/Media');
 // Create a new quiz (admin only)
 exports.createQuiz = async (req, res) => {
   try {
-    const { title, description, categoryId, slides, questions, tenantId, duration } = req.body;
+    const { title, description, categoryId, slides, questions, tenantId, duration, order } = req.body;
 
     if (!categoryId) {
       return res.status(400).json({ message: 'Category ID is required' });
+    }
+
+    if (!order || !Array.isArray(order) || order.length === 0) {
+      return res.status(400).json({ message: 'Order is required and must be a non-empty array' });
     }
 
     // Validate categories, slides, and questions are valid ObjectIds
@@ -19,12 +23,28 @@ exports.createQuiz = async (req, res) => {
     const slideIds = await Slide.find({ '_id': { $in: slides } });
     const questionIds = await Question.find({ '_id': { $in: questions } });
 
+    // Combine valid slide and question IDs
+    const validIds = [...slides, ...questions];
+
+    // Ensure the items in the order strictly belong to slides or questions
+    const isValidOrder = order.every((id) => validIds.includes(id));
+    if (!isValidOrder) {
+      return res.status(400).json({ message: 'Order contains IDs not present in slides or questions' });
+    }
+
+    // Check for duplicates in order
+    const hasDuplicates = new Set(order).size !== order.length;
+    if (hasDuplicates) {
+      return res.status(400).json({ message: 'Order contains duplicate IDs' });
+    }
+
     const quiz = new Quiz({
       title,
       description,
       categories: categoryId,
       slides,
       questions,
+      order, 
       tenantId,
       createdBy: req.user._id,
       status: 'draft', // Default status as draft
