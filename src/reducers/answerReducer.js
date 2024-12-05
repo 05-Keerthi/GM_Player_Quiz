@@ -1,37 +1,65 @@
 // answerReducer.js
+
 export const ANSWER_ACTIONS = {
   SUBMIT_ANSWER_START: "SUBMIT_ANSWER_START",
   SUBMIT_ANSWER_SUCCESS: "SUBMIT_ANSWER_SUCCESS",
   SUBMIT_ANSWER_FAILURE: "SUBMIT_ANSWER_FAILURE",
+
   GET_SESSION_ANSWERS_START: "GET_SESSION_ANSWERS_START",
   GET_SESSION_ANSWERS_SUCCESS: "GET_SESSION_ANSWERS_SUCCESS",
   GET_SESSION_ANSWERS_FAILURE: "GET_SESSION_ANSWERS_FAILURE",
+
   GET_QUESTION_ANSWERS_START: "GET_QUESTION_ANSWERS_START",
   GET_QUESTION_ANSWERS_SUCCESS: "GET_QUESTION_ANSWERS_SUCCESS",
   GET_QUESTION_ANSWERS_FAILURE: "GET_QUESTION_ANSWERS_FAILURE",
+
+  GET_ANSWER_COUNTS_START: "GET_ANSWER_COUNTS_START",
+  GET_ANSWER_COUNTS_SUCCESS: "GET_ANSWER_COUNTS_SUCCESS",
+  GET_ANSWER_COUNTS_FAILURE: "GET_ANSWER_COUNTS_FAILURE",
+
   CLEAR_ERROR: "CLEAR_ERROR",
 };
 
 export const initialState = {
+  submitting: false,
   loading: false,
   error: null,
+  lastSubmittedAnswer: null,
   sessionAnswers: [],
   questionAnswers: [],
-  currentAnswer: null,
+  answerCounts: null,
 };
 
 export const answerReducer = (state, action) => {
   switch (action.type) {
+    // Submit Answer Actions
     case ANSWER_ACTIONS.SUBMIT_ANSWER_START:
-    case ANSWER_ACTIONS.GET_SESSION_ANSWERS_START:
-    case ANSWER_ACTIONS.GET_QUESTION_ANSWERS_START:
-      return { ...state, loading: true, error: null };
+      return {
+        ...state,
+        submitting: true,
+        error: null,
+      };
 
     case ANSWER_ACTIONS.SUBMIT_ANSWER_SUCCESS:
       return {
         ...state,
-        loading: false,
-        currentAnswer: action.payload,
+        submitting: false,
+        lastSubmittedAnswer: action.payload,
+        error: null,
+      };
+
+    case ANSWER_ACTIONS.SUBMIT_ANSWER_FAILURE:
+      return {
+        ...state,
+        submitting: false,
+        error: action.payload,
+      };
+
+    // Get Session Answers Actions
+    case ANSWER_ACTIONS.GET_SESSION_ANSWERS_START:
+      return {
+        ...state,
+        loading: true,
         error: null,
       };
 
@@ -43,6 +71,21 @@ export const answerReducer = (state, action) => {
         error: null,
       };
 
+    case ANSWER_ACTIONS.GET_SESSION_ANSWERS_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    // Get Question Answers Actions
+    case ANSWER_ACTIONS.GET_QUESTION_ANSWERS_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
     case ANSWER_ACTIONS.GET_QUESTION_ANSWERS_SUCCESS:
       return {
         ...state,
@@ -51,13 +94,41 @@ export const answerReducer = (state, action) => {
         error: null,
       };
 
-    case ANSWER_ACTIONS.SUBMIT_ANSWER_FAILURE:
-    case ANSWER_ACTIONS.GET_SESSION_ANSWERS_FAILURE:
     case ANSWER_ACTIONS.GET_QUESTION_ANSWERS_FAILURE:
-      return { ...state, loading: false, error: action.payload };
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    // Get Answer Counts Actions
+    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        answerCounts: action.payload,
+        error: null,
+      };
+
+    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
 
     case ANSWER_ACTIONS.CLEAR_ERROR:
-      return { ...state, error: null };
+      return {
+        ...state,
+        error: null,
+      };
 
     default:
       return state;
