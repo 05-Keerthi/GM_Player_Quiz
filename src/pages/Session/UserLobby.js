@@ -30,7 +30,11 @@ const UserLobby = () => {
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
-      newSocket.emit("join-session", { sessionId, joinCode });
+      newSocket.emit("join-session", {
+        sessionId,
+        joinCode,
+        userId: localStorage.getItem("userId"), // Add this to track user
+      });
 
       return () => newSocket.disconnect();
     }
@@ -41,13 +45,8 @@ const UserLobby = () => {
     if (socket) {
       socket.on("session-started", (data) => {
         console.log("Session started data:", data);
-        if (data.questions && data.questions.length > 0) {
-          setCurrentItem(data.questions[0]);
-          setCurrentItemType("question");
-        } else if (data.slides && data.slides.length > 0) {
-          setCurrentItem(data.slides[0]);
-          setCurrentItemType("slide");
-        }
+        // Redirect to Play page when session starts
+        navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
       });
 
       socket.on("next-item", ({ type, item }) => {
@@ -67,7 +66,7 @@ const UserLobby = () => {
         socket.off("session-ended");
       };
     }
-  }, [socket, navigate]);
+  }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
     if (currentItemType !== "question" || selectedAnswer) return;

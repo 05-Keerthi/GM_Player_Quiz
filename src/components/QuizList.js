@@ -222,8 +222,8 @@ const QuizList = () => {
       setIsMobile(window.innerWidth <= 768);
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -365,29 +365,36 @@ const QuizList = () => {
         {/* Mobile Filter Toggle */}
         {isMobile && (
           <div className="fixed bottom-4 right-4 z-50">
-            <button 
+            <button
               onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
               className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
             >
-              {isFilterMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isFilterMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         )}
 
         {/* Sidebar Filter - Responsive */}
-        <div className={`
-          ${isMobile 
-            ? `fixed inset-0 bg-white z-40 pt-16 transform transition-transform duration-300 ${
-                isFilterMenuOpen ? 'translate-x-0' : 'translate-x-full'
-              }` 
-            : `w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40`
+        <div
+          className={`
+          ${
+            isMobile
+              ? `fixed inset-0 bg-white z-40 pt-16 transform transition-transform duration-300 ${
+                  isFilterMenuOpen ? "translate-x-0" : "translate-x-full"
+                }`
+              : `w-64 bg-white shadow-lg p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-40`
           }
-        `}>
+        `}
+        >
           <div className="sticky top-0 bg-white">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-800">Quiz Filters</h1>
               {isMobile && (
-                <button 
+                <button
                   onClick={() => setIsFilterMenuOpen(false)}
                   className="text-gray-600"
                 >
@@ -418,9 +425,11 @@ const QuizList = () => {
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className={`flex-1 p-4 ${isMobile ? 'mt-0' : 'ml-64'}`}>
+          <div className={`flex-1 p-4 ${isMobile ? "mt-0" : "ml-64"}`}>
             <div className="sticky top-16 z-30 flex flex-col sm:flex-row justify-between items-center mb-6 bg-gray-100 p-5">
-              <h1 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">My Quizzes</h1>
+              <h1 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">
+                My Quizzes
+              </h1>
               <button
                 onClick={() => navigate("/select-category")}
                 className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
@@ -430,12 +439,11 @@ const QuizList = () => {
               </button>
             </div>
 
-            <div className={`
-              ${isMobile 
-                ? 'grid grid-cols-1 gap-4' 
-                : 'grid grid-cols-3 gap-6'
-              }
-            `}>
+            <div
+              className={`
+              ${isMobile ? "grid grid-cols-1 gap-4" : "grid grid-cols-3 gap-6"}
+            `}
+            >
               {["draft", "active", "closed"].map((status) =>
                 filter === "all" || filter === status ? (
                   <Droppable key={status} droppableId={status}>
@@ -472,10 +480,10 @@ const QuizList = () => {
                                   </div>
 
                                   <h2 className="text-xl font-bold mb-3 text-gray-800">
-                                    {quiz.title}
+                                    {quiz.title || "Untitled Quiz"}
                                   </h2>
                                   <p className="text-gray-600 mb-4 line-clamp-3">
-                                    {quiz.description}
+                                    {quiz.description || "No description"}
                                   </p>
 
                                   <div className="flex justify-between items-center mt-4">
@@ -483,6 +491,10 @@ const QuizList = () => {
                                       <ListChecks className="w-5 h-5" />
                                       <span>
                                         {quiz.questions?.length || 0} Questions
+                                      </span>
+                                      <ListChecks className="w-5 h-5" />
+                                      <span>
+                                        {quiz.slides?.length || 0} Slides
                                       </span>
                                     </div>
 
@@ -566,3 +578,5 @@ const QuizList = () => {
 };
 
 export default QuizList;
+
+

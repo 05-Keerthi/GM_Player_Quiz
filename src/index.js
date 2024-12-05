@@ -10,6 +10,8 @@ import { TenantProvider } from "./context/TenantContext";
 import { CategoryProvider } from "./context/categoryContext";
 import { QuizProvider } from "./context/quizContext";
 import { SessionProvider } from "./context/sessionContext";
+import { AnswerProvider } from "./context/answerContext";
+import { LeaderboardProvider } from "./context/leaderboardContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -20,9 +22,13 @@ root.render(
           <CategoryProvider>
             <QuizProvider>
               <SessionProvider>
-                <BrowserRouter>
-                  <App />
-                </BrowserRouter>
+                <AnswerProvider>
+                  <LeaderboardProvider>
+                    <BrowserRouter>
+                      <App />
+                    </BrowserRouter>
+                  </LeaderboardProvider>
+                </AnswerProvider>
               </SessionProvider>
             </QuizProvider>
           </CategoryProvider>

@@ -76,7 +76,7 @@ const Navbar = () => {
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
         {/* Left: Logo with Welcome Message */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer">
+          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer border-2 group transition-transform duration-200 ease-in-out hover:scale-110">
             <img
               key={logoSrc}
               src={logoSrc}
@@ -86,6 +86,7 @@ const Navbar = () => {
               onError={handleLogoError}
             />
           </div>
+
           <div>
             <h1 className="text-lg font-semibold" style={textStyle}>
               Welcome to {user?.tenantId?.name || "GM Play"}..!

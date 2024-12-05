@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
 import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../components/NavbarComp";
 
 const AdminLobby = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showPin, setShowPin] = useState(false);
   const [sessionData, setSessionData] = useState(null);
@@ -108,32 +109,16 @@ const AdminLobby = () => {
       setQuestions(response.questions || []);
       setSlides(response.slides || []);
 
-      if (response.questions && response.questions.length > 0) {
-        const firstItem = response.questions[0];
-        setCurrentItem(firstItem);
-        setCurrentItemType("question");
-
-        if (socket) {
-          socket.emit("session-started", {
-            sessionId: sessionData._id,
-            questions: response.questions,
-            slides: response.slides,
-            firstItem,
-          });
-        }
-      } else if (response.slides && response.slides.length > 0) {
-        const firstItem = response.slides[0];
-        setCurrentItem(firstItem);
-        setCurrentItemType("slide");
-
-        if (socket) {
-          socket.emit("session-started", {
-            sessionId: sessionData._id,
-            questions: response.questions,
-            slides: response.slides,
-            firstItem,
-          });
-        }
+      // Replace the existing logic with navigation to Start page
+      navigate(
+        `/start?quizId=${quizId}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
+      );
+      if (socket) {
+        socket.emit("session-started", {
+          sessionId: sessionData._id,
+          questions: response.questions,
+          slides: response.slides,
+        });
       }
     } catch (error) {
       console.error("Failed to start session:", error);
