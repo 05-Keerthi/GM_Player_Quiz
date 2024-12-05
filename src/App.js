@@ -12,7 +12,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
 import QuizList from "./components/QuizList";
-
+import PreviewPage from"./pages/Preview";
 import QuizCreator from "./pages/quizCreator";
 import QuizDetails from "./pages/QuizDetails";
 import Lobby from "./pages/Session/AdminLobby";
@@ -73,6 +73,8 @@ export default function App() {
         <Route path="/select-category" element={<SelectCategoryPage />} />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
+         {/* Add new PreviewPage route */}
+        <Route path="/preview/:quizId" element={<PreviewPage />} /> {/* New path */}
 
         {/* Admin routes */}
         <Route path="/quiz-details" element={<QuizDetails />} />

@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  Plus,
-  Settings,
   X,
-  CheckSquare,
-  ToggleLeft,
-  MessageSquare,
-  BarChart3,
-  ListChecks,
   Trash2,
-  Upload,
   AlertCircle,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -21,10 +13,11 @@ import Navbar from "../components/NavbarComp";
 import SlideTypeModal from "../models/SlideTypeModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import SlideEditor from "../components/SlideEditor";
+import PreviewModal from '../models/previewModal';
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
-
+ 
   const bgColor = type === "error" ? "bg-red-50" : "bg-blue-50";
   const textColor = type === "error" ? "text-red-800" : "text-blue-800";
   const borderColor = type === "error" ? "border-red-200" : "border-blue-200";
@@ -55,7 +48,7 @@ const QuizCreator = () => {
   const [alert, setAlert] = useState({ message: "", type: "error" });
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
   const [showDeleteSlideModal, setShowDeleteSlideModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -66,7 +59,9 @@ const QuizCreator = () => {
   });
   const { quizId } = useParams();
   const navigate = useNavigate();
-
+  const handlePreviewClick = () => {
+      navigate(`/Preview/${quizId}`);
+    };
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
     setTimeout(() => setAlert({ message: "", type: "error" }), 5000);
@@ -190,7 +185,6 @@ const QuizCreator = () => {
     }
   };
 
-  // Slide Functions
   const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
@@ -493,7 +487,12 @@ const QuizCreator = () => {
                   />
                 </div>
               </div>
-
+              {/* <button
+  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
+  onClick={() => setIsPreviewOpen(true)}
+>
+  Preview
+</button> */}
               <div className="flex items-center gap-3">
                 <button
                   className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -501,6 +500,11 @@ const QuizCreator = () => {
                 >
                   Exit
                 </button>
+   {/* Preview Button handlePreviewClick*/}
+   <button onClick={handlePreviewClick} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2">
+        Preview
+      </button>
+    
                 <button
                   className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
                     loading
@@ -697,7 +701,12 @@ const QuizCreator = () => {
               description: quiz?.description || "",
             }}
           />
-
+           <PreviewModal 
+  isOpen={isPreviewOpen} 
+  onClose={() => setIsPreviewOpen(false)}
+  slides={slides}
+  questions={questions}
+/>
           <ConfirmationModal
             isOpen={showDeleteQuestionModal}
             onClose={() => {
