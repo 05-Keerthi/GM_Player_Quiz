@@ -675,17 +675,19 @@ exports.joinSession = async (req, res) => {
 
   try {
     // Find the session using joinCode
-    const session = await Session.findOne({ joinCode })
+    let session = await Session.findOne({ joinCode })
       .populate("players", "username email")
       .populate("host", "username email");
 
     if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
+      return res.status(404).json({ message: "Session not found" });
     }
 
     // Check if the session is open for joining
-    if (session.status !== 'waiting') {
-      return res.status(400).json({ message: 'Session is not open for joining' });
+    if (session.status !== "waiting") {
+      return res
+        .status(400)
+        .json({ message: "Session is not open for joining" });
     }
 
     // Check if the user has already joined the session
@@ -727,7 +729,6 @@ exports.joinSession = async (req, res) => {
     res.status(500).json({ message: "Error joining the session", error });
   }
 };
-
 // start the session
 exports.startSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
