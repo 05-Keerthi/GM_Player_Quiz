@@ -1,5 +1,5 @@
 // ContentDisplay.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
 const ContentDisplay = ({
@@ -11,6 +11,20 @@ const ContentDisplay = ({
   isLastItem,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+
+  useEffect(() => {
+    // Reset states when new item is received
+    setSelectedOption(null);
+    setIsTimeUp(false);
+  }, [item]);
+
+  useEffect(() => {
+    // Set time up when timer reaches 0
+    if (timeLeft === 0) {
+      setIsTimeUp(true);
+    }
+  }, [timeLeft]);
 
   const isSlide = item?.type === "bullet_points";
 
@@ -45,7 +59,7 @@ const ContentDisplay = ({
           <button
             key={option._id}
             onClick={() => {
-              if (!isAdmin && timeLeft > 0 && !selectedOption) {
+              if (!isAdmin && timeLeft > 0 && !selectedOption && !isTimeUp) {
                 setSelectedOption(option);
                 onSubmitAnswer?.(option);
               }
@@ -59,17 +73,33 @@ const ContentDisplay = ({
               ${
                 !isAdmin && selectedOption === option
                   ? "bg-blue-100 border-blue-500"
-                  : ""
+                  : "hover:bg-gray-50"
               }
-              ${timeLeft > 0 && !selectedOption ? "hover:bg-gray-50" : ""}
-              ${timeLeft === 0 || selectedOption ? "cursor-not-allowed" : ""}
+              ${
+                timeLeft === 0 || selectedOption || isTimeUp
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:bg-gray-50"
+              }
             `}
-            disabled={timeLeft === 0 || selectedOption}
+            disabled={timeLeft === 0 || selectedOption || isTimeUp}
           >
             {option.text}
           </button>
         ))}
       </div>
+      {/* Status Messages */}
+      {!isAdmin && (
+        <div className="mt-4 text-center">
+          {isTimeUp && !selectedOption && (
+            <p className="text-red-600 font-medium">
+              Time's up! You can no longer submit an answer.
+            </p>
+          )}
+          {selectedOption && (
+            <p className="text-green-600 font-medium">Answer submitted!</p>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -80,7 +110,9 @@ const ContentDisplay = ({
         {!isSlide && (
           <div className="flex items-center gap-2 text-lg">
             <Timer className="w-6 h-6" />
-            <span className={timeLeft <= 5 ? "text-red-600" : ""}>
+            <span
+              className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
+            >
               {timeLeft}s
             </span>
           </div>
@@ -93,7 +125,7 @@ const ContentDisplay = ({
         <div className="flex justify-end mt-6">
           <button
             onClick={onNext}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             {isLastItem ? "End Quiz" : "Next"}
           </button>

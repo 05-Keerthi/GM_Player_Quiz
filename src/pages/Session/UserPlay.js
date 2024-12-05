@@ -13,6 +13,9 @@ const UserPlay = () => {
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState(null);
 
   const sessionId = searchParams.get("sessionId");
   const userId = localStorage.getItem("userId");
@@ -37,19 +40,30 @@ const UserPlay = () => {
       socket.on("next-item", ({ type, item, isLastItem: lastItem }) => {
         console.log("Received next item:", item);
         setCurrentItem(item);
-        setTimeLeft(item.type === 'bullet_points' ? 0 : (item.timer || 30));
+        setTimeLeft(item.type === "bullet_points" ? 0 : item.timer || 30);
         setIsLastItem(lastItem);
-        setTimerActive(item.type !== 'bullet_points');
+        setTimerActive(item.type !== "bullet_points");
+        setHasSubmitted(false);
+        setIsTimeUp(false);
+        // Set the start time when a new question is received
+        if (item.type !== "bullet_points") {
+          setQuestionStartTime(Date.now());
+        } else {
+          setQuestionStartTime(null);
+        }
       });
 
       socket.on("timer-sync", ({ timeLeft: newTime }) => {
         setTimeLeft(newTime);
         setTimerActive(newTime > 0);
+        if (newTime <= 0) {
+          setIsTimeUp(true);
+        }
       });
 
       socket.on("session-ended", () => {
         setTimerActive(false);
-        // Handle session end - can add navigation or show completion screen
+        setIsTimeUp(true);
         console.log("Quiz has ended");
       });
 
@@ -67,12 +81,14 @@ const UserPlay = () => {
     if (timerActive && timeLeft > 0) {
       intervalId = setInterval(() => {
         setTimeLeft((prevTime) => {
-          if (prevTime <= 0) {
+          const newTime = prevTime - 1;
+          if (newTime <= 0) {
             setTimerActive(false);
+            setIsTimeUp(true);
             clearInterval(intervalId);
             return 0;
           }
-          return prevTime - 1;
+          return newTime;
         });
       }, 1000);
     }
@@ -85,13 +101,27 @@ const UserPlay = () => {
   }, [timerActive]);
 
   const handleSubmitAnswer = async (option) => {
-    if (currentItem.type === 'bullet_points') return; // Don't submit answers for slides
-    
+    if (
+      currentItem.type === "bullet_points" ||
+      isTimeUp ||
+      hasSubmitted ||
+      !option ||
+      !questionStartTime
+    ) {
+      return;
+    }
+
     try {
+      // Calculate time taken in seconds
+      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+
       await submitAnswer(sessionId, currentItem._id, {
         answer: option.text,
         userId,
+        timeTaken, // Add timeTaken to the submission
       });
+
+      setHasSubmitted(true);
 
       if (socket) {
         socket.emit("answer-submitted", {
@@ -100,6 +130,7 @@ const UserPlay = () => {
             questionId: currentItem._id,
             userId,
             answer: option.text,
+            timeTaken, // Include timeTaken in the socket event
           },
         });
       }
@@ -118,6 +149,8 @@ const UserPlay = () => {
             onSubmitAnswer={handleSubmitAnswer}
             timeLeft={timeLeft}
             isLastItem={isLastItem}
+            isTimeUp={isTimeUp}
+            hasSubmitted={hasSubmitted}
           />
         </div>
       </div>
