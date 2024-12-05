@@ -607,6 +607,7 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const Media = require('../models/Media');
 const Slide = require('../models/slide'); 
+const User = require("../models/User");
 
 // create a new session for quiz
 exports.createSession = async (req, res) => {
@@ -637,20 +638,29 @@ exports.createSession = async (req, res) => {
     savedSession.qrData = qrData;
     await savedSession.save();
 
+    // Populate the session with player details
+    const populatedSession = await Session.findById(savedSession._id)
+      .populate("players", "username email")
+      .populate("host", "username email")
+      .populate("quiz");
+
     // Emit the socket event
-    const io = req.app.get('socketio'); // Get the Socket.IO instance from the app
-    io.emit('create-session', { sessionId: savedSession._id, joinCode });
+    const io = req.app.get("socketio");
+    io.emit("create-session", {
+      sessionId: populatedSession._id,
+      joinCode: populatedSession.joinCode,
+    });
 
     res.status(201).json({
-      _id: savedSession._id,
-      quiz: savedSession.quiz,
-      host: savedSession.host,
-      joinCode: savedSession.joinCode,
-      qrData: savedSession.qrData,
+      _id: populatedSession._id,
+      quiz: populatedSession.quiz,
+      host: populatedSession.host,
+      joinCode: populatedSession.joinCode,
+      qrData: populatedSession.qrData,
       qrCodeImageUrl,
-      status: savedSession.status,
-      players: savedSession.players,
-      createdAt: savedSession.createdAt,
+      status: populatedSession.status,
+      players: populatedSession.players,
+      createdAt: populatedSession.createdAt,
     });
   } catch (error) {
     res.status(500).json({ message: 'Error creating the session', error });
@@ -660,12 +670,15 @@ exports.createSession = async (req, res) => {
 
 // join a session(user)
 exports.joinSession = async (req, res) => {
-  const { joinCode } = req.params; // Extract joinCode only
+  const { joinCode } = req.params;
   const userId = req.user._id;
 
   try {
     // Find the session using joinCode
-    const session = await Session.findOne({ joinCode });
+    const session = await Session.findOne({ joinCode })
+      .populate("players", "username email")
+      .populate("host", "username email");
+
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -676,24 +689,42 @@ exports.joinSession = async (req, res) => {
     }
 
     // Check if the user has already joined the session
-    if (session.players.includes(userId)) {
-      return res.status(400).json({ message: 'User has already joined the session' });
+    if (
+      session.players.some(
+        (player) => player._id.toString() === userId.toString()
+      )
+    ) {
+      return res
+        .status(400)
+        .json({ message: "User has already joined the session" });
+    }
+
+    // Get user details
+    const user = await User.findById(userId).select("username email");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Add the user to the session's players
     session.players.push(userId);
     await session.save();
 
-    // Emit the join event to the session's room
-    const io = req.app.get('socketio');
-    io.to(session._id.toString()).emit('player-joined', { playerId: userId });
+    // Refresh the populated session
+    session = await Session.findById(session._id)
+      .populate("players", "username email")
+      .populate("host", "username email");
+
+    // Emit the join event with full user details
+    const io = req.app.get("socketio");
+    io.emit("player-joined", { user }); // Emit to all connected clients
 
     res.status(200).json({
-      message: 'User successfully joined the session',
+      message: "User successfully joined the session",
       session,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error joining the session', error });
+    console.error("Join session error:", error);
+    res.status(500).json({ message: "Error joining the session", error });
   }
 };
 
@@ -702,7 +733,15 @@ exports.startSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
-    const session = await Session.findOne({ joinCode, _id: sessionId }).populate('quiz');
+    // Find and populate the session
+    const session = await Session.findOne({
+      joinCode,
+      _id: sessionId,
+    })
+      .populate("quiz")
+      .populate("players", "username email")
+      .populate("host", "username email");
+
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -728,15 +767,15 @@ exports.startSession = async (req, res) => {
     const questionsWithImageUrls = await Promise.all(
       questions.map(async (question) => {
         let fullImageUrl = null;
-
         if (question.imageUrl) {
           const media = await Media.findById(question.imageUrl);
           if (media && media.path) {
-            const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+            const encodedPath = media.path
+              .replace(/ /g, "%20")
+              .replace(/\\/g, "/");
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
-
         return {
           ...question.toObject(),
           imageUrl: fullImageUrl,
@@ -748,15 +787,15 @@ exports.startSession = async (req, res) => {
     const slidesWithImageUrls = await Promise.all(
       slides.map(async (slide) => {
         let fullImageUrl = null;
-
         if (slide.imageUrl) {
           const media = await Media.findById(slide.imageUrl);
           if (media && media.path) {
-            const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+            const encodedPath = media.path
+              .replace(/ /g, "%20")
+              .replace(/\\/g, "/");
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
-
         return {
           ...slide.toObject(),
           imageUrl: fullImageUrl,
@@ -764,19 +803,22 @@ exports.startSession = async (req, res) => {
       })
     );
 
-    // Emit the session start event to the room
-    const io = req.app.get('socketio');
-    io.to(session._id.toString()).emit('session-started', { session });
+    // Emit the session start event
+    const io = req.app.get("socketio");
+    io.emit("session-started", {session,
+      questions: questionsWithImageUrls,
+      slides: slidesWithImageUrls,
+    });
 
     res.status(200).json({
-      message: 'Session started successfully',
+      message: "Session started successfully",
       session,
       questions: questionsWithImageUrls,
-      slides: slidesWithImageUrls, // Add slides to the response
+      slides: slidesWithImageUrls,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error starting the session', error });
+    console.error("Start session error:", error);
+    res.status(500).json({ message: "Error starting the session", error });
   }
 };
 
@@ -784,45 +826,56 @@ exports.nextQuestion = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
-    // Find the session and populate related data
-    const session = await Session.findOne({ joinCode, _id: sessionId }).populate('quiz');
+    const session = await Session.findOne({
+      joinCode,
+      _id: sessionId,
+    })
+      .populate("quiz")
+      .populate("players", "username email")
+      .populate("host", "username email");
+
     if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
+      return res.status(404).json({ message: "Session not found" });
     }
 
-    // Ensure the session is in progress
-    if (session.status !== 'in_progress') {
-      return res.status(400).json({ message: 'Session is not in progress' });
+    if (session.status !== "in_progress") {
+      return res.status(400).json({ message: "Session is not in progress" });
     }
 
-    // Fetch the quiz and ensure it exists
     const quiz = await Quiz.findById(session.quiz)
-      .populate('questions')
-      .populate('slides');
+      .populate("questions")
+      .populate("slides");
+
     if (!quiz) {
-      return res.status(404).json({ message: 'Quiz not found' });
+      return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // Combine questions and slides into a single array if 'order' is not defined
+    // Combine questions and slides
     const contentItems = [
-      ...quiz.questions.map((q) => ({ type: 'question', item: q })),
-      ...quiz.slides.map((s) => ({ type: 'slide', item: s })),
+      ...quiz.questions.map((q) => ({ type: "question", item: q })),
+      ...quiz.slides.map((s) => ({ type: "slide", item: s })),
     ];
 
-    // If no items are available
     if (contentItems.length === 0) {
-      return res.status(400).json({ message: 'No content available in the quiz' });
+      return res
+        .status(400)
+        .json({ message: "No content available in the quiz" });
     }
 
-    // Get the current index of the session
+    // Get current index
     const currentIndex = session.currentQuestion
-      ? contentItems.findIndex(({ item }) => item._id.toString() === session.currentQuestion.toString())
+      ? contentItems.findIndex(
+          ({ item }) =>
+            item._id.toString() === session.currentQuestion.toString()
+        )
       : -1;
 
-    // Determine the next item
+    // Get next item
     const nextIndex = currentIndex + 1;
     if (nextIndex >= contentItems.length) {
-      return res.status(400).json({ message: 'No more items left in the session' });
+      return res
+        .status(400)
+        .json({ message: "No more items left in the session" });
     }
 
     const nextItemData = contentItems[nextIndex];
@@ -830,35 +883,54 @@ exports.nextQuestion = async (req, res) => {
     const itemType = nextItemData.type;
 
     if (!nextItem) {
-      return res.status(404).json({ message: 'Next item not found' });
+      return res.status(404).json({ message: "Next item not found" });
     }
 
-    // Update the current question in the session
+    // Update session
     session.currentQuestion = nextItem._id;
     await session.save();
 
-    // Emit the next item to the session's participants
-    const io = req.app.get('socketio');
-    io.to(session._id.toString()).emit('next-item', { type: itemType, item: nextItem });
+    // Process image URL if exists
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    let fullImageUrl = null;
+
+    if (nextItem.imageUrl) {
+      const media = await Media.findById(nextItem.imageUrl);
+      if (media && media.path) {
+        const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+        fullImageUrl = `${baseUrl}${encodedPath}`;
+      }
+    }
+
+    const itemWithImageUrl = {
+      ...nextItem.toObject(),
+      imageUrl: fullImageUrl,
+    };
+
+    // Emit the next item
+    const io = req.app.get("socketio");
+    io.emit("next-item", {type: itemType,item: itemWithImageUrl,});
 
     res.status(200).json({
       message: 'Next item retrieved successfully',
       type: itemType,
-      item: nextItem,
+      item: itemWithImageUrl,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error retrieving the next item', error });
+    console.error("Next question error:", error);
+    res.status(500).json({ message: "Error retrieving the next item", error });
   }
 };
 
 // end the session
 exports.endSession = async (req, res) => {
-  const { joinCode, sessionId } = req.params; // Extract joinCode and sessionId from the URL
+  const { joinCode, sessionId } = req.params;
 
   try {
-    // Find the session using both joinCode and sessionId
-    const session = await Session.findOne({ joinCode, _id: sessionId });
+    const session = await Session.findOne({ joinCode, _id: sessionId })
+      .populate("players", "username email")
+      .populate("host", "username email");
+
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -867,13 +939,14 @@ exports.endSession = async (req, res) => {
     session.endTime = Date.now();
     await session.save();
 
-  // Emit the session end event to the room
-  const io = req.app.get('socketio');
-  io.to(session._id.toString()).emit('session-ended', { session });
+    // Emit the session end event
+    const io = req.app.get("socketio");
+    io.emit("session-ended", { session });
 
     res.status(200).json({ message: 'Session ended successfully', session });
   } catch (error) {
-    res.status(500).json({ message: 'Error ending the session', error });
+    console.error("End session error:", error);
+    res.status(500).json({ message: "Error ending the session", error });
   }
 };
 
