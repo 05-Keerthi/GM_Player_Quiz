@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useSessionContext } from "../../context/sessionContext";
 import ContentDisplay from "../../components/ContentDisplay";
+import LeaderboardDisplay from "../../components/LeaderboardDisplay";
 
 const AdminStart = () => {
   const [searchParams] = useSearchParams();
@@ -161,6 +162,9 @@ const AdminStart = () => {
               isLastItem={isLastItem}
             />
           )}
+        </div>
+        <div className="w-full lg:w-1/3">
+          <LeaderboardDisplay sessionId={sessionId} isAdmin={true} />
         </div>
       </div>
     </div>

@@ -52,6 +52,7 @@ export const LeaderboardProvider = ({ children }) => {
     dispatch({ type: LEADERBOARD_ACTIONS.GET_USER_SCORE_START });
     try {
       const response = await api.get(`/leaderboards/${sessionId}/${userId}`);
+      console.log(response);
       dispatch({
         type: LEADERBOARD_ACTIONS.GET_USER_SCORE_SUCCESS,
         payload: response.data.user,

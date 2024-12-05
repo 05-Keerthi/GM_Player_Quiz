@@ -6,6 +6,7 @@ import ContentDisplay from "../../components/ContentDisplay";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../context/AuthContext";
+import LeaderboardDisplay from "../../components/LeaderboardDisplay";
 
 const UserPlay = () => {
   const [searchParams] = useSearchParams();
@@ -174,6 +175,13 @@ const UserPlay = () => {
             isLastItem={isLastItem}
             isTimeUp={isTimeUp}
             hasSubmitted={hasSubmitted}
+          />
+        </div>
+        <div className="w-full lg:w-1/3">
+          <LeaderboardDisplay
+            sessionId={sessionId}
+            userId={user?._id}
+            isAdmin={false}
           />
         </div>
       </div>
