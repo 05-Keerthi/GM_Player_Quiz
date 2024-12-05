@@ -305,5 +305,51 @@ exports.getSessionAnswers = async (req, res) => {
     }
   };
   
+  exports.getAnswerCounts = async (req, res) => {
+    const { sessionId, questionId } = req.params;
+  
+    if (!mongoose.Types.ObjectId.isValid(sessionId) || !mongoose.Types.ObjectId.isValid(questionId)) {
+      return res.status(400).json({ message: 'Invalid session ID or question ID format' });
+    }
+  
+    try {
+      const session = await Session.findById(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+  
+      const question = await Question.findById(questionId);
+      if (!question) {
+        return res.status(404).json({ message: 'Question not found' });
+      }
+  
+      const answers = await Answer.find({ session: sessionId, question: questionId });
+      if (answers.length === 0) {
+        return res.status(404).json({ message: 'No answers found for the question in this session' });
+      }
+  
+      const correctCount = answers.filter(answer => answer.isCorrect).length;
+      const incorrectCount = answers.length - correctCount;
 
+    // Emit answer counts via Socket.IO
+    const io = req.app.get('socketio');
+    io.to(sessionId).emit('answer-counts', {
+      message: 'Answer counts updated',
+      question: question.questionText,
+      correctCount,
+      incorrectCount,
+    });
+
+  
+      res.status(200).json({
+        message: 'Answer counts fetched successfully',
+        question: question.questionText,
+        correctCount,
+        incorrectCount,
+      });
+    } catch (error) {
+      console.error('Error fetching answer counts:', error);
+      res.status(500).json({ message: 'Error fetching answer counts', error });
+    }
+  };
   

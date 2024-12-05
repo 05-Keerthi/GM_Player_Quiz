@@ -141,6 +141,36 @@ module.exports = (io) => {
       }
     });
 
+    socket.on('emit-answer-counts', async ({ sessionId, questionId }, callback) => {
+      try {
+        const session = await Session.findById(sessionId);
+        if (!session) {
+          return callback({ error: 'Session not found' });
+        }
+
+        const question = await Question.findById(questionId);
+        if (!question) {
+          return callback({ error: 'Question not found' });
+        }
+
+        const answers = await Answer.find({ session: sessionId, question: questionId });
+        const correctCount = answers.filter(answer => answer.isCorrect).length;
+        const incorrectCount = answers.length - correctCount;
+
+        io.to(sessionId).emit('answer-counts', {
+          message: 'Answer counts updated',
+          question: question.questionText,
+          correctCount,
+          incorrectCount,
+        });
+
+        callback({ success: true, correctCount, incorrectCount });
+      } catch (error) {
+        console.error('Error emitting answer counts:', error);
+        callback({ error: 'Error emitting answer counts' });
+      }
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.id}`);
