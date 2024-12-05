@@ -1,12 +1,16 @@
 // UserPlay.js
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAnswerContext } from "../../context/answerContext";
 import ContentDisplay from "../../components/ContentDisplay";
+import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
+import { useAuthContext } from "../../context/AuthContext";
 
 const UserPlay = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading, user } = useAuthContext();
   const { submitAnswer } = useAnswerContext();
   const [currentItem, setCurrentItem] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -18,22 +22,27 @@ const UserPlay = () => {
   const [questionStartTime, setQuestionStartTime] = useState(null);
 
   const sessionId = searchParams.get("sessionId");
-  const userId = localStorage.getItem("userId");
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000");
-    setSocket(newSocket);
+    if (!isAuthenticated && !authLoading) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
-    if (sessionId && userId) {
+  useEffect(() => {
+    if (isAuthenticated && user && sessionId) {
+      const newSocket = io("http://localhost:5000");
+      setSocket(newSocket);
+
       newSocket.emit("join-session", {
         sessionId,
-        userId,
-        username: localStorage.getItem("username"),
+        userId: user._id,
+        username: user.username,
       });
-    }
 
-    return () => newSocket.disconnect();
-  }, [sessionId, userId]);
+      return () => newSocket.disconnect();
+    }
+  }, [isAuthenticated, user, sessionId]);
 
   useEffect(() => {
     if (socket) {
@@ -45,7 +54,6 @@ const UserPlay = () => {
         setTimerActive(item.type !== "bullet_points");
         setHasSubmitted(false);
         setIsTimeUp(false);
-        // Set the start time when a new question is received
         if (item.type !== "bullet_points") {
           setQuestionStartTime(Date.now());
         } else {
@@ -106,19 +114,19 @@ const UserPlay = () => {
       isTimeUp ||
       hasSubmitted ||
       !option ||
-      !questionStartTime
+      !questionStartTime ||
+      !user
     ) {
       return;
     }
 
     try {
-      // Calculate time taken in seconds
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
       await submitAnswer(sessionId, currentItem._id, {
         answer: option.text,
-        userId,
-        timeTaken, // Add timeTaken to the submission
+        userId: user._id,
+        timeTaken,
       });
 
       setHasSubmitted(true);
@@ -128,9 +136,9 @@ const UserPlay = () => {
           sessionId,
           answerDetails: {
             questionId: currentItem._id,
-            userId,
+            userId: user._id,
             answer: option.text,
-            timeTaken, // Include timeTaken in the socket event
+            timeTaken,
           },
         });
       }
@@ -138,6 +146,21 @@ const UserPlay = () => {
       console.error("Error submitting answer:", error);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">

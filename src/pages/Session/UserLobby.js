@@ -2,50 +2,46 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
+
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
+import { useAuthContext } from "../../context/AuthContext";
 
 const UserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, loading: authLoading, user } = useAuthContext();
   const [currentItem, setCurrentItem] = useState(null);
   const [currentItemType, setCurrentItemType] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
-  const { joinSession, loading } = useSessionContext();
+  const { joinSession, loading: sessionLoading } = useSessionContext();
 
   const joinCode = searchParams.get("code");
   const sessionId = searchParams.get("sessionId");
 
-  // Check authentication
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsAuthenticated(!!token);
-  }, []);
-
   // Initialize socket and join session
   useEffect(() => {
-    if (isAuthenticated && joinCode && sessionId) {
+    if (isAuthenticated && user && joinCode && sessionId) {
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
       newSocket.emit("join-session", {
         sessionId,
         joinCode,
-        userId: localStorage.getItem("userId"), // Add this to track user
+        userId: user._id,
+        username: user.username,
       });
 
       return () => newSocket.disconnect();
     }
-  }, [isAuthenticated, joinCode, sessionId]);
+  }, [isAuthenticated, user, joinCode, sessionId]);
 
   // Listen for game events
   useEffect(() => {
     if (socket) {
       socket.on("session-started", (data) => {
         console.log("Session started data:", data);
-        // Redirect to Play page when session starts
         navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
       });
 
@@ -69,7 +65,7 @@ const UserLobby = () => {
   }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
-    if (currentItemType !== "question" || selectedAnswer) return;
+    if (currentItemType !== "question" || selectedAnswer || !user) return;
 
     setSelectedAnswer(option);
     if (socket) {
@@ -78,11 +74,22 @@ const UserLobby = () => {
         answerDetails: {
           answer: option.text,
           questionId: currentItem._id,
-          userId: localStorage.getItem("userId"),
+          userId: user._id,
         },
       });
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -115,7 +122,7 @@ const UserLobby = () => {
     );
   }
 
-  if (loading) {
+  if (sessionLoading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
