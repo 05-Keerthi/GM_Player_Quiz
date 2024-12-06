@@ -744,42 +744,46 @@ exports.startSession = async (req, res) => {
       .populate("host", "username email");
 
     if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
+      return res.status(404).json({ message: "Session not found" });
     }
 
-    if (session.status !== 'waiting') {
-      return res.status(400).json({ message: 'Session cannot be started' });
+    if (session.status !== "waiting") {
+      return res.status(400).json({ message: "Session cannot be started" });
     }
 
     // Fetch both questions and slides
     const questions = await Question.find({ _id: { $in: session.quiz.questions } });
     const slides = await Slide.find({ _id: { $in: session.quiz.slides } });
 
-    session.status = 'in_progress';
+    session.status = "in_progress";
     session.questions = questions.map((q) => q._id);
     session.slides = slides.map((s) => s._id);
     session.startTime = Date.now();
     await session.save();
 
     // Construct Base URL
-    const baseUrl = `${req.protocol}://${req.get('host')}/`;
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
-    // Process questions to include full image URLs
+    // Process questions to include full image URLs and correct answers
     const questionsWithImageUrls = await Promise.all(
       questions.map(async (question) => {
+        // Extract correct answers
+        const correctAnswers = question.options
+          .filter((option) => option.isCorrect)
+          .map((option) => option.text);
+
         let fullImageUrl = null;
         if (question.imageUrl) {
           const media = await Media.findById(question.imageUrl);
           if (media && media.path) {
-            const encodedPath = media.path
-              .replace(/ /g, "%20")
-              .replace(/\\/g, "/");
+            const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
         return {
           ...question.toObject(),
           imageUrl: fullImageUrl,
+          correctAnswer: req.user && req.user.role === "admin" ? correctAnswers : [], // Include only for admin
         };
       })
     );
@@ -791,9 +795,7 @@ exports.startSession = async (req, res) => {
         if (slide.imageUrl) {
           const media = await Media.findById(slide.imageUrl);
           if (media && media.path) {
-            const encodedPath = media.path
-              .replace(/ /g, "%20")
-              .replace(/\\/g, "/");
+            const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
             fullImageUrl = `${baseUrl}${encodedPath}`;
           }
         }
@@ -806,7 +808,8 @@ exports.startSession = async (req, res) => {
 
     // Emit the session start event
     const io = req.app.get("socketio");
-    io.emit("session-started", {session,
+    io.emit("session-started", {
+      session,
       questions: questionsWithImageUrls,
       slides: slidesWithImageUrls,
     });
