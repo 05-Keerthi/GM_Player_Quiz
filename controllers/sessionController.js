@@ -767,11 +767,6 @@ exports.startSession = async (req, res) => {
     // Process questions to include full image URLs and correct answers
     const questionsWithImageUrls = await Promise.all(
       questions.map(async (question) => {
-        // Extract correct answers
-        const correctAnswers = question.options
-          .filter((option) => option.isCorrect)
-          .map((option) => option.text);
-
         let fullImageUrl = null;
         if (question.imageUrl) {
           const media = await Media.findById(question.imageUrl);
@@ -783,7 +778,6 @@ exports.startSession = async (req, res) => {
         return {
           ...question.toObject(),
           imageUrl: fullImageUrl,
-          correctAnswer: req.user && req.user.role === "admin" ? correctAnswers : [], // Include only for admin
         };
       })
     );
