@@ -15,17 +15,27 @@ const ContentDisplay = ({
   const [isTimeUp, setIsTimeUp] = useState(false);
 
   useEffect(() => {
-    // Reset states when new item is received
     setSelectedOption(null);
     setIsTimeUp(false);
   }, [item]);
 
   useEffect(() => {
-    // Set time up when timer reaches 0
     if (timeLeft === 0) {
       setIsTimeUp(true);
     }
   }, [timeLeft]);
+
+  // Background colors for different options - matching with AnswerCountDisplay
+  const bgColors = [
+    "bg-red-300",
+    "bg-green-200",
+    "bg-yellow-200",
+    "bg-blue-200",
+    "bg-purple-200",
+    "bg-pink-200",
+    "bg-indigo-200",
+    "bg-orange-200",
+  ];
 
   const isSlide = item?.type === "bullet_points";
 
@@ -56,7 +66,7 @@ const ContentDisplay = ({
         />
       )}
       <div className="grid grid-cols-2 gap-4">
-        {item?.options?.map((option) => (
+        {item?.options?.map((option, index) => (
           <button
             key={option._id}
             onClick={() => {
@@ -66,20 +76,21 @@ const ContentDisplay = ({
               }
             }}
             className={`p-4 text-lg rounded-lg border transition-all
-              ${
-                isAdmin && option.isCorrect
-                  ? "bg-green-100 border-green-500"
-                  : ""
-              }
+              ${bgColors[index % bgColors.length]} 
               ${
                 !isAdmin && selectedOption === option
-                  ? "bg-blue-100 border-blue-500"
-                  : "hover:bg-gray-50"
+                  ? "border-blue-500 ring-2 ring-blue-500"
+                  : "hover:brightness-95"
+              }
+              ${
+                isAdmin && option.isCorrect
+                  ? "ring-2 ring-green-500 border-green-500"
+                  : ""
               }
               ${
                 timeLeft === 0 || selectedOption || isTimeUp
                   ? "opacity-60 cursor-not-allowed"
-                  : "hover:bg-gray-50"
+                  : ""
               }
             `}
             disabled={timeLeft === 0 || selectedOption || isTimeUp}
