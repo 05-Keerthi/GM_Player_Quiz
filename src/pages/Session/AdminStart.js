@@ -17,28 +17,85 @@ const AdminStart = () => {
   const [isLastItem, setIsLastItem] = useState(false);
   const [isQuizEnded, setIsQuizEnded] = useState(false);
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
+  const [timerInterval, setTimerInterval] = useState(null);
 
   const quizId = searchParams.get("quizId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
+  // Initialize socket and fetch first question
   useEffect(() => {
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
     newSocket.emit("create-session", { sessionId });
-    return () => newSocket.disconnect();
-  }, [sessionId]);
 
-  useEffect(() => {
-    if (socket) {
-      socket.on("timer-sync", ({ timeLeft: newTime }) => {
-        setTimeLeft(newTime);
-      });
-      return () => {
-        socket.off("timer-sync");
-      };
+    const initializeQuiz = async () => {
+      try {
+        if (joinCode && sessionId) {
+          const response = await nextQuestion(joinCode, sessionId);
+          if (response.item) {
+            setCurrentItem(response.item);
+            const initialTime =
+              response.item.type === "bullet_points"
+                ? 0
+                : response.item.timer || 30;
+            setTimeLeft(initialTime);
+            setTimerActive(response.item.type !== "bullet_points");
+            setIsLastItem(response.isLastItem || false);
+
+            // Emit both the item and initial timer value
+            newSocket.emit("next-item", {
+              sessionId,
+              type: response.type,
+              item: response.item,
+              isLastItem: response.isLastItem || false,
+              initialTime: initialTime,
+            });
+
+            // Start timer immediately for first question
+            if (response.item.type !== "bullet_points") {
+              startTimer(newSocket, sessionId, initialTime);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching first question:", error);
+      }
+    };
+
+    initializeQuiz();
+
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+      newSocket.disconnect();
+    };
+  }, [sessionId, joinCode]);
+
+  // Function to start timer
+  const startTimer = (socketInstance, sessionId, initialTime) => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
     }
-  }, [socket]);
+
+    setTimeLeft(initialTime);
+    setTimerActive(true);
+
+    const interval = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        const newTime = prevTime - 1;
+        if (socketInstance) {
+          socketInstance.emit("timer-sync", { sessionId, timeLeft: newTime });
+        }
+        if (newTime <= 0) {
+          clearInterval(interval);
+          setTimerActive(false);
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    setTimerInterval(interval);
+  };
 
   const handleNext = async () => {
     try {
@@ -47,13 +104,21 @@ const AdminStart = () => {
         return;
       }
 
+      // Clear existing timer if any
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+
       const response = await nextQuestion(joinCode, sessionId);
 
       if (response.item) {
         setCurrentItem(response.item);
-        setTimeLeft(
-          response.item.type === "bullet_points" ? 0 : response.item.timer || 30
-        );
+        const newTime =
+          response.item.type === "bullet_points"
+            ? 0
+            : response.item.timer || 30;
+        setTimeLeft(newTime);
         setTimerActive(response.item.type !== "bullet_points");
         setIsLastItem(response.isLastItem || false);
 
@@ -63,10 +128,15 @@ const AdminStart = () => {
             type: response.type,
             item: response.item,
             isLastItem: response.isLastItem || false,
+            initialTime: newTime,
           });
+
+          // Start timer for new question
+          if (response.item.type !== "bullet_points") {
+            startTimer(socket, sessionId, newTime);
+          }
         }
       } else {
-        // No more items, show leaderboard
         setIsQuizEnded(true);
         setShowFinalLeaderboard(true);
         if (socket) {
@@ -95,13 +165,17 @@ const AdminStart = () => {
         return;
       }
 
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+
       await endSession(joinCode, sessionId);
 
       if (socket) {
         socket.emit("end-session", { sessionId });
       }
 
-      // Navigate to dashboard or home
       navigate("/quizzes");
     } catch (error) {
       console.error("Error ending quiz:", error);

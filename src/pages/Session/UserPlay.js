@@ -62,6 +62,7 @@ const UserPlay = () => {
     }
   }, [isAuthenticated, user, sessionId]);
 
+  
   useEffect(() => {
     if (socket) {
       socket.on("connect", () => {
@@ -70,9 +71,11 @@ const UserPlay = () => {
 
       socket.on("next-item", (data) => {
         console.log("Received next-item:", data);
-        const { type, item, isLastItem: lastItem } = data;
+        const { type, item, isLastItem: lastItem, initialTime } = data;
         setCurrentItem(item);
-        setTimeLeft(item.type === "bullet_points" ? 0 : item.timer || 30);
+        setTimeLeft(
+          initialTime || (item.type === "bullet_points" ? 0 : item.timer || 30)
+        );
         setIsLastItem(lastItem);
         setTimerActive(item.type !== "bullet_points");
         setHasSubmitted(false);
@@ -129,6 +132,7 @@ const UserPlay = () => {
   const handleSubmitAnswer = async (option) => {
     if (
       currentItem.type === "bullet_points" ||
+      timeLeft <= 0 || // Check if time is up
       isTimeUp ||
       hasSubmitted ||
       !option ||
@@ -137,6 +141,7 @@ const UserPlay = () => {
     ) {
       console.log("Submit answer prevented due to:", {
         type: currentItem?.type,
+        timeLeft,
         isTimeUp,
         hasSubmitted,
         hasOption: !!option,

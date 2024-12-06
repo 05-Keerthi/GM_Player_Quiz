@@ -20,7 +20,6 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
         } else if (userId) {
           const response = await getUserScore(sessionId, userId);
           console.log("User score response:", response);
-          // Since the API returns nested user object
           setUserScore(response.user);
           console.log("Setting user score to:", response.user);
         }
@@ -93,9 +92,6 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
                     <p className="font-semibold text-gray-800">
                       {entry.user.username}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      Correct Answers: {entry.correctAnswers || 0}
-                    </p>
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-blue-600">
@@ -130,24 +126,25 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center">
+              {userScore.rank === 1 ? (
+                <Trophy className="w-10 h-10 text-yellow-500" />
+              ) : userScore.rank === 2 ? (
+                <Medal className="w-10 h-10 text-gray-400" />
+              ) : userScore.rank === 3 ? (
+                <Medal className="w-10 h-10 text-yellow-700" />
+              ) : (
+                <span className="text-gray-600 font-semibold">
+                  #{userScore.rank}
+                </span>
+              )}
+            </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-xl font-semibold text-gray-800">
                 #{userScore.rank}
               </p>
-              <p className="text-sm text-gray-600">Final Rank</p>
+              <p className="text-gray-400 font-semibold">Your Rank</p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <p className="text-xl font-semibold text-gray-800">
-                {userScore.correctAnswers || 0}
-              </p>
-              <p className="text-sm text-gray-600">Correct Answers</p>
-            </div>
-          </div>
-
-          <div className="mt-4 text-center">
-            <p className="text-gray-700">
-              Player: {userScore.user?.username || "Unknown"}
-            </p>
           </div>
         </div>
       )}
