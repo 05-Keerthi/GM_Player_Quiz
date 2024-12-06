@@ -62,7 +62,6 @@ const UserPlay = () => {
     }
   }, [isAuthenticated, user, sessionId]);
 
-  
   useEffect(() => {
     if (socket) {
       socket.on("connect", () => {
@@ -129,30 +128,21 @@ const UserPlay = () => {
     }
   }, [socket, navigate]);
 
+  // In UserPlay.js, modify the handleSubmitAnswer function:
   const handleSubmitAnswer = async (option) => {
     if (
       currentItem.type === "bullet_points" ||
-      timeLeft <= 0 || // Check if time is up
+      timeLeft <= 0 ||
       isTimeUp ||
       hasSubmitted ||
       !option ||
       !questionStartTime ||
       !user
     ) {
-      console.log("Submit answer prevented due to:", {
-        type: currentItem?.type,
-        timeLeft,
-        isTimeUp,
-        hasSubmitted,
-        hasOption: !!option,
-        hasQuestionStartTime: !!questionStartTime,
-        hasUser: !!user,
-      });
       return;
     }
 
     try {
-      console.log("Submitting answer:", option);
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
       const answerData = {
@@ -161,11 +151,10 @@ const UserPlay = () => {
         timeTaken,
       };
 
-      console.log("Submitting answer with data:", answerData);
       await submitAnswer(sessionId, currentItem._id, answerData);
-
       setHasSubmitted(true);
 
+      // Emit the answer with questionId
       if (socket) {
         const answerDetails = {
           questionId: currentItem._id,
@@ -173,7 +162,7 @@ const UserPlay = () => {
           answer: option.text,
           timeTaken,
         };
-        console.log("Emitting answer-submitted with details:", answerDetails);
+
         socket.emit("answer-submitted", {
           sessionId,
           answerDetails,

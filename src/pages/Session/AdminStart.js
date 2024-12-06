@@ -5,6 +5,7 @@ import io from "socket.io-client";
 import { useSessionContext } from "../../context/sessionContext";
 import ContentDisplay from "../../components/ContentDisplay";
 import FinalLeaderboard from "./FinalLeaderboard";
+import AdminAnswerCounts from "../../components/AnswerCountDisplay";
 
 const AdminStart = () => {
   const [searchParams] = useSearchParams();
@@ -205,15 +206,24 @@ const AdminStart = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : (
-            <ContentDisplay
-              item={currentItem}
-              isAdmin={true}
-              onNext={handleNext}
-              timeLeft={timeLeft}
-              isLastItem={isLastItem}
-              onEndQuiz={handleEndQuiz}
-              isQuizEnded={isQuizEnded}
-            />
+            <>
+              {/* Ans count Div */}
+              {/* In AdminStart.js, replace the existing answer count div */}
+              <AdminAnswerCounts
+                sessionId={sessionId}
+                currentItem={currentItem}
+                socket={socket}
+              />
+              <ContentDisplay
+                item={currentItem}
+                isAdmin={true}
+                onNext={handleNext}
+                timeLeft={timeLeft}
+                isLastItem={isLastItem}
+                onEndQuiz={handleEndQuiz}
+                isQuizEnded={isQuizEnded}
+              />
+            </>
           )}
         </div>
       </div>
