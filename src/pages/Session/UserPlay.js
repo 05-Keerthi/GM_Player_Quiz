@@ -1,4 +1,3 @@
-// UserPlay.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAnswerContext } from "../../context/answerContext";
@@ -6,7 +5,7 @@ import ContentDisplay from "../../components/ContentDisplay";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../context/AuthContext";
-import LeaderboardDisplay from "../../components/LeaderboardDisplay";
+import FinalLeaderboard from "./FinalLeaderboard";
 
 const UserPlay = () => {
   const [searchParams] = useSearchParams();
@@ -21,34 +20,57 @@ const UserPlay = () => {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(null);
+  const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
 
   const sessionId = searchParams.get("sessionId");
 
+  // Debug logs for initial props and state
+  useEffect(() => {
+    console.log("Initial state:", {
+      sessionId,
+      user,
+      isAuthenticated,
+      showFinalLeaderboard,
+    });
+  }, [sessionId, user, isAuthenticated, showFinalLeaderboard]);
+
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
+      console.log("Redirecting to login - not authenticated");
       navigate("/login");
     }
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
     if (isAuthenticated && user && sessionId) {
+      console.log("Initializing socket connection");
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
-      newSocket.emit("join-session", {
+      const userData = {
         sessionId,
-        userId: user._id,
+        userId: user.id,
         username: user.username,
-      });
+      };
+      console.log("Emitting join-session with data:", userData);
+      newSocket.emit("join-session", userData);
 
-      return () => newSocket.disconnect();
+      return () => {
+        console.log("Disconnecting socket");
+        newSocket.disconnect();
+      };
     }
   }, [isAuthenticated, user, sessionId]);
 
   useEffect(() => {
     if (socket) {
-      socket.on("next-item", ({ type, item, isLastItem: lastItem }) => {
-        console.log("Received next item:", item);
+      socket.on("connect", () => {
+        console.log("Socket connected with ID:", socket.id);
+      });
+
+      socket.on("next-item", (data) => {
+        console.log("Received next-item:", data);
+        const { type, item, isLastItem: lastItem } = data;
         setCurrentItem(item);
         setTimeLeft(item.type === "bullet_points" ? 0 : item.timer || 30);
         setIsLastItem(lastItem);
@@ -62,7 +84,9 @@ const UserPlay = () => {
         }
       });
 
-      socket.on("timer-sync", ({ timeLeft: newTime }) => {
+      socket.on("timer-sync", (data) => {
+        console.log("Received timer-sync:", data);
+        const { timeLeft: newTime } = data;
         setTimeLeft(newTime);
         setTimerActive(newTime > 0);
         if (newTime <= 0) {
@@ -70,44 +94,37 @@ const UserPlay = () => {
         }
       });
 
+      socket.on("quiz-completed", () => {
+        console.log("Received quiz-completed event");
+        setShowFinalLeaderboard(true);
+      });
+
       socket.on("session-ended", () => {
+        console.log("Received session-ended event");
         setTimerActive(false);
         setIsTimeUp(true);
-        console.log("Quiz has ended");
+        navigate("/join");
+      });
+
+      socket.on("error", (error) => {
+        console.error("Socket error:", error);
+      });
+
+      socket.on("disconnect", (reason) => {
+        console.log("Socket disconnected:", reason);
       });
 
       return () => {
+        console.log("Cleaning up socket listeners");
         socket.off("next-item");
         socket.off("timer-sync");
         socket.off("session-ended");
+        socket.off("quiz-completed");
+        socket.off("error");
+        socket.off("disconnect");
       };
     }
-  }, [socket]);
-
-  useEffect(() => {
-    let intervalId;
-
-    if (timerActive && timeLeft > 0) {
-      intervalId = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          const newTime = prevTime - 1;
-          if (newTime <= 0) {
-            setTimerActive(false);
-            setIsTimeUp(true);
-            clearInterval(intervalId);
-            return 0;
-          }
-          return newTime;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [timerActive]);
+  }, [socket, navigate]);
 
   const handleSubmitAnswer = async (option) => {
     if (
@@ -118,29 +135,43 @@ const UserPlay = () => {
       !questionStartTime ||
       !user
     ) {
+      console.log("Submit answer prevented due to:", {
+        type: currentItem?.type,
+        isTimeUp,
+        hasSubmitted,
+        hasOption: !!option,
+        hasQuestionStartTime: !!questionStartTime,
+        hasUser: !!user,
+      });
       return;
     }
 
     try {
+      console.log("Submitting answer:", option);
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
-      await submitAnswer(sessionId, currentItem._id, {
+      const answerData = {
         answer: option.text,
         userId: user._id,
         timeTaken,
-      });
+      };
+
+      console.log("Submitting answer with data:", answerData);
+      await submitAnswer(sessionId, currentItem._id, answerData);
 
       setHasSubmitted(true);
 
       if (socket) {
+        const answerDetails = {
+          questionId: currentItem._id,
+          userId: user.id,
+          answer: option.text,
+          timeTaken,
+        };
+        console.log("Emitting answer-submitted with details:", answerDetails);
         socket.emit("answer-submitted", {
           sessionId,
-          answerDetails: {
-            questionId: currentItem._id,
-            userId: user._id,
-            answer: option.text,
-            timeTaken,
-          },
+          answerDetails,
         });
       }
     } catch (error) {
@@ -149,6 +180,7 @@ const UserPlay = () => {
   };
 
   if (authLoading) {
+    console.log("Auth loading...");
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -160,9 +192,27 @@ const UserPlay = () => {
   }
 
   if (!isAuthenticated) {
+    console.log("Not authenticated, returning null");
     return null;
   }
 
+  if (showFinalLeaderboard) {
+    console.log("Showing final leaderboard with:", {
+      sessionId,
+      userId: user?.id,
+    });
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <FinalLeaderboard
+          sessionId={sessionId}
+          userId={user.id}
+          isAdmin={false}
+        />
+      </div>
+    );
+  }
+
+  console.log("Rendering main quiz view");
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
@@ -175,13 +225,6 @@ const UserPlay = () => {
             isLastItem={isLastItem}
             isTimeUp={isTimeUp}
             hasSubmitted={hasSubmitted}
-          />
-        </div>
-        <div className="w-full lg:w-1/3">
-          <LeaderboardDisplay
-            sessionId={sessionId}
-            userId={user?._id}
-            isAdmin={false}
           />
         </div>
       </div>

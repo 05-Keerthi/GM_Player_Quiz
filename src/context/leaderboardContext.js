@@ -31,13 +31,17 @@ export const LeaderboardProvider = ({ children }) => {
   const getLeaderboard = async (sessionId) => {
     dispatch({ type: LEADERBOARD_ACTIONS.GET_LEADERBOARD_START });
     try {
+      console.log("Fetching leaderboard for session:", sessionId);
       const response = await api.get(`/leaderboards/${sessionId}`);
+      console.log("Leaderboard response:", response.data);
+
       dispatch({
         type: LEADERBOARD_ACTIONS.GET_LEADERBOARD_SUCCESS,
         payload: response.data.leaderboard,
       });
       return response.data;
     } catch (error) {
+      console.error("Error in getLeaderboard:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to fetch leaderboard";
       dispatch({
@@ -51,14 +55,17 @@ export const LeaderboardProvider = ({ children }) => {
   const getUserScore = async (sessionId, userId) => {
     dispatch({ type: LEADERBOARD_ACTIONS.GET_USER_SCORE_START });
     try {
+      console.log("Fetching user score for:", { sessionId, userId });
       const response = await api.get(`/leaderboards/${sessionId}/${userId}`);
-      console.log(response);
+      console.log("User score response:", response.data);
+
       dispatch({
         type: LEADERBOARD_ACTIONS.GET_USER_SCORE_SUCCESS,
         payload: response.data.user,
       });
       return response.data;
     } catch (error) {
+      console.error("Error in getUserScore:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to fetch user score";
       dispatch({

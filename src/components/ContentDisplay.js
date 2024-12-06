@@ -1,4 +1,3 @@
-// ContentDisplay.js
 import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
@@ -9,6 +8,8 @@ const ContentDisplay = ({
   onSubmitAnswer,
   timeLeft,
   isLastItem,
+  onEndQuiz,
+  isQuizEnded,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
@@ -103,6 +104,22 @@ const ContentDisplay = ({
     </div>
   );
 
+  if (isQuizEnded) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">
+        <h2 className="text-2xl font-bold mb-4">Quiz Completed!</h2>
+        {isAdmin && (
+          <button
+            onClick={onEndQuiz}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            End Quiz
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
@@ -127,7 +144,7 @@ const ContentDisplay = ({
             onClick={onNext}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            {isLastItem ? "End Quiz" : "Next"}
+            {isLastItem ? "Next" : "Next"}
           </button>
         </div>
       )}

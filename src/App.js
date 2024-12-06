@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Route, Routes, Navigate } from "react-router-dom";
+import { Route, Routes, Navigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -12,7 +12,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
 import QuizList from "./components/QuizList";
-import PreviewPage from"./pages/Preview";
+import PreviewPage from "./pages/Preview";
 import QuizCreator from "./pages/quizCreator";
 import QuizDetails from "./pages/QuizDetails";
 import Lobby from "./pages/Session/AdminLobby";
@@ -20,6 +20,7 @@ import JoinQuiz from "./pages/Session/JoinQuiz";
 import UserLobby from "./pages/Session/UserLobby";
 import AdminStart from "./pages/Session/AdminStart";
 import UserPlay from "./pages/Session/UserPlay";
+import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -28,8 +29,9 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { isAuthenticated, sessionExpired, setSessionExpired } =
+  const { user, isAuthenticated, sessionExpired, setSessionExpired } =
     useAuthContext();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (sessionExpired) {
@@ -75,9 +77,9 @@ export default function App() {
         <Route path="/select-category" element={<SelectCategoryPage />} />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
-         {/* Add new PreviewPage route */}
-        <Route path="/preview/:quizId" element={<PreviewPage />} /> {/* New path */}
-
+        {/* Add new PreviewPage route */}
+        <Route path="/preview/:quizId" element={<PreviewPage />} />{" "}
+        {/* New path */}
         {/* Admin routes */}
         <Route path="/quiz-details" element={<QuizDetails />} />
         <Route path="/lobby" element={<Lobby />} />
@@ -85,7 +87,16 @@ export default function App() {
         <Route path="/user-lobby" element={<UserLobby />} />
         <Route path="/start" element={<AdminStart />} />
         <Route path="/play" element={<UserPlay />} />
-
+        <Route
+          path="/leaderboard"
+          element={
+            <FinalLeaderboard
+              sessionId={searchParams.get("sessionId")}
+              userId={user?.id}
+              isAdmin={searchParams.get("isAdmin") === "true"}
+            />
+          }
+        />
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
