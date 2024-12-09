@@ -13,10 +13,6 @@ export const ANSWER_ACTIONS = {
   GET_QUESTION_ANSWERS_SUCCESS: "GET_QUESTION_ANSWERS_SUCCESS",
   GET_QUESTION_ANSWERS_FAILURE: "GET_QUESTION_ANSWERS_FAILURE",
 
-  GET_ANSWER_COUNTS_START: "GET_ANSWER_COUNTS_START",
-  GET_ANSWER_COUNTS_SUCCESS: "GET_ANSWER_COUNTS_SUCCESS",
-  GET_ANSWER_COUNTS_FAILURE: "GET_ANSWER_COUNTS_FAILURE",
-
   CLEAR_ERROR: "CLEAR_ERROR",
 };
 
@@ -27,7 +23,6 @@ export const initialState = {
   lastSubmittedAnswer: null,
   sessionAnswers: [],
   questionAnswers: [],
-  answerCounts: null,
 };
 
 export const answerReducer = (state, action) => {
@@ -95,29 +90,6 @@ export const answerReducer = (state, action) => {
       };
 
     case ANSWER_ACTIONS.GET_QUESTION_ANSWERS_FAILURE:
-      return {
-        ...state,
-        loading: false,
-        error: action.payload,
-      };
-
-    // Get Answer Counts Actions
-    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_START:
-      return {
-        ...state,
-        loading: true,
-        error: null,
-      };
-
-    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_SUCCESS:
-      return {
-        ...state,
-        loading: false,
-        answerCounts: action.payload,
-        error: null,
-      };
-
-    case ANSWER_ACTIONS.GET_ANSWER_COUNTS_FAILURE:
       return {
         ...state,
         loading: false,

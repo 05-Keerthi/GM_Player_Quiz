@@ -93,27 +93,6 @@ export const AnswerProvider = ({ children }) => {
     }
   };
 
-  const getAnswerCounts = async (sessionId, questionId) => {
-    dispatch({ type: ANSWER_ACTIONS.GET_ANSWER_COUNTS_START });
-    try {
-      const response = await api.get(
-        `/getting-count/${sessionId}/${questionId}`
-      );
-      dispatch({
-        type: ANSWER_ACTIONS.GET_ANSWER_COUNTS_SUCCESS,
-        payload: response.data,
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Failed to fetch answer counts";
-      dispatch({
-        type: ANSWER_ACTIONS.GET_ANSWER_COUNTS_FAILURE,
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
 
   const clearError = () => {
     dispatch({ type: ANSWER_ACTIONS.CLEAR_ERROR });
@@ -124,7 +103,6 @@ export const AnswerProvider = ({ children }) => {
     submitAnswer,
     getSessionAnswers,
     getQuestionAnswers,
-    getAnswerCounts,
     clearError,
   };
 

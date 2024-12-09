@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useAnswerContext } from "../../context/answerContext";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   const [optionCounts, setOptionCounts] = useState({});
-  const { getAnswerCounts } = useAnswerContext();
 
-  // Initialize counts based on number of options
+  // Initialize counts when question changes
   useEffect(() => {
     if (currentItem?.options) {
       const initialCounts = {};
@@ -16,47 +14,28 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     }
   }, [currentItem?.options]);
 
-  // Fetch counts when question changes
-  useEffect(() => {
-    if (currentItem?._id && currentItem.type !== "bullet_points") {
-      fetchAnswerCounts();
-    }
-  }, [currentItem?._id]);
-
-  // Listen for socket events
+  // Socket event listener
   useEffect(() => {
     if (socket && currentItem?._id && currentItem.type !== "bullet_points") {
-      socket.on("answer-submitted", ({ answerDetails }) => {
+      const handleAnswerSubmitted = ({ answerDetails }) => {
         if (answerDetails.questionId === currentItem._id) {
-          fetchAnswerCounts();
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = currentItem.options.findIndex(
+              (opt) => opt.text === answerDetails.answer
+            );
+            if (optionIndex !== -1) {
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            }
+            return newCounts;
+          });
         }
-      });
-
-      return () => {
-        socket.off("answer-submitted");
       };
+
+      socket.on("answer-submitted", handleAnswerSubmitted);
+      return () => socket.off("answer-submitted", handleAnswerSubmitted);
     }
   }, [socket, currentItem]);
-
-  const fetchAnswerCounts = async () => {
-    try {
-      const response = await getAnswerCounts(sessionId, currentItem._id);
-      console.log("Answer counts response:", response);
-
-      const newCounts = {};
-      if (currentItem?.options) {
-        currentItem.options.forEach((option, index) => {
-          const count =
-            response?.answers?.filter((answer) => answer.answer === option.text)
-              .length || 0;
-          newCounts[index] = count;
-        });
-      }
-      setOptionCounts(newCounts);
-    } catch (error) {
-      console.error("Error fetching answer counts:", error);
-    }
-  };
 
   if (
     !currentItem ||
@@ -66,7 +45,6 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     return null;
   }
 
-  // Background colors for different options
   const bgColors = [
     "bg-red-300",
     "bg-green-200",
@@ -85,7 +63,7 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
           key={index}
           className={`${
             bgColors[index % bgColors.length]
-          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium`}
+          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
         >
           {optionCounts[index] || 0}
         </div>
