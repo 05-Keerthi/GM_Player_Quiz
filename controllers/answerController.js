@@ -4,6 +4,10 @@ const Question = require('../models/question');
 const Session = require('../models/session');
 const Leaderboard = require('../models/leaderBoard');
 
+const calculateScore = (timeTaken, questionTimer, basePoints) => {
+  const timeBonus = Math.max(0, questionTimer - timeTaken);
+  return basePoints + timeBonus;
+};
 
 exports.submitAnswer = async (req, res) => {
     const { sessionId, questionId } = req.params;
@@ -70,7 +74,12 @@ exports.submitAnswer = async (req, res) => {
       } else if (answerType === 'text') {
         isCorrect = question.correctAnswer.some(correctAnswer => correctAnswer.toLowerCase() === answer.toLowerCase());
       }
-  
+
+          // Calculate score based on correctness and time taken
+          const pointsAwarded = isCorrect
+          ? calculateScore(timeTaken, question.timer, question.points)
+          : 0;
+
       // Save the answer
       const newAnswer = await Answer.create({
         question: questionId,
@@ -96,7 +105,7 @@ exports.submitAnswer = async (req, res) => {
       });
   
       // Update the leaderboard
-      const pointsAwarded = isCorrect ? question.points : 0;
+      // const pointsAwarded = isCorrect ? question.points : 0;
       const leaderboardEntry = await Leaderboard.findOne({ session: sessionId, player: userId });
   
       if (leaderboardEntry) {
@@ -304,52 +313,4 @@ exports.getSessionAnswers = async (req, res) => {
       res.status(500).json({ message: 'Error fetching answers for the question', error });
     }
   };
-  
-  exports.getAnswerCounts = async (req, res) => {
-    const { sessionId, questionId } = req.params;
-  
-    if (!mongoose.Types.ObjectId.isValid(sessionId) || !mongoose.Types.ObjectId.isValid(questionId)) {
-      return res.status(400).json({ message: 'Invalid session ID or question ID format' });
-    }
-  
-    try {
-      const session = await Session.findById(sessionId);
-      if (!session) {
-        return res.status(404).json({ message: 'Session not found' });
-      }
-  
-      const question = await Question.findById(questionId);
-      if (!question) {
-        return res.status(404).json({ message: 'Question not found' });
-      }
-  
-      const answers = await Answer.find({ session: sessionId, question: questionId });
-      if (answers.length === 0) {
-        return res.status(404).json({ message: 'No answers found for the question in this session' });
-      }
-  
-      const correctCount = answers.filter(answer => answer.isCorrect).length;
-      const incorrectCount = answers.length - correctCount;
 
-    // Emit answer counts via Socket.IO
-    const io = req.app.get('socketio');
-    io.to(sessionId).emit('answer-counts', {
-      message: 'Answer counts updated',
-      question: question.questionText,
-      correctCount,
-      incorrectCount,
-    });
-
-  
-      res.status(200).json({
-        message: 'Answer counts fetched successfully',
-        question: question.questionText,
-        correctCount,
-        incorrectCount,
-      });
-    } catch (error) {
-      console.error('Error fetching answer counts:', error);
-      res.status(500).json({ message: 'Error fetching answer counts', error });
-    }
-  };
-  

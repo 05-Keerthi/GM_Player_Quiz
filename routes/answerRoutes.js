@@ -4,7 +4,6 @@ const {
     submitAnswer, 
     getSessionAnswers, 
     getAnswersForQuestionInSession,
-    getAnswerCounts
 } = require('../controllers/answerController');
 
 const { auth, isAdmin,} = require('../middlewares/auth');
@@ -17,7 +16,7 @@ router.get('/sessions/:sessionId/answers', auth, isAdmin,  getSessionAnswers);
 
 router.get('/sessions/:sessionId/questions/:questionId/answers',auth, isAdmin,  getAnswersForQuestionInSession);
 
-router.get('/getting-count/:sessionId/:questionId',auth, isAdmin, getAnswerCounts);
+
 
 
 

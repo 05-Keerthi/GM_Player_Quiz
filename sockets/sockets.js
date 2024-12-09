@@ -261,34 +261,6 @@ module.exports = (io) => {
       }
     });
 
-    // Handle specific answer count requests
-    socket.on("get-answer-counts", async ({ sessionId, questionId }) => {
-      try {
-        const answers = await Answer.find({
-          session: sessionId,
-          question: questionId,
-        });
-        const question = await Question.findById(questionId);
-
-        if (question && question.options) {
-          const optionCounts = {};
-          question.options.forEach((option, index) => {
-            const letter = String.fromCharCode(65 + index); // A, B, C, D
-            optionCounts[letter] = answers.filter(
-              (a) => a.answer === option.text
-            ).length;
-          });
-
-          socket.emit("answer-counts-updated", {
-            questionId,
-            counts: optionCounts,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching answer counts:", error);
-      }
-    });
-
     // Handle quiz completion
     socket.on("quiz-completed", ({ sessionId }) => {
     io.to(sessionId).emit("quiz-completed", {
