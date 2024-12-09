@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAnswerContext } from "../../context/answerContext";
-import ContentDisplay from "../../components/ContentDisplay";
+import ContentDisplay from "../../components/Session/ContentDisplay";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../context/AuthContext";

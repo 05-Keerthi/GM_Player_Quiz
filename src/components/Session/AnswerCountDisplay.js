@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useAnswerContext } from "../context/answerContext";
+import { useAnswerContext } from "../../context/answerContext";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   const [optionCounts, setOptionCounts] = useState({});

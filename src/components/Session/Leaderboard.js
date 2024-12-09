@@ -1,7 +1,7 @@
 // components/Leaderboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
-import { useLeaderboardContext } from '../context/leaderboardContext';
+import { useLeaderboardContext } from '../../context/leaderboardContext';
 
 const Leaderboard = ({ sessionId, userId, isAdmin }) => {
   const { getLeaderboard, getUserScore } = useLeaderboardContext();

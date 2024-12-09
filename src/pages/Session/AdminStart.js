@@ -3,9 +3,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useSessionContext } from "../../context/sessionContext";
-import ContentDisplay from "../../components/ContentDisplay";
 import FinalLeaderboard from "./FinalLeaderboard";
-import AdminAnswerCounts from "../../components/AnswerCountDisplay";
+import AdminAnswerCounts from "../../components/Session/AnswerCountDisplay";
+import ContentDisplay from "../../components/Session/ContentDisplay";
 
 const AdminStart = () => {
   const [searchParams] = useSearchParams();
