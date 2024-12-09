@@ -3,21 +3,37 @@ const User = require('../models/User');
 
 // Create a new notification (admin only)
 exports.createNotification = async (req, res) => {
-  const { user, message, type } = req.body;
+  const { users, message, type } = req.body;
 
+  // Check if the logged-in user is an admin
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
 
+  if (!Array.isArray(users) || users.length === 0) {
+    return res.status(400).json({ message: 'Invalid users array' });
+  }
+
   try {
-    const notification = new Notification({ user, message, type });
-    await notification.save();
-    res.status(201).json({ message: 'Notification created successfully', notification });
+    // Create notifications for all users
+    const notifications = users.map((user) => ({
+      user,
+      message,
+      type,
+    }));
+
+    await Notification.insertMany(notifications);
+
+    res.status(201).json({ 
+      message: 'Notifications created successfully', 
+      notifications 
+    });
   } catch (error) {
-    console.error('Error creating notification:', error);
-    res.status(500).json({ message: 'Error creating notification', error });
+    console.error('Error creating notifications:', error);
+    res.status(500).json({ message: 'Error creating notifications', error });
   }
 };
+
 
 // Get all notifications for the authenticated user
 exports.getNotifications = async (req, res) => {
