@@ -8,6 +8,7 @@ const notificationSchema = new mongoose.Schema({
     enum: ['invitation', 'session_update', 'quiz_result', 'admin_notice'], 
     required: true 
   },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
   read: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
