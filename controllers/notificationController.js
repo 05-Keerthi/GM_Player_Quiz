@@ -2,18 +2,15 @@ const Notification = require('../models/Notification');
 const User = require('../models/User'); 
 const Session = require('../models/session'); 
 const Quiz = require('../models/quiz'); // Import the Quiz model (if needed for validation)
+const Leaderboard = require('../models/leaderBoard');
 
 // Create a new notification (admin only)
 exports.createNotification = async (req, res) => {
-  const { users, message, type, sessionId } = req.body;
+  const { message, type, sessionId } = req.body;
 
   // Check if the logged-in user is an admin
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
-  }
-
-  if (!Array.isArray(users) || users.length === 0) {
-    return res.status(400).json({ message: 'Invalid users array' });
   }
 
   if (!sessionId || typeof sessionId !== 'string') {
@@ -21,31 +18,93 @@ exports.createNotification = async (req, res) => {
   }
 
   try {
-    // Fetch session details and populate the quiz field
+    // Fetch session details
     const session = await Session.findById(sessionId).populate('quiz', 'title').exec();
+
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
 
-    // Extract QR code data, 6-digit code (joinCode), and quiz title
+    // Extract necessary data
     const qrCodeData = session.qrData;
     const sixDigitCode = session.joinCode;
-    const quizTitle = session.quiz?.title; // Quiz title from the populated quiz field
+    const quizTitle = session.quiz?.title;
 
     if (!qrCodeData || !sixDigitCode || !quizTitle) {
       return res.status(400).json({ message: 'Invalid session or quiz data' });
     }
 
-    // Default message for invitation type
-    const invitationMessage = `You are invited to join the "${quizTitle}" quiz!`;
-    const finalMessage = type === 'invitation' ? invitationMessage : message;
+    let finalMessage;
+    let usersToNotify;
 
-    // Create notifications for all users and include sessionId
-    const notifications = users.map((user) => ({
+    // Handle different notification types
+    if (type === 'invitation') {
+      finalMessage = `You are invited to join the "${quizTitle}" quiz!`;
+      // For invitations, users must be passed in the request body
+      if (!Array.isArray(req.body.users) || req.body.users.length === 0) {
+        return res.status(400).json({ message: 'No users provided for invitation.' });
+      }
+      usersToNotify = req.body.users;
+    } else if (type === 'session_update') {
+      // Fetch users from existing notifications for the session
+      const existingNotifications = await Notification.find({ sessionId }, 'user');
+      if (!existingNotifications.length) {
+        return res
+          .status(400)
+          .json({ message: 'No users found to notify for this session. Ensure invitations were sent.' });
+      }
+      usersToNotify = existingNotifications.map((notification) => notification.user);
+
+      finalMessage =
+        message ||
+        `The session for "${quizTitle}" has started. If you have not yet joined the quiz, you will not be able to participate.`;
+    } else if (type === 'quiz_result') {
+      // Fetch leaderboard details for the session
+      const leaderboardEntries = await Leaderboard.find({ session: sessionId })
+        .populate('player', 'name') // Populate player details
+        .exec();
+
+      if (!leaderboardEntries.length) {
+        return res
+          .status(400)
+          .json({ message: 'No leaderboard data found for this session.' });
+      }
+
+      // Prepare notifications for each user based on leaderboard
+      usersToNotify = leaderboardEntries.map((entry) => entry.player._id);
+      const notifications = leaderboardEntries.map((entry) => ({
+        user: entry.player._id,
+        message: `Your quiz result for "${quizTitle}" is ready! Score: ${entry.score}, Rank: ${entry.rank || 'N/A'}.`,
+        type,
+        sessionId,
+      }));
+
+      await Notification.insertMany(notifications);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Quiz result notifications sent successfully.',
+        leaderboard: leaderboardEntries.map((entry) => ({
+          player: entry.player.name,
+          score: entry.score,
+          rank: entry.rank,
+        })),
+      });
+    } else {
+      return res.status(400).json({ message: 'Invalid notification type' });
+    }
+
+    // Ensure there are users to notify
+    if (!Array.isArray(usersToNotify) || usersToNotify.length === 0) {
+      return res.status(400).json({ message: 'No users found to notify for this session.' });
+    }
+
+    // Create notifications for all users (excluding quiz_result handled above)
+    const notifications = usersToNotify.map((user) => ({
       user,
       message: finalMessage,
       type,
-      sessionId, // Add sessionId here
+      sessionId,
     }));
 
     await Notification.insertMany(notifications);
@@ -53,17 +112,18 @@ exports.createNotification = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Notifications sent successfully',
-      userIds: users,
+      userIds: usersToNotify,
       qrCodeData,
       sixDigitCode,
       quizTitle,
-      invitationMessage, // Include default message in the response
+      finalMessage,
     });
   } catch (error) {
     console.error('Error creating notifications:', error);
     res.status(500).json({ message: 'Error creating notifications', error });
   }
 };
+
 
 
 // Get all notifications for the authenticated user
