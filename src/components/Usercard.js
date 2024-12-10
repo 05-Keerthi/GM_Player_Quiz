@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Search, Pencil, Trash2 } from "lucide-react";
+import { Search, Pencil, Trash2, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 import { useUserContext } from "../context/userContext";
+import { useAuthContext } from "../context/AuthContext";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import ConfirmationModal from "../models/ConfirmationModal";
 import EditUserModal from "../models/User/EditUserModel";
@@ -16,6 +17,8 @@ const UserManagement = () => {
     clearError,
     fetchUserById,
   } = useUserContext();
+
+  const { user: currentUser } = useAuthContext();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -75,11 +78,11 @@ const UserManagement = () => {
         position: "top-right",
         autoClose: 3000,
       });
-      fetchUsers(); // Fetch updated list
+      fetchUsers();
     } catch (err) {
       toast.error("Failed to delete user");
     } finally {
-      setConfirmModalOpen(false); // Close confirmation modal
+      setConfirmModalOpen(false);
       setSelectedUser(null);
     }
   };
@@ -104,6 +107,39 @@ const UserManagement = () => {
     usersPerPage
   );
 
+  const renderRowActions = (user) => {
+    const userRole = currentUser?.role;
+
+    if (!userRole || !["admin", "tenant_admin"].includes(userRole)) {
+      return null;
+    }
+
+    return (
+      <div className="flex justify-end gap-2">
+        {userRole === "tenant_admin" && (
+          <>
+            <button
+              onClick={() => handleEditClick(user._id)}
+              className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+            >
+              <Pencil size={18} />
+            </button>
+            <button
+              onClick={() => openConfirmModal(user)}
+              className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+            >
+              <Trash2 size={18} />
+            </button>
+          </>
+        )}
+        <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors flex items-center gap-1">
+          <UserPlus size={18} />
+          <span>Invite</span>
+        </button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -117,7 +153,7 @@ const UserManagement = () => {
       <div className="mb-8">
         <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-semibold">User Management</h1>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-center">
             <div className="relative">
               <input
                 type="text"
@@ -163,22 +199,7 @@ const UserManagement = () => {
                     {user.role}
                   </span>
                 </td>
-                <td>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => handleEditClick(user._id)}
-                      className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => openConfirmModal(user)}
-                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+                <td>{renderRowActions(user)}</td>
               </tr>
             ))}
             {currentUsers.length === 0 && !loading && (
