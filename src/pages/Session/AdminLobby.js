@@ -4,6 +4,7 @@ import { useSessionContext } from "../../context/sessionContext";
 import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../components/NavbarComp";
+import InviteModal from "../../models/InviteModal";
 
 const AdminLobby = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const AdminLobby = () => {
   const [questions, setQuestions] = useState([]);
   const [slides, setSlides] = useState([]);
   const [players, setPlayers] = useState([]);
+  const [isInviteModalOpen, setInviteModalOpen] = useState(false);
 
   const { createSession, startSession, nextQuestion, loading } =
     useSessionContext();
@@ -150,6 +152,18 @@ const AdminLobby = () => {
     }
   };
 
+  const handleInviteUsers = (selectedUsers) => {
+    if (socket && sessionData) {
+      selectedUsers.forEach((user) => {
+        socket.emit("invite-user", {
+          sessionId: sessionData._id,
+          userId: user._id,
+          joinCode: sessionData.joinCode,
+        });
+      });
+    }
+  };
+
   const renderCurrentItem = () => {
     if (!currentItem) return null;
 
@@ -229,27 +243,30 @@ const AdminLobby = () => {
           </div>
           <div className="flex gap-2">
             <div>
-              <button className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
+              <button
+                onClick={() => setInviteModalOpen(true)}
+                className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+              >
                 Invite
               </button>
             </div>
             <div>
-            {!currentItem && (
-            <button
-              onClick={handleStartSession}
-              disabled={loading || !players?.length}
-              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Starting...
-                </div>
-              ) : (
-                "Start Game"
+              {!currentItem && (
+                <button
+                  onClick={handleStartSession}
+                  disabled={loading || !players?.length}
+                  className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Starting...
+                    </div>
+                  ) : (
+                    "Start Game"
+                  )}
+                </button>
               )}
-            </button>
-          )}
             </div>
           </div>
         </div>
@@ -348,6 +365,13 @@ const AdminLobby = () => {
           )}
         </div>
       </div>
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        sessionData={sessionData}
+        onInvite={handleInviteUsers}
+      />
     </div>
   );
 };
