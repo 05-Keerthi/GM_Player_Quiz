@@ -91,6 +91,24 @@ export default function HomePage() {
             buttonColor: "bg-orange-500 hover:bg-orange-600",
             path: "/quizzes",
           },
+
+          {
+            icon: <LayoutGrid className="text-blue-600" size={48} />,
+            title: "Create Survey",
+            description: "Create and launch new survey's",
+            buttonText: "Create Now",
+            buttonColor: "bg-green-500 hover:bg-blue-600",
+            path: "/selectSurveyCategory",
+          },
+
+          {
+            icon: <Rocket className="text-orange-600" size={48} />,
+            title: "View Survey's",
+            description: "Manage and monitor all survey's",
+            buttonText: "Go to Survey",
+            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            path: "/survey",
+          },
         ];
       case "user":
         return [

@@ -1,17 +1,10 @@
-import React, {
-  createContext,
-  useReducer,
-  useEffect,
-  useState,
-  useContext,
-} from "react";
+import React, { createContext, useReducer, useEffect, useContext } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { ACTIONS, authReducer, initialState } from "../reducers/authReducer";
 
 const BASE_URL = "http://localhost:5000/api";
 
-// Create axios instance
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -23,26 +16,21 @@ export const AuthContext = createContext(initialState);
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const [loading, setLoading] = useState(true);
 
-  // Debug logging function
   const debugLog = (message, ...args) => {
     console.log(`[AuthContext Debug] ${message}`, ...args);
   };
 
-  // Handle session expiry
   const handleSessionExpiry = async () => {
     debugLog("Session expired, logging out user");
     dispatch({ type: ACTIONS.SESSION_EXPIRED });
     await logout();
   };
 
-  // Reset session expired state
   const resetSessionState = () => {
     dispatch({ type: ACTIONS.RESET_SESSION_STATE });
   };
 
-  // Update axios authorization header
   const updateAuthHeader = (token) => {
     if (token) {
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -55,51 +43,60 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      const storedToken = localStorage.getItem("token");
-      const storedRefreshToken = localStorage.getItem("refresh_token");
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        const storedToken = localStorage.getItem("token");
+        const storedRefreshToken = localStorage.getItem("refresh_token");
 
-      if (storedUser && storedToken && storedRefreshToken) {
-        try {
-          dispatch({
-            type: ACTIONS.LOGIN,
-            payload: { user: storedUser, token: storedToken },
-          });
-          updateAuthHeader(storedToken);
-        } catch (error) {
-          // If token validation fails, attempt to refresh
+        if (storedUser && storedToken && storedRefreshToken) {
           try {
-            const response = await axios.post(
-              `${BASE_URL}/auth/refresh-token`,
-              { refresh_token: storedRefreshToken },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            const { token: newToken, user: refreshedUser } = response.data;
-
-            // Update local storage
-            localStorage.setItem("token", newToken);
-            localStorage.setItem("user", JSON.stringify(refreshedUser));
-
             dispatch({
               type: ACTIONS.LOGIN,
-              payload: {
-                user: refreshedUser,
-                token: newToken,
-              },
+              payload: { user: storedUser, token: storedToken },
             });
-            updateAuthHeader(newToken);
-          } catch (refreshError) {
-            // If refresh fails, trigger session expiry
-            await handleSessionExpiry();
+            updateAuthHeader(storedToken);
+          } catch (error) {
+            try {
+              const response = await axios.post(
+                `${BASE_URL}/auth/refresh-token`,
+                { refresh_token: storedRefreshToken },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              const { token: newToken, user: refreshedUser } = response.data;
+              localStorage.setItem("token", newToken);
+              localStorage.setItem("user", JSON.stringify(refreshedUser));
+
+              dispatch({
+                type: ACTIONS.LOGIN,
+                payload: {
+                  user: refreshedUser,
+                  token: newToken,
+                },
+              });
+              updateAuthHeader(newToken);
+            } catch (refreshError) {
+              await handleSessionExpiry();
+              dispatch({
+                type: ACTIONS.SET_ERROR,
+                payload: "Session expired. Please login again.",
+              });
+            }
           }
         }
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: "Failed to initialize authentication",
+        });
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
-      setLoading(false);
     };
 
     initializeAuth();
@@ -147,13 +144,11 @@ export const AuthProvider = ({ children }) => {
 
             return api(originalRequest);
           } catch (refreshError) {
-            // If refresh fails, trigger session expiry
             await handleSessionExpiry();
             return Promise.reject(refreshError);
           }
         }
 
-        // Check for specific token expiration error messages
         if (
           error.response?.status === 401 &&
           (error.response?.data?.message === "Token validation failed." ||
@@ -171,6 +166,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password, rememberMe) => {
+    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       const response = await api.post("/auth/login", { email, password });
       const { user, token, refresh_token } = response.data;
@@ -191,25 +187,16 @@ export const AuthProvider = ({ children }) => {
 
       updateAuthHeader(token);
       dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
+      return { user, token };
     } catch (error) {
-      const errorResponse = error.response?.data;
-      throw new Error(
-        JSON.stringify({
-          email:
-            errorResponse?.message === "Invalid Email."
-              ? "Email does not exist"
-              : null,
-          password:
-            errorResponse?.message === "Invalid Password."
-              ? "Enter valid password"
-              : null,
-          general: errorResponse?.message || "An error occurred",
-        })
-      );
+      const errorMessage = error.response?.data?.message || "Login failed";
+      dispatch({ type: ACTIONS.SET_ERROR, payload: errorMessage });
+      throw error;
     }
   };
 
   const logout = async () => {
+    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       debugLog("Logout initiated");
       const token = localStorage.getItem("token");
@@ -217,24 +204,24 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         await api.post("/auth/logout", { token });
       }
-    } catch (error) {
-      debugLog("Logout request failed", { errorMessage: error.message });
-    } finally {
-      // Clear all auth-related data
+
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       localStorage.removeItem("refresh_token");
-
-      // Remove auth header
       updateAuthHeader(null);
-
-      // Dispatch logout action
       dispatch({ type: ACTIONS.LOGOUT });
       debugLog("Logout completed");
+    } catch (error) {
+      debugLog("Logout request failed", { errorMessage: error.message });
+      dispatch({
+        type: ACTIONS.SET_ERROR,
+        payload: "Failed to logout properly",
+      });
     }
   };
 
   const register = async (username, email, mobile, password) => {
+    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       const response = await api.post("/auth/register", {
         username,
@@ -251,28 +238,47 @@ export const AuthProvider = ({ children }) => {
 
       updateAuthHeader(token);
       dispatch({ type: ACTIONS.REGISTER, payload: { user, token } });
-
       return response.data;
     } catch (error) {
-      const errorResponse = error.response?.data;
-      throw {
-        field: errorResponse?.field || "general",
-        message:
-          errorResponse?.message ||
-          "An error occurred. Please try again later.",
-      };
+      const errorMessage =
+        error.response?.data?.message || "Registration failed";
+      dispatch({ type: ACTIONS.SET_ERROR, payload: errorMessage });
+      throw error;
     }
   };
 
   const getProfile = async () => {
+    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       const response = await api.get("/auth/me");
       dispatch({ type: ACTIONS.GET_USER_PROFILE, payload: response.data });
       return response.data;
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      dispatch({
+        type: ACTIONS.SET_ERROR,
+        payload: "Failed to fetch user profile",
+      });
       throw error;
     }
+  };
+
+  const listUsers = async () => {
+    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+    try {
+      const response = await api.get("/auth/users");
+      dispatch({ type: ACTIONS.LIST_USERS, payload: response.data });
+      return response.data;
+    } catch (error) {
+      dispatch({
+        type: ACTIONS.SET_ERROR,
+        payload: "Failed to fetch users list",
+      });
+      throw error;
+    }
+  };
+
+  const clearError = () => {
+    dispatch({ type: ACTIONS.CLEAR_ERROR });
   };
 
   return (
@@ -283,7 +289,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         register,
         getProfile,
-        loading,
+        listUsers,
+        clearError,
         resetSessionState,
       }}
     >

@@ -22,8 +22,7 @@ import UserPlay from "./pages/Session/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 import SurveyPage from "./pages/SurveyPage";
 import HomePage from "./pages/Home";
-
-
+import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -38,10 +37,9 @@ export default function App() {
 
   useEffect(() => {
     if (sessionExpired) {
-     
       toast.error("Your session has expired. Please log in again.");
-     
-      setSessionExpired(false); 
+
+      setSessionExpired(false);
     }
   }, [sessionExpired]);
 
@@ -58,7 +56,6 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
-       
         <Route path="/" element={<HomePage />} />
         {/* Protected Routes */}
         <Route
@@ -78,6 +75,10 @@ export default function App() {
           }
         />
         <Route path="/select-category" element={<SelectCategoryPage />} />
+        <Route
+          path="/selectSurveyCategory"
+          element={<SelectSurveyCategory />}
+        />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
         {/* Add new PreviewPage route */}
@@ -100,9 +101,7 @@ export default function App() {
             />
           }
         />
-
         <Route path="survey" element={<SurveyPage />} />
-
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
