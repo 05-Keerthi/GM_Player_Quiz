@@ -8,7 +8,7 @@ const SurveyquizSchema = new mongoose.Schema({
   questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SurveyQuestion' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: { type: String, enum: ['draft', 'active', 'closed'], default: 'draft' },
-  duration: { type: Number, default: 60 },
+
   createdAt: { type: Date, default: Date.now },
 });
 
