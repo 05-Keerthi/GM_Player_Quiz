@@ -127,10 +127,18 @@ exports.createNotification = async (req, res) => {
 
 
 // Get all notifications for the authenticated user
-exports.getNotifications = async (req, res) => {
+// GET /api/notifications/:userId - Get all notifications for the authenticated user or a specific user by userId
+exports.getNotificationsByUserId = async (req, res) => {
+  const { userId } = req.params;
+
   try {
-    // Fetch all notifications for the current user, sorted by creation date
-    const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 });
+    // Check if the logged-in user is trying to access their own notifications or if they are an admin
+    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. You can only view your own notifications or access another user\'s notifications if you are an admin.' });
+    }
+
+    // Fetch all notifications for the user (either the authenticated user or the user specified in the URL)
+    const notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 });
 
     // For each notification, fetch session details and include quiz information
     const notificationsWithSessionData = await Promise.all(notifications.map(async (notification) => {
@@ -167,7 +175,6 @@ exports.getNotifications = async (req, res) => {
     res.status(500).json({ message: 'Error fetching notifications', error });
   }
 };
-
 
 
 // Mark a notification as read
