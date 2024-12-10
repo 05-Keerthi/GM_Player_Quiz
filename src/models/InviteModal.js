@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
-import { useUserContext } from "../context/userContext";
 import { useAuthContext } from "../context/AuthContext";
 
 const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
@@ -9,11 +8,11 @@ const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
   const [selectedUsers, setSelectedUsers] = useState([]);
 
 //   const { users, loading, error, listusers } = useUserContext();
-  const { user: currentUser, listusers, users,loading,error } = useAuthContext();
+  const { user: currentUser, listUsers, users,loading,error } = useAuthContext();
 
   useEffect(() => {
     if (isOpen) {
-    listusers();
+    listUsers();
     }
   }, [isOpen]);
 
