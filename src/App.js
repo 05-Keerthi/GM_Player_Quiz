@@ -21,6 +21,7 @@ import UserLobby from "./pages/Session/UserLobby";
 import AdminStart from "./pages/Session/AdminStart";
 import UserPlay from "./pages/Session/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
+import SurveyPage from "./pages/SurveyPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -97,6 +98,7 @@ export default function App() {
             />
           }
         />
+        <Route path="survey" element={<SurveyPage />} />
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
