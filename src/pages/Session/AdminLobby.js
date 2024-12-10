@@ -227,7 +227,14 @@ const AdminLobby = () => {
               Players ({players?.length || 0})
             </span>
           </div>
-          {!currentItem && (
+          <div className="flex gap-2">
+            <div>
+              <button className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
+                Invite
+              </button>
+            </div>
+            <div>
+            {!currentItem && (
             <button
               onClick={handleStartSession}
               disabled={loading || !players?.length}
@@ -243,6 +250,8 @@ const AdminLobby = () => {
               )}
             </button>
           )}
+            </div>
+          </div>
         </div>
       </div>
 
