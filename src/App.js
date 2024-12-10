@@ -21,7 +21,12 @@ import AdminStart from "./pages/Session/AdminStart";
 import UserPlay from "./pages/Session/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import SurveyPage from "./pages/SurveyPage";
+=======
+import HomePage from "./pages/Home";
+
+>>>>>>> 900ff0f7f564742ded6531bdc00d159175d56b21
 =======
 import HomePage from "./pages/Home";
 
@@ -103,7 +108,11 @@ export default function App() {
           }
         />
 <<<<<<< HEAD
+<<<<<<< HEAD
         <Route path="survey" element={<SurveyPage />} />
+=======
+    
+>>>>>>> 900ff0f7f564742ded6531bdc00d159175d56b21
 =======
     
 >>>>>>> 900ff0f7f564742ded6531bdc00d159175d56b21
