@@ -134,29 +134,35 @@ exports.getNotificationsByUserId = async (req, res) => {
   try {
     // Check if the logged-in user is trying to access their own notifications or if they are an admin
     if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied. You can only view your own notifications or access another user\'s notifications if you are an admin.' });
+      return res.status(403).json({ 
+        message: 'Access denied. You can only view your own notifications or access another user\'s notifications if you are an admin.' 
+      });
     }
 
     // Fetch all notifications for the user (either the authenticated user or the user specified in the URL)
     const notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 });
 
+    if (notifications.length === 0) {
+      // Return a specific message if no notifications exist for the user
+      return res.status(404).json({ 
+        message: `No invitations have been sent to this user (User ID: ${userId}).`, 
+        notifications: null 
+      });
+    }
+
     // For each notification, fetch session details and include quiz information
     const notificationsWithSessionData = await Promise.all(notifications.map(async (notification) => {
-      // Check if sessionId exists in the notification
       if (!notification.sessionId) {
         return notification; // If no sessionId, return the notification as is
       }
 
-      // Fetch session details using the sessionId in the notification
       const session = await Session.findById(notification.sessionId).populate('quiz', 'title').exec();
       
-      // Check if session and quiz exist
       if (session) {
         const qrCodeData = session.qrData;
         const sixDigitCode = session.joinCode;
         const quizTitle = session.quiz?.title;
 
-        // Add these values to the notification object
         return {
           ...notification.toObject(),
           qrCodeData,
