@@ -6,7 +6,6 @@ import "react-toastify/dist/ReactToastify.css";
 import LoginPage from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { useAuthContext } from "./context/AuthContext";
-import Home from "./pages/Home";
 import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
@@ -21,7 +20,12 @@ import UserLobby from "./pages/Session/UserLobby";
 import AdminStart from "./pages/Session/AdminStart";
 import UserPlay from "./pages/Session/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
+<<<<<<< HEAD
 import SurveyPage from "./pages/SurveyPage";
+=======
+import HomePage from "./pages/Home";
+
+>>>>>>> 900ff0f7f564742ded6531bdc00d159175d56b21
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -36,10 +40,10 @@ export default function App() {
 
   useEffect(() => {
     if (sessionExpired) {
-      // Show your preferred notification method (toast, modal, etc.)
+     
       toast.error("Your session has expired. Please log in again.");
-      // Or use your modal system
-      setSessionExpired(false); // Reset the state after showing the message
+     
+      setSessionExpired(false); 
     }
   }, [sessionExpired]);
 
@@ -56,8 +60,8 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
-        {/* Home is now public */}
-        <Route path="/" element={<Home />} />
+       
+        <Route path="/" element={<HomePage />} />
         {/* Protected Routes */}
         <Route
           path="/user/profile"
@@ -98,7 +102,11 @@ export default function App() {
             />
           }
         />
+<<<<<<< HEAD
         <Route path="survey" element={<SurveyPage />} />
+=======
+    
+>>>>>>> 900ff0f7f564742ded6531bdc00d159175d56b21
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
