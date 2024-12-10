@@ -8,6 +8,7 @@ const {
 } = require("../services/authService");
 const RefreshToken = require("../models/RefreshToken");
 const BlacklistedToken = require("../models/BlacklistedToken");
+const ActivityLog = require("../models/ActivityLog");
 
 // Register a new user
 const register = async (req, res) => {
@@ -71,11 +72,14 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     const existingUser = await User.findOne({ email }).populate("tenantId");
 
-    if (!existingUser)
+    if (!existingUser) {
       return res.status(400).json({ message: "Invalid Email." });
+    }
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid Password." });
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid Password." });
+    }
 
     const token = generateAccessToken(existingUser);
     const refreshToken = generateRefreshToken(existingUser);
@@ -86,6 +90,16 @@ const login = async (req, res) => {
       userId: existingUser._id,
     });
     await refreshTokenInstance.save();
+
+    // Log the activity
+    const activityLog = new ActivityLog({
+      user: existingUser._id,
+      activityType: "login",
+      details: {
+        ip: req.ip, // Optionally log IP address
+      },
+    });
+    await activityLog.save();
 
     res.status(200).json({
       token,
