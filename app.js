@@ -17,6 +17,7 @@ const answerRoutes = require('./routes/answerRoutes');
 const leaderBoardRoutes = require('./routes/leaderBoardRoutes')
 const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/ActivityLogRoutes');
+const surveyQuestionRoutes = require('./routes/surveyQuestionRoutes');
 
 const path = require('path');
 
@@ -42,6 +43,8 @@ app.use('/api', answerRoutes);
 app.use('/api', leaderBoardRoutes);
 app.use('/api', notificationRoutes);
 app.use('/api', activityRoutes);
+
+app.use('/api', surveyQuestionRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
