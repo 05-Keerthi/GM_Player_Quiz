@@ -183,74 +183,175 @@ exports.getSurveyQuestionById = async (req, res) => {
     }
 };
 
+// // Controller to update a survey question by its surveyQuestionId
+// exports.updateSurveyQuestionById = async (req, res) => {
+//     const { surveyquizId, surveyquestionId } = req.params; // Extract the quiz ID and question ID from route params
+//     const { title, description, dimension, year, imageUrl, timer, answerOptions } = req.body;
+
+//     try {
+//         // Find the survey question by ID and ensure it's associated with the provided surveyquizId
+//         const surveyQuestion = await SurveyQuestion.findOne({ 
+//             _id: surveyquestionId, 
+//             surveyQuiz: surveyquizId 
+//         });
+
+//         // If the survey question is not found
+//         if (!surveyQuestion) {
+//             return res.status(404).json({ message: 'Survey question not found' });
+//         }
+
+//         // Prepare to update the question with the new data
+//         surveyQuestion.title = title || surveyQuestion.title;
+//         surveyQuestion.description = description || surveyQuestion.description;
+//         surveyQuestion.dimension = dimension || surveyQuestion.dimension;
+//         surveyQuestion.year = year || surveyQuestion.year;
+//         surveyQuestion.timer = timer || surveyQuestion.timer;
+//         surveyQuestion.answerOptions = answerOptions || surveyQuestion.answerOptions;
+
+//         // Handle image URL (if provided, update the image)
+//         if (imageUrl) {
+//             const image = await Media.findById(imageUrl); 
+//             if (!image) {
+//                 return res.status(404).json({ message: 'Image not found' });
+//             }
+//             surveyQuestion.imageUrl = image._id; 
+//         }
+
+//         // Save the updated survey question
+//         const updatedQuestion = await surveyQuestion.save();
+
+//         // Base URL for constructing the full image path
+//         const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+
+//         let fullImageUrl = null;
+
+//         // If the question has an image URL, construct the full image URL
+//         if (updatedQuestion.imageUrl) {
+//             const image = await Media.findById(updatedQuestion.imageUrl);
+//             if (image) {
+//                 const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
+//                 fullImageUrl = `${baseUrl}${encodedImagePath}`;
+//             }
+//         }
+
+//         // Return the updated survey question with full image URL
+//         const responseQuestion = {
+//             ...updatedQuestion.toObject(),
+//             imageUrl: fullImageUrl || updatedQuestion.imageUrl, 
+//         };
+
+//         res.status(200).json({
+//             success: true,
+//             message: 'Survey question updated successfully',
+//             data: responseQuestion,
+//         });
+//     } catch (error) {
+//         console.error('Error updating survey question:', error);
+//         res.status(500).json({ message: 'Server error', error });
+//     }
+// };
+
+
 // Controller to update a survey question by its surveyQuestionId
 exports.updateSurveyQuestionById = async (req, res) => {
-    const { surveyquizId, surveyquestionId } = req.params; // Extract the quiz ID and question ID from route params
-    const { title, description, dimension, year, imageUrl, timer, answerOptions } = req.body;
-
+    const { surveyquizId, surveyquestionId } = req.params;
+    const {
+      title,
+      description,
+      dimension,
+      year,
+      imageUrl,
+      timer,
+      answerOptions,
+    } = req.body;
+  
     try {
-        // Find the survey question by ID and ensure it's associated with the provided surveyquizId
-        const surveyQuestion = await SurveyQuestion.findOne({ 
-            _id: surveyquestionId, 
-            surveyQuiz: surveyquizId 
-        });
-
-        // If the survey question is not found
-        if (!surveyQuestion) {
-            return res.status(404).json({ message: 'Survey question not found' });
+      // Find the survey question
+      const surveyQuestion = await SurveyQuestion.findOne({
+        _id: surveyquestionId,
+        surveyQuiz: surveyquizId,
+      });
+  
+      if (!surveyQuestion) {
+        return res.status(404).json({ message: "Survey question not found" });
+      }
+  
+      // Update basic fields if provided
+      if (title) surveyQuestion.title = title;
+      if (description) surveyQuestion.description = description;
+      if (dimension) surveyQuestion.dimension = dimension;
+      if (year) surveyQuestion.year = year;
+      if (timer) surveyQuestion.timer = timer;
+      if (answerOptions) surveyQuestion.answerOptions = answerOptions;
+  
+      // Handle imageUrl special case
+      if (imageUrl) {
+        // Check if imageUrl is a full URL or an ObjectId
+        if (imageUrl.startsWith("http")) {
+          // Extract filename from URL
+          const filename = decodeURIComponent(imageUrl.split("/").pop());
+  
+          // Find Media document by filename
+          const media = await Media.findOne({ filename: filename });
+  
+          if (!media) {
+            return res
+              .status(404)
+              .json({ message: "Image not found in media library" });
+          }
+  
+          // Store the Media document's ObjectId
+          surveyQuestion.imageUrl = media._id;
+        } else if (mongoose.Types.ObjectId.isValid(imageUrl)) {
+          // If it's already an ObjectId, verify it exists
+          const media = await Media.findById(imageUrl);
+          if (!media) {
+            return res.status(404).json({ message: "Image not found" });
+          }
+          surveyQuestion.imageUrl = imageUrl;
+        } else {
+          return res
+            .status(400)
+            .json({ message: "Invalid image URL or ID format" });
         }
-
-        // Prepare to update the question with the new data
-        surveyQuestion.title = title || surveyQuestion.title;
-        surveyQuestion.description = description || surveyQuestion.description;
-        surveyQuestion.dimension = dimension || surveyQuestion.dimension;
-        surveyQuestion.year = year || surveyQuestion.year;
-        surveyQuestion.timer = timer || surveyQuestion.timer;
-        surveyQuestion.answerOptions = answerOptions || surveyQuestion.answerOptions;
-
-        // Handle image URL (if provided, update the image)
-        if (imageUrl) {
-            const image = await Media.findById(imageUrl); 
-            if (!image) {
-                return res.status(404).json({ message: 'Image not found' });
-            }
-            surveyQuestion.imageUrl = image._id; 
-        }
-
-        // Save the updated survey question
-        const updatedQuestion = await surveyQuestion.save();
-
-        // Base URL for constructing the full image path
-        const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
-
-        let fullImageUrl = null;
-
-        // If the question has an image URL, construct the full image URL
-        if (updatedQuestion.imageUrl) {
-            const image = await Media.findById(updatedQuestion.imageUrl);
-            if (image) {
-                const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
-                fullImageUrl = `${baseUrl}${encodedImagePath}`;
-            }
-        }
-
-        // Return the updated survey question with full image URL
-        const responseQuestion = {
-            ...updatedQuestion.toObject(),
-            imageUrl: fullImageUrl || updatedQuestion.imageUrl, 
-        };
-
-        res.status(200).json({
-            success: true,
-            message: 'Survey question updated successfully',
-            data: responseQuestion,
-        });
+      }
+  
+      // Save the updated question
+      await surveyQuestion.save();
+  
+      // Fetch the updated question with populated imageUrl
+      const updatedQuestion = await SurveyQuestion.findById(
+        surveyquestionId
+      ).populate("imageUrl");
+  
+      // Prepare the response with full URL
+      let fullImageUrl = null;
+      if (updatedQuestion.imageUrl) {
+        const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+        const encodedImagePath = encodeURIComponent(
+          updatedQuestion.imageUrl.path.split("\\").pop()
+        );
+        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+      }
+  
+      const responseQuestion = {
+        ...updatedQuestion.toObject(),
+        imageUrl: fullImageUrl || updatedQuestion.imageUrl,
+      };
+  
+      res.status(200).json({
+        success: true,
+        message: "Survey question updated successfully",
+        data: responseQuestion,
+      });
     } catch (error) {
-        console.error('Error updating survey question:', error);
-        res.status(500).json({ message: 'Server error', error });
+      console.error("Error updating survey question:", error);
+      res.status(500).json({
+        message: "Server error",
+        error: error.message,
+      });
     }
-};
-
+  };
 
 // Controller to delete a survey question by its surveyQuestionId
 exports.deleteSurveyQuestionById = async (req, res) => {
