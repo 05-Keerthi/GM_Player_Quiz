@@ -146,7 +146,7 @@ const SurveyList = () => {
       if (updatedSurvey) {
         toast.success("Survey published successfully!");
         await getAllSurveys();
-        navigate(`/surveydetails?surveyId=${survey._id}&hostId=${user.id}`);
+        navigate(`/survey-details?surveyId=${survey._id}&hostId=${user.id}`);
       }
     } catch (error) {
       toast.error("Failed to publish survey");
