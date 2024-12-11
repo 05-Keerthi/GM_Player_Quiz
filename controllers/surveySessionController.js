@@ -1,4 +1,4 @@
-const SurveySession = require('../models/surveySession');
+const SurveySession = require('../models/surveysession');
 const SurveyQuiz = require('../models/surveyQuiz');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
