@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const SurveySession = require("../models/surveysession");
 const User = require("../models/User");
 const SurveyQuestion = require('../models/surveyQuestion'); 
+const SurveyQuiz = require('../models/surveyQuiz');
 const Media = require('../models/Media');
 
 exports.createSurveySession = async (req, res) => {
@@ -183,3 +184,123 @@ exports.startSurveySession = async (req, res) => {
     res.status(500).json({ message: "Error starting the survey session", error });
   }
 };
+
+exports.nextSurveyQuestion = async (req, res) => {
+    const { joinCode, sessionId } = req.params;
+  
+    try {
+      // Find the survey session
+      const session = await SurveySession.findOne({
+        surveyJoinCode: joinCode,
+        _id: sessionId,
+      })
+        .populate("surveyQuiz")
+        .populate("surveyPlayers", "username email")
+        .populate("surveyHost", "username email");
+  
+      if (!session) {
+        return res.status(404).json({ message: "Survey session not found" });
+      }
+  
+      if (session.surveyStatus !== "in_progress") {
+        return res.status(400).json({ message: "Survey session is not in progress" });
+      }
+  
+      // Retrieve the quiz associated with the session
+      const quiz = await SurveyQuiz.findById(session.surveyQuiz).populate("questions");
+  
+      if (!quiz) {
+        return res.status(404).json({ message: "Survey quiz not found" });
+      }
+  
+      // Get all questions
+      const contentItems = quiz.questions.map((q) => ({ type: "question", item: q }));
+  
+      if (contentItems.length === 0) {
+        return res.status(400).json({ message: "No questions available in the quiz" });
+      }
+  
+      // Determine the current index
+      const currentIndex = session.surveyCurrentQuestion
+        ? contentItems.findIndex(
+            ({ item }) => item._id.toString() === session.surveyCurrentQuestion.toString()
+          )
+        : -1;
+  
+      // Get the next question
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= contentItems.length) {
+        return res.status(400).json({ message: "No more questions left in the survey session" });
+      }
+  
+      const nextItem = contentItems[nextIndex].item;
+  
+      if (!nextItem) {
+        return res.status(404).json({ message: "Next question not found" });
+      }
+  
+      // Update session with the current question
+      session.surveyCurrentQuestion = nextItem._id;
+      await session.save();
+  
+      // Process the image URL if applicable
+      const baseUrl = `${req.protocol}://${req.get("host")}/`;
+      let fullImageUrl = null;
+  
+      if (nextItem.imageUrl) {
+        const media = await Media.findById(nextItem.imageUrl);
+        if (media && media.path) {
+          const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+          fullImageUrl = `${baseUrl}${encodedPath}`;
+        }
+      }
+  
+      const questionWithImageUrl = {
+        ...nextItem.toObject(),
+        imageUrl: fullImageUrl,
+      };
+  
+      // Emit the next question to the client
+      const io = req.app.get("socketio");
+      io.emit("next-question", questionWithImageUrl);
+  
+      // Send response
+      res.status(200).json({
+        message: "Next question retrieved successfully",
+        question: questionWithImageUrl,
+      });
+    } catch (error) {
+      console.error("Next question error:", error);
+      res.status(500).json({ message: "Error retrieving the next question", error });
+    }
+  };
+  
+exports.endSurveySession = async (req, res) => {
+    const { joinCode, sessionId } = req.params;
+  
+    try {
+      // Find the survey session
+      const session = await SurveySession.findOne({ surveyJoinCode: joinCode, _id: sessionId })
+        .populate("surveyPlayers", "username email")
+        .populate("surveyHost", "username email");
+  
+      if (!session) {
+        return res.status(404).json({ message: 'Survey session not found' });
+      }
+  
+      // Update session status and end time
+      session.surveyStatus = 'completed';
+      session.endTime = Date.now();
+      await session.save();
+  
+      // Emit the session end event
+      const io = req.app.get("socketio");
+      io.emit("survey-session-ended", { session });
+  
+      // Respond with the updated session
+      res.status(200).json({ message: 'Survey session ended successfully', session });
+    } catch (error) {
+      console.error("End survey session error:", error);
+      res.status(500).json({ message: "Error ending the survey session", error });
+    }
+  };

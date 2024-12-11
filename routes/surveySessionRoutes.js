@@ -4,7 +4,9 @@ const { auth,isAdmin } = require('../middlewares/auth');
 const {
     createSurveySession,
     joinSurveySession,
-    startSurveySession
+    startSurveySession,
+    nextSurveyQuestion,
+    endSurveySession
 
 } = require('../controllers/surveySessionController');
 
@@ -14,5 +16,9 @@ router.post("/survey-sessions/:surveyQuizId/create", auth, isAdmin, createSurvey
 router.post('/survey-sessions/:joinCode/join', auth, joinSurveySession);
 
 router.post('/survey-sessions/:joinCode/:sessionId/start', auth, isAdmin, startSurveySession);
+
+router.post('/survey-sessions/:joinCode/:sessionId/next', auth, isAdmin, nextSurveyQuestion);
+
+router.post('/survey-sessions/:joinCode/:sessionId/end', auth, isAdmin, endSurveySession);
 
 module.exports = router;
