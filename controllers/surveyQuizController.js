@@ -8,20 +8,13 @@ exports.createSurveyQuiz = async (req, res) => {
   try {
     const { title, description, categoryId, questions, isPublic } = req.body;
 
-    if (!categoryId || categoryId.length === 0) {
-      return res.status(400).json({ message: 'At least one category ID is required' });
+    if (!categoryId) {
+      return res.status(400).json({ message: 'Category ID is required' });
     }
 
-    // Validate categories and questions are valid ObjectIds
+        // Validate categories, slides, and questions are valid ObjectIds
     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
-    if (categoryIds.length !== categoryId.length) {
-      return res.status(400).json({ message: 'Some category IDs are invalid' });
-    }
-
     const questionIds = await SurveyQuestion.find({ '_id': { $in: questions } });
-    if (questionIds.length !== questions.length) {
-      return res.status(400).json({ message: 'Some question IDs are invalid' });
-    }
 
     // Create the SurveyQuiz document
     const surveyQuiz = new SurveyQuiz({
