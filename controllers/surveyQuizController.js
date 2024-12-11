@@ -133,7 +133,7 @@ exports.getSurveyQuizById = async (req, res) => {
 exports.updateSurveyQuiz = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, categoryId, questions, isPublic } = req.body;
+    const { title, description, questions, isPublic, status } = req.body;
 
     // Fetch the survey quiz by ID
     const surveyQuiz = await SurveyQuiz.findById(id);
@@ -142,14 +142,6 @@ exports.updateSurveyQuiz = async (req, res) => {
       return res.status(404).json({ message: 'SurveyQuiz not found' });
     }
 
-    // Validate provided categories
-    if (categoryId && categoryId.length > 0) {
-      const categories = await Category.find({ '_id': { $in: categoryId } });
-      if (categories.length !== categoryId.length) {
-        return res.status(400).json({ message: 'Some category IDs are invalid' });
-      }
-      surveyQuiz.categories = categoryId; // Update the categories
-    }
 
     // Validate provided questions
     if (questions && questions.length > 0) {
@@ -164,6 +156,7 @@ exports.updateSurveyQuiz = async (req, res) => {
     if (title) surveyQuiz.title = title;
     if (description) surveyQuiz.description = description;
     if (isPublic !== undefined) surveyQuiz.isPublic = isPublic;
+    if (status) surveyQuiz.status = status;
 
     // Save the updated survey quiz
     const updatedSurveyQuiz = await surveyQuiz.save();
