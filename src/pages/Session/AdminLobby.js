@@ -1,5 +1,6 @@
+// AdminLobby.js
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
 import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
@@ -9,6 +10,7 @@ import InviteModal from "../../models/InviteModal";
 const AdminLobby = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { state } = useLocation();
   const [showPin, setShowPin] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [socket, setSocket] = useState(null);
@@ -19,8 +21,7 @@ const AdminLobby = () => {
   const [players, setPlayers] = useState([]);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
 
-  const { createSession, startSession, nextQuestion, loading } =
-    useSessionContext();
+  const { startSession, nextQuestion, loading } = useSessionContext();
 
   const quizId = searchParams.get("quizId");
 
@@ -32,35 +33,22 @@ const AdminLobby = () => {
     return () => newSocket.disconnect();
   }, []);
 
-  // Initialize session and listen for socket events
+  // Initialize session using passed data
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        const data = await createSession(quizId);
-        console.log("Session created:", data);
-        setSessionData(data);
-
-        if (data.players) {
-          setPlayers(data.players);
-        }
-
-        if (socket) {
-          socket.emit("create-session", {
-            sessionId: data._id,
-            joinCode: data.joinCode,
-          });
-        }
-
-        setTimeout(() => setShowPin(true), 1000);
-      } catch (error) {
-        console.error("Failed to initialize session:", error);
+    if (socket && state?.sessionData) {
+      setSessionData(state.sessionData);
+      if (state.sessionData.players) {
+        setPlayers(state.sessionData.players);
       }
-    };
 
-    if (socket) {
-      initSession();
+      socket.emit("create-session", {
+        sessionId: state.sessionData._id,
+        joinCode: state.sessionData.joinCode,
+      });
+
+      setTimeout(() => setShowPin(true), 1000);
     }
-  }, [quizId, socket]);
+  }, [socket, state]);
 
   // Listen for player updates
   useEffect(() => {
@@ -68,11 +56,9 @@ const AdminLobby = () => {
       socket.on("player-joined", (data) => {
         console.log("Player joined:", data);
         setPlayers((currentPlayers) => {
-          // Check the structure of the incoming data
-          const newPlayer = data.user || data; // Handle both possible structures
+          const newPlayer = data.user || data;
           if (!newPlayer) return currentPlayers;
 
-          // Only add if player isn't already in the list
           if (!currentPlayers.some((p) => p._id === newPlayer._id)) {
             return [...currentPlayers, newPlayer];
           }
@@ -89,7 +75,6 @@ const AdminLobby = () => {
 
       socket.on("answer-submitted", (answerDetails) => {
         console.log("Answer received:", answerDetails);
-        // Handle answer submission if needed
       });
 
       return () => {
@@ -111,10 +96,10 @@ const AdminLobby = () => {
       setQuestions(response.questions || []);
       setSlides(response.slides || []);
 
-      // Replace the existing logic with navigation to Start page
       navigate(
         `/start?quizId=${quizId}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
       );
+
       if (socket) {
         socket.emit("session-started", {
           sessionId: sessionData._id,
@@ -230,7 +215,6 @@ const AdminLobby = () => {
     );
   };
 
-  // Update the renderPlayers function with safer data handling
   const renderPlayers = () => (
     <div className="space-y-6">
       <div className="bg-indigo-600 text-white p-4 rounded-lg">
@@ -275,7 +259,6 @@ const AdminLobby = () => {
       <div className="bg-white rounded-lg p-6 shadow-lg">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {players?.map((player) => {
-            // Extract display information safely
             const playerId = player?._id || player?.id || "unknown";
             const username = player?.username || player?.name || "Anonymous";
             const initial = username[0]?.toUpperCase() || "?";
@@ -325,7 +308,6 @@ const AdminLobby = () => {
             </div>
           ) : (
             <div className="space-y-8">
-              {/* Game PIN Card */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">

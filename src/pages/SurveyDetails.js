@@ -22,7 +22,9 @@ const SurveyDetails = () => {
   const handleStartSurvey = async () => {
     try {
       const sessionData = await createSurveySession(surveyId);
-      navigate(`/surveylobby?surveyId=${surveyId}&sessionId=${sessionData._id}`);
+      navigate(
+        `/survey-lobby?surveyId=${surveyId}&sessionId=${sessionData._id}`
+      );
     } catch (error) {
       console.error("Failed to create survey session:", error);
     }
@@ -74,7 +76,9 @@ const SurveyDetails = () => {
               <p className="text-blue-700">
                 <span className="font-medium">Categories:</span>{" "}
                 <span>
-                  {currentSurvey.categories?.map(cat => cat.name).join(", ") || "No categories"}
+                  {currentSurvey.categories
+                    ?.map((cat) => cat.name)
+                    .join(", ") || "No categories"}
                 </span>
               </p>
             </div>
@@ -83,10 +87,10 @@ const SurveyDetails = () => {
           <div className="flex justify-center">
             <button
               onClick={handleStartSurvey}
-              disabled={loading || currentSurvey.status !== 'active'}
+              disabled={loading || currentSurvey.status !== "active"}
               className={`flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold transform transition 
                 ${
-                  loading || currentSurvey.status !== 'active'
+                  loading || currentSurvey.status !== "active"
                     ? "opacity-70 cursor-not-allowed"
                     : "hover:bg-blue-700 active:scale-95"
                 }`}
@@ -97,12 +101,15 @@ const SurveyDetails = () => {
           </div>
 
           {error && (
-            <div className="mt-4 text-center text-red-600">{error.message || error}</div>
+            <div className="mt-4 text-center text-red-600">
+              {error.message || error}
+            </div>
           )}
 
-          {currentSurvey.status !== 'active' && (
+          {currentSurvey.status !== "active" && (
             <div className="mt-4 text-center text-amber-600">
-              This survey is currently {currentSurvey.status}. It needs to be active before it can be started.
+              This survey is currently {currentSurvey.status}. It needs to be
+              active before it can be started.
             </div>
           )}
         </div>
