@@ -2,15 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { auth,isAdmin } = require('../middlewares/auth');
 const {
-    createSurveySession,
-    joinSurveySession
+    createSurveySession
 
 } = require('../controllers/surveySessionController');
 
-// Create a new session
-router.post('/sessions/:survey-quizId/publiz', auth, isAdmin, createSurveySession);
-
-router.post('/sessions/:joinCode/join', auth, joinSurveySession);
+// Route to create a survey session
+router.post("/survey-sessions/:surveyQuizId/create", auth, isAdmin, createSurveySession);
 
 
 module.exports = router;
