@@ -293,6 +293,86 @@ module.exports = (io) => {
       }
     });
 
+    // Handle survey session creation
+    socket.on("create-survey-session", ({ sessionId }) => {
+      socket.join(sessionId);
+      console.log(`Survey session created: ${sessionId}, by Socket: ${socket.id}`);
+      io.to(sessionId).emit("survey-session-created", { sessionId });
+    });
+
+    // Join a specific room for a survey session
+    socket.on("join-survey-session", async ({ sessionId, userId, username }) => {
+      try {
+        socket.join(sessionId);
+        console.log(`Socket ${socket.id} joined survey room ${sessionId}`);
+        io.to(sessionId).emit("user-joined-survey", {
+          message: "A new user has joined the survey session.",
+          userId,
+          username,
+        });
+      } catch (error) {
+        console.error("Error joining survey session:", error);
+      }
+    });
+
+    // Handle next survey question
+    socket.on("next-survey-question", ({ sessionId, question, isLastQuestion }) => {
+      io.to(sessionId).emit("next-survey-question", {
+        question,
+        isLastQuestion,
+      });
+    });
+
+     // Handle survey session completion
+     socket.on("end-survey-session", ({ sessionId }) => {
+      try {
+        io.to(sessionId).emit("survey-session-ended", {
+          message: "Survey session has ended",
+        });
+
+        io.in(sessionId).socketsLeave(sessionId);
+      } catch (error) {
+        console.error("Error ending survey session:", error);
+      }
+    });
+    
+
+    // // Handle survey answer submission
+    // socket.on("survey-answer-submitted", async ({ sessionId, answerDetails }) => {
+    //   try {
+    //     console.log("Survey answer submitted:", { sessionId, answerDetails });
+
+    //     // Emit the answer submission event
+    //     io.to(sessionId).emit("survey-answer-submitted", { answerDetails });
+
+    //     // Fetch and emit updated answer counts if applicable
+    //     if (answerDetails.questionId) {
+    //       const answers = await SurveyAnswer.find({
+    //         session: sessionId,
+    //         question: answerDetails.questionId,
+    //       });
+
+    //       const question = await SurveyQuestion.findById(answerDetails.questionId);
+    //       if (question && question.options) {
+    //         const optionCounts = {};
+    //         question.options.forEach((option, index) => {
+    //           const letter = String.fromCharCode(65 + index); // A, B, C, D
+    //           optionCounts[letter] = answers.filter(
+    //             (a) => a.answer === option.text
+    //           ).length;
+    //         });
+
+    //         io.to(sessionId).emit("survey-answer-counts-updated", {
+    //           questionId: answerDetails.questionId,
+    //           counts: optionCounts,
+    //         });
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error("Error handling survey answer submission:", error);
+    //   }
+    // });
+
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);
     });
