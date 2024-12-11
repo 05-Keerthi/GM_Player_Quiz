@@ -12,6 +12,8 @@ import { QuizProvider } from "./context/quizContext";
 import { SessionProvider } from "./context/sessionContext";
 import { AnswerProvider } from "./context/answerContext";
 import { LeaderboardProvider } from "./context/leaderboardContext";
+import { SurveyProvider } from "./context/surveyContext";
+import { QuestionProvider } from "./context/questionContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -24,9 +26,13 @@ root.render(
               <SessionProvider>
                 <AnswerProvider>
                   <LeaderboardProvider>
-                    <BrowserRouter>
-                      <App />
-                    </BrowserRouter>
+                    <SurveyProvider>
+                      <QuestionProvider>
+                        <BrowserRouter>
+                          <App />
+                        </BrowserRouter>
+                      </QuestionProvider>
+                    </SurveyProvider>
                   </LeaderboardProvider>
                 </AnswerProvider>
               </SessionProvider>

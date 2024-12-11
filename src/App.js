@@ -23,6 +23,8 @@ import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 import SurveyPage from "./pages/SurveyPage";
 import HomePage from "./pages/Home";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
+import SurveyCreator from "./pages/SurveyCreator";
+import SurveyList from "./components/SurveyList";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -80,7 +82,11 @@ export default function App() {
           element={<SelectSurveyCategory />}
         />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
+        <Route path="/createSurvey/:surveyId" element={<SurveyCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
+        <Route path="/surveys" element={<SurveyList />} />
+
+        
         {/* Add new PreviewPage route */}
         <Route path="/preview/:quizId" element={<PreviewPage />} />{" "}
         {/* New path */}

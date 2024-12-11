@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { useCategoryContext } from "../context/categoryContext";
-// import { useSurveyContext } from "../context/surveyContext";
+import { useSurveyContext } from "../context/surveyContext";
 import { paginateData, PaginationControls } from "../utils/pagination";
 import Navbar from "../components/NavbarComp";
 import CreateCategoryModal from "../models/Category/CreateCategoryModal";
@@ -14,7 +14,7 @@ const SelectSurveyCategory = () => {
   const navigate = useNavigate();
   const { categories, getAllCategories, deleteCategory, loading, error } =
     useCategoryContext();
-  // const { createSurvey } = useSurveyContext();
+  const { createSurvey } = useSurveyContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -64,20 +64,20 @@ const SelectSurveyCategory = () => {
     });
   };
 
-  // const handleCreateSurvey = async () => {
-  //   if (selectedCategories.length === 0) return;
+  const handleCreateSurvey = async () => {
+    if (selectedCategories.length === 0) return;
 
-  //   try {
-  //     const response = await createSurvey({
-  //       categoryId: selectedCategories,
-  //       status: "draft",
-  //     });
-  //     navigate(`/createSurvey/${response.survey._id}`);
-  //   } catch (err) {
-  //     console.error("Failed to create survey:", err);
-  //     toast.error("Failed to create survey. Please try again.");
-  //   }
-  // };
+    try {
+      const response = await createSurvey({
+        categoryId: selectedCategories,
+        status: "draft",
+      });
+      console.log(response);
+      navigate(`/createSurvey/${response.surveyQuiz._id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create survey");
+    }
+  };
 
   const handleCreateModalClose = () => {
     setShowCreateModal(false);
@@ -225,7 +225,7 @@ const SelectSurveyCategory = () => {
         {/* Create Survey Button */}
         <div className="fixed bottom-8 right-8">
           <button
-            // onClick={handleCreateSurvey}
+            onClick={handleCreateSurvey}
             disabled={selectedCategories.length === 0}
             className={`px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-white
               ${
