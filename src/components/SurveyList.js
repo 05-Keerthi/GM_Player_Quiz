@@ -41,7 +41,7 @@ const SurveyStatusBadge = ({ status }) => {
 
 const SurveyList = () => {
   const navigate = useNavigate();
-  const { surveys, getAllSurveys, deleteSurvey, updateSurvey } =
+  const { surveys, getAllSurveys, deleteSurvey, updateSurvey, publishSurvey } =
     useSurveyContext();
   const { user } = useAuthContext();
   const [filter, setFilter] = useState("all");
@@ -72,7 +72,14 @@ const SurveyList = () => {
     setFilteredSurveyList(filtered);
   }, [surveys, filter]);
 
-  const handleEditSurvey = (surveyId) => {
+  const handleSurveyCardClick = (survey) => {
+    if (survey.status === 'active') {
+      navigate(`/survey-details?surveyId=${survey._id}&hostId=${user.id}`);
+    }
+  };
+
+  const handleEditSurvey = (e, surveyId) => {
+    e.stopPropagation();
     navigate(`/createSurvey/${surveyId}`);
   };
 
@@ -123,30 +130,32 @@ const SurveyList = () => {
 
       if (updatedSurvey) {
         toast.success(`Survey moved to ${targetStatus} successfully!`);
-        // Refresh the surveys list to get the updated data
         await getAllSurveys();
       }
     } catch (error) {
       toast.error(`Failed to update survey status: ${error.message}`);
       console.error(error);
-      // Refresh to ensure UI is in sync with backend
       await getAllSurveys();
     }
   };
 
-  const handlePublishSurvey = async (survey) => {
+  const handlePublishSurvey = async (e, survey) => {
+    e.stopPropagation();
     try {
-      await updateSurvey(survey._id, { ...survey, status: "active" });
-      toast.success("Survey published successfully!");
-      await getAllSurveys();
-      navigate(`/survey-details?surveyId=${survey._id}&hostId=${user.id}`);
+      const updatedSurvey = await publishSurvey(survey._id);
+      if (updatedSurvey) {
+        toast.success("Survey published successfully!");
+        await getAllSurveys();
+        navigate(`/surveydetails?surveyId=${survey._id}&hostId=${user.id}`);
+      }
     } catch (error) {
       toast.error("Failed to publish survey");
       console.error(error);
     }
   };
 
-  const handleCloseSurvey = async (survey) => {
+  const handleCloseSurvey = async (e, survey) => {
+    e.stopPropagation();
     try {
       await updateSurvey(survey._id, { ...survey, status: "closed" });
       toast.success("Survey closed successfully!");
@@ -157,7 +166,8 @@ const SurveyList = () => {
     }
   };
 
-  const handleReopenSurvey = async (survey) => {
+  const handleReopenSurvey = async (e, survey) => {
+    e.stopPropagation();
     try {
       await updateSurvey(survey._id, { ...survey, status: "active" });
       toast.success("Survey reopened successfully!");
@@ -167,12 +177,13 @@ const SurveyList = () => {
       console.error(error);
     }
   };
+
   const getStatusActionButton = (survey) => {
     switch (survey.status) {
       case "draft":
         return (
           <button
-            onClick={() => handlePublishSurvey(survey)}
+            onClick={(e) => handlePublishSurvey(e, survey)}
             className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
           >
             <CheckSquare className="w-4 h-4" />
@@ -182,7 +193,7 @@ const SurveyList = () => {
       case "active":
         return (
           <button
-            onClick={() => handleCloseSurvey(survey)}
+            onClick={(e) => handleCloseSurvey(e, survey)}
             className="w-full px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
           >
             <Lock className="w-4 h-4" />
@@ -192,7 +203,7 @@ const SurveyList = () => {
       case "closed":
         return (
           <button
-            onClick={() => handleReopenSurvey(survey)}
+            onClick={(e) => handleReopenSurvey(e, survey)}
             className="w-full px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
           >
             <ArrowRight className="w-4 h-4" />
@@ -271,9 +282,7 @@ const SurveyList = () => {
         >
           <div className="sticky top-0 bg-white">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">
-                Survey Filters
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-800">Survey Filters</h1>
               {isMobile && (
                 <button
                   onClick={() => setIsFilterMenuOpen(false)}
@@ -350,11 +359,14 @@ const SurveyList = () => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
+                                  onClick={() => handleSurveyCardClick(survey)}
                                   className={`${
                                     surveyCardColors[
                                       index % surveyCardColors.length
                                     ]
-                                  } border rounded-xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden mb-4`}
+                                  } border rounded-xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 relative overflow-hidden mb-4 ${
+                                    survey.status === 'active' ? 'cursor-pointer' : ''
+                                  }`}
                                 >
                                   <div className="absolute top-0 right-0 p-2">
                                     <SurveyStatusBadge status={survey.status} />
@@ -371,25 +383,20 @@ const SurveyList = () => {
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <ListChecks className="w-5 h-5" />
                                       <span>
-                                        {survey.questions?.length || 0}{" "}
-                                        Questions
+                                        {survey.questions?.length || 0} Questions
                                       </span>
                                     </div>
 
                                     <div className="flex gap-2">
                                       <button
-                                        onClick={() =>
-                                          handleEditSurvey(survey._id)
-                                        }
+                                        onClick={(e) => handleEditSurvey(e, survey._id)}
                                         className="text-blue-600 hover:text-blue-800"
                                         title="Edit Survey"
                                       >
                                         <FileEdit className="w-5 h-5" />
                                       </button>
                                       <button
-                                        onClick={(e) =>
-                                          handleDeleteSurvey(e, survey._id)
-                                        }
+                                        onClick={(e) => handleDeleteSurvey(e, survey._id)}
                                         className="text-red-600 hover:text-red-800"
                                         title="Delete Survey"
                                       >

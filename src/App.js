@@ -25,6 +25,7 @@ import HomePage from "./pages/Home";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import SurveyCreator from "./pages/SurveyCreator";
 import SurveyList from "./components/SurveyList";
+import SurveyDetails from "./pages/SurveyDetails";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -85,13 +86,12 @@ export default function App() {
         <Route path="/createSurvey/:surveyId" element={<SurveyCreator />} />
         <Route path="/quizzes" element={<QuizList />} />
         <Route path="/surveys" element={<SurveyList />} />
-
-        
         {/* Add new PreviewPage route */}
         <Route path="/preview/:quizId" element={<PreviewPage />} />{" "}
         {/* New path */}
         {/* Admin routes */}
         <Route path="/quiz-details" element={<QuizDetails />} />
+        <Route path="/survey-details" element={<SurveyDetails />} />
         <Route path="/lobby" element={<Lobby />} />
         <Route path="/join" element={<JoinQuiz />} />
         <Route path="/user-lobby" element={<UserLobby />} />
