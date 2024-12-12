@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useSessionContext } from '../../context/sessionContext';
-import { useSurveySessionContext } from '../../context/surveySessionContext';
-import { useAuthContext } from '../../context/AuthContext';
-import { Loader2 } from 'lucide-react';
-import io from 'socket.io-client';
+// UserLobby.js
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSessionContext } from "../../context/sessionContext";
 
-const UnifiedUserLobby = () => {
+import { Loader2 } from "lucide-react";
+import io from "socket.io-client";
+import { useAuthContext } from "../../context/AuthContext";
+
+const UserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
@@ -14,105 +15,72 @@ const UnifiedUserLobby = () => {
   const [currentItemType, setCurrentItemType] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
-  
   const { joinSession, loading: sessionLoading } = useSessionContext();
-  const { joinSurveySession, loading: surveySessionLoading } = useSurveySessionContext();
 
-  const joinCode = searchParams.get('code');
-  const sessionId = searchParams.get('sessionId');
-  const sessionType = searchParams.get('type'); // 'quiz' or 'survey'
+  const joinCode = searchParams.get("code");
+  const sessionId = searchParams.get("sessionId");
 
   // Initialize socket and join session
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
-      const newSocket = io('http://localhost:5000');
+      const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
-      const joinData = {
+      newSocket.emit("join-session", {
         sessionId,
         joinCode,
         userId: user._id,
         username: user.username,
-      };
-
-      if (sessionType === 'survey') {
-        newSocket.emit('join-survey-session', joinData);
-      } else {
-        newSocket.emit('join-session', joinData);
-      }
+      });
 
       return () => newSocket.disconnect();
     }
-  }, [isAuthenticated, user, joinCode, sessionId, sessionType]);
+  }, [isAuthenticated, user, joinCode, sessionId]);
 
-  // Listen for session events
+  // Listen for game events
   useEffect(() => {
     if (socket) {
-      // Common session events
-      socket.on('session-started', (data) => {
-        console.log('Session started:', data);
-        if (sessionType === 'survey') {
-          navigate(`/survey-play?surveyId=${data.surveyId}&sessionId=${sessionId}`);
-        } else {
-          navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
-        }
+      socket.on("session-started", (data) => {
+        console.log("Session started data:", data);
+        navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
       });
 
-      socket.on('session-ended', () => {
-        navigate('/results');
+      socket.on("next-item", ({ type, item }) => {
+        console.log("Next item received:", { type, item });
+        setCurrentItem(item);
+        setCurrentItemType(type);
+        setSelectedAnswer(null);
       });
 
-      // Quiz-specific events
-      if (sessionType !== 'survey') {
-        socket.on('next-item', ({ type, item }) => {
-          console.log('Next item received:', { type, item });
-          setCurrentItem(item);
-          setCurrentItemType(type);
-          setSelectedAnswer(null);
-        });
-      } 
-      // Survey-specific events
-      else {
-        socket.on('next-question', ({ question }) => {
-          console.log('Next survey question received:', question);
-          setCurrentItem(question);
-          setCurrentItemType('question');
-          setSelectedAnswer(null);
-        });
-      }
+      socket.on("session-ended", () => {
+        navigate("/results");
+      });
 
       return () => {
-        socket.off('session-started');
-        socket.off('next-item');
-        socket.off('next-question');
-        socket.off('session-ended');
+        socket.off("session-started");
+        socket.off("next-item");
+        socket.off("session-ended");
       };
     }
-  }, [socket, navigate, sessionId, sessionType]);
+  }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
-    if (currentItemType !== 'question' || selectedAnswer || !user) return;
+    if (currentItemType !== "question" || selectedAnswer || !user) return;
 
     setSelectedAnswer(option);
     if (socket) {
-      const answerData = {
+      socket.emit("answer-submitted", {
         sessionId,
         answerDetails: {
           answer: option.text,
           questionId: currentItem._id,
           userId: user._id,
         },
-      };
-
-      if (sessionType === 'survey') {
-        socket.emit('survey-response-submitted', answerData);
-      } else {
-        socket.emit('answer-submitted', answerData);
-      }
+      });
     }
   };
 
-  if (authLoading || sessionLoading || surveySessionLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -136,13 +104,13 @@ const UnifiedUserLobby = () => {
             </p>
             <div className="flex gap-4">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Login
               </button>
               <button
-                onClick={() => navigate('/register')}
+                onClick={() => navigate("/register")}
                 className="w-full border border-blue-600 text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
               >
                 Register
@@ -154,16 +122,27 @@ const UnifiedUserLobby = () => {
     );
   }
 
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Joining session...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentItem) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
           <div className="text-center py-6">
             <h2 className="text-xl font-semibold mb-2">
-              Waiting for {sessionType === 'survey' ? 'survey' : 'session'} to start...
+              Waiting for session to start...
             </h2>
             <p className="text-gray-600">
-              The host will begin the {sessionType === 'survey' ? 'survey' : 'session'} shortly
+              The host will begin the session shortly
             </p>
           </div>
         </div>
@@ -175,7 +154,7 @@ const UnifiedUserLobby = () => {
     <div className="min-h-screen bg-purple-100 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
         <div className="p-6 border-b">
-          {currentItemType === 'question' ? (
+          {currentItemType === "question" ? (
             <>
               <h2 className="text-xl font-bold">{currentItem.title}</h2>
               {currentItem.imageUrl && (
@@ -200,7 +179,7 @@ const UnifiedUserLobby = () => {
             </div>
           )}
         </div>
-        {currentItemType === 'question' && (
+        {currentItemType === "question" && (
           <div className="p-6">
             <div className="grid grid-cols-2 gap-4">
               {currentItem.options?.map((option) => (
@@ -210,8 +189,8 @@ const UnifiedUserLobby = () => {
                   disabled={selectedAnswer !== null}
                   className={`h-24 text-lg rounded-lg border transition-colors ${
                     selectedAnswer === option
-                      ? 'bg-blue-100 border-blue-500 text-blue-700'
-                      : 'hover:bg-gray-50'
+                      ? "bg-blue-100 border-blue-500 text-blue-700"
+                      : "hover:bg-gray-50"
                   }`}
                 >
                   {option.text}
@@ -225,4 +204,4 @@ const UnifiedUserLobby = () => {
   );
 };
 
-export default UnifiedUserLobby;
+export default UserLobby;
