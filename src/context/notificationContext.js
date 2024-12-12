@@ -1,6 +1,25 @@
 import React, { createContext, useReducer, useContext } from 'react';
-import notificationReducer from '../reducers/notificationReducer';
 import axios from 'axios';
+import notificationReducer from '../reducers/notificationReducer'; // Your reducer file
+
+const BASE_URL = "http://localhost:5000/api";
+
+// Create axios instance
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add request interceptor to always get fresh token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Create Notification Context
 const NotificationContext = createContext();
@@ -17,10 +36,10 @@ export const NotificationProvider = ({ children }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
 
   // Fetch all notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (userId) => {
     dispatch({ type: 'FETCH_NOTIFICATIONS_REQUEST' });
     try {
-      const response = await axios.get('/api/notifications');
+      const response = await api.get(`/notifications/${userId}`);
       dispatch({
         type: 'FETCH_NOTIFICATIONS_SUCCESS',
         payload: response.data.notifications,
@@ -34,12 +53,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Mark a notification as read
-  const markNotificationAsRead = async (id) => {
+  const markNotificationAsRead = async (userId) => {
     try {
-      await axios.put(`/api/notifications/${id}`);
+      await api.put(`/notifications/${userId}`);
       dispatch({
         type: 'MARK_AS_READ',
-        payload: id,
+        payload:userId,
       });
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -47,12 +66,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Delete a notification (admin only)
-  const deleteNotification = async (id) => {
+  const deleteNotification = async (userId) => {
     try {
-      await axios.delete(`/api/notifications/${id}`);
+      await api.delete(`/notifications/${userId}`);
       dispatch({
         type: 'DELETE_NOTIFICATION',
-        payload: id,
+        payload: userId,
       });
     } catch (error) {
       console.error('Error deleting notification:', error);
