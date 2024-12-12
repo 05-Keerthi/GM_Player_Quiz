@@ -1,8 +1,9 @@
 const Notification = require('../models/Notification'); 
 const User = require('../models/User'); 
 const Session = require('../models/session'); 
-const Quiz = require('../models/quiz'); // Import the Quiz model (if needed for validation)
+const Quiz = require('../models/quiz'); 
 const Leaderboard = require('../models/leaderBoard');
+const mailService = require('../services/mailService');
 
 // Create a new notification (admin only)
 exports.createNotification = async (req, res) => {
@@ -39,12 +40,22 @@ exports.createNotification = async (req, res) => {
 
     // Handle different notification types
     if (type === 'invitation') {
-      finalMessage = `You are invited to join the "${quizTitle}" quiz!`;
+      finalMessage = `You are invited to join the "${quizTitle}" quiz! Please join as soon as possible to participate in the quiz session.`;
+
       // For invitations, users must be passed in the request body
       if (!Array.isArray(req.body.users) || req.body.users.length === 0) {
         return res.status(400).json({ message: 'No users provided for invitation.' });
       }
       usersToNotify = req.body.users;
+
+      // Fetch the emails for the users to notify and send the invitation email
+      for (const userId of usersToNotify) {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          // Send the quiz invitation email to the user
+          await mailService.sendQuizInvitationMail(user.email, user.username, quizTitle, session.joinCode);
+        }
+      }
     } else if (type === 'session_update') {
       // Fetch users from existing notifications for the session
       const existingNotifications = await Notification.find({ sessionId }, 'user');
@@ -58,6 +69,15 @@ exports.createNotification = async (req, res) => {
       finalMessage =
         message ||
         `The session for "${quizTitle}" has started. If you have not yet joined the quiz, you will not be able to participate.`;
+
+      // Send session update email to users
+      for (const userId of usersToNotify) {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          // Send the quiz session update email to the user
+          await mailService.sendQuizSessionUpdateMail(user.email, user.username, quizTitle);
+        }
+      }
     } else if (type === 'quiz_result') {
       // Fetch leaderboard details for the session
       const leaderboardEntries = await Leaderboard.find({ session: sessionId })
@@ -80,6 +100,15 @@ exports.createNotification = async (req, res) => {
       }));
 
       await Notification.insertMany(notifications);
+
+      // Send quiz result emails to users
+      for (const entry of leaderboardEntries) {
+        const user = await User.findById(entry.player._id);
+        if (user && user.email) {
+          // Send quiz result email to the user
+          await mailService.sendQuizResultMail(user.email, user.username, quizTitle, entry.score, entry.rank);
+        }
+      }
 
       return res.status(201).json({
         success: true,
@@ -119,7 +148,7 @@ exports.createNotification = async (req, res) => {
       qrCodeData,
       sixDigitCode,
       quizTitle,
-    });    
+    });
 
     res.status(201).json({
       success: true,

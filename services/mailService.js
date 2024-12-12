@@ -116,3 +116,61 @@ exports.sendInviteEmail = async (email, name, inviteLink, credentials) => {
 
   return transporter.sendMail(mailOptions);
 };
+
+exports.sendQuizInvitationMail = async (email, username, quizTitle, joinCode) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Invitation to Join the "${quizTitle}" Quiz!`,
+    text: `Hi ${username},
+
+           You are invited to join the quiz session for "${quizTitle}"!
+
+           To join the quiz, please use the following join code: ${joinCode}.
+
+           If you have not yet joined, please make sure to use the code and participate in the quiz.
+
+           Best regards,
+           GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+
+exports.sendQuizSessionUpdateMail = async (email, username, quizTitle) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Quiz Session Update: "${quizTitle}"`,
+    text: `Hello ${username},
+
+"This is a reminder that the quiz session for "${quizTitle}" has started. If you have not yet joined, you won't be able to participate."
+
+Best regards,
+The GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+exports.sendQuizResultMail = async (email, username, quizTitle, score, rank) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Your Quiz Result for "${quizTitle}"`,
+    text: `Hello ${username},
+
+Your quiz result for the "${quizTitle}" quiz is ready! Here are the details:
+
+Score: ${score}
+Rank: ${rank || 'N/A'}
+
+Thank you for participating in the quiz!
+
+Best regards,
+The GM Play Team`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
