@@ -16,7 +16,17 @@ const Navbar = () => {
 
   // Fetch notifications when user is authenticated
   useEffect(() => {
-         getNotificationsByUserId(user._id);
+    const fetchNotifications = async () => {
+      if (isAuthenticated && user?._id) {
+        try {
+          await getNotificationsByUserId(user._id);
+        } catch (error) {
+          console.error("Error fetching notifications:", error);
+        }
+      }
+    };
+
+    fetchNotifications();
   }, [isAuthenticated, user]);
 
   useEffect(() => {
