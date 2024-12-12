@@ -1,96 +1,69 @@
-import React, { createContext, useReducer, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import notificationReducer from '../reducers/notificationReducer'; // Your reducer file
 
-const BASE_URL = "http://localhost:5000/api";
-
-// Create axios instance
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// Add request interceptor to always get fresh token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Create Notification Context
 const NotificationContext = createContext();
 
-// Initial State
-const initialState = {
-  notifications: [],
-  loading: false,
-  error: null,
+export const useNotification = () => {
+  return useContext(NotificationContext);
 };
 
-// Context Provider Component
 export const NotificationProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(notificationReducer, initialState);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch all notifications
+  // Fetch notifications for a user by their userId
   const fetchNotifications = async (userId) => {
-    dispatch({ type: 'FETCH_NOTIFICATIONS_REQUEST' });
+    setLoading(true);
     try {
-      const response = await api.get(`/notifications/${userId}`);
-      dispatch({
-        type: 'FETCH_NOTIFICATIONS_SUCCESS',
-        payload: response.data.notifications,
-      });
+      const response = await axios.get(`/api/notifications/${userId}`);
+      setNotifications(response.data.notifications || []);
     } catch (error) {
-      dispatch({
-        type: 'FETCH_NOTIFICATIONS_FAILURE',
-        payload: error.response?.data?.message || 'Failed to fetch notifications',
-      });
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Add a notification to state
+  const addNotification = (notification) => {
+    setNotifications((prevNotifications) => [notification, ...prevNotifications]);
+  };
+
+  // Update an existing notification in state
+  const updateNotification = (updatedNotification) => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.map((notification) =>
+        notification._id === updatedNotification._id ? updatedNotification : notification
+      )
+    );
   };
 
   // Mark a notification as read
-  const markNotificationAsRead = async (userId) => {
+  const markNotificationAsRead = async (notificationId) => {
     try {
-      await api.put(`/notifications/${userId}`);
-      dispatch({
-        type: 'MARK_AS_READ',
-        payload:userId,
-      });
+      await axios.put(`/api/notifications/${notificationId}`);
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notification) =>
+          notification._id === notificationId ? { ...notification, read: true } : notification
+        )
+      );
     } catch (error) {
       console.error('Error marking notification as read:', error);
-    }
-  };
-
-  // Delete a notification (admin only)
-  const deleteNotification = async (userId) => {
-    try {
-      await api.delete(`/notifications/${userId}`);
-      dispatch({
-        type: 'DELETE_NOTIFICATION',
-        payload: userId,
-      });
-    } catch (error) {
-      console.error('Error deleting notification:', error);
     }
   };
 
   return (
     <NotificationContext.Provider
       value={{
-        ...state,
+        notifications,
+        loading,
         fetchNotifications,
+        addNotification,
+        updateNotification,
         markNotificationAsRead,
-        deleteNotification,
       }}
     >
       {children}
     </NotificationContext.Provider>
   );
 };
-
-// Custom hook to use Notification Context
-export const useNotificationContext = () => useContext(NotificationContext);

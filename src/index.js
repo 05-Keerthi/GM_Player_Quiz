@@ -15,7 +15,7 @@ import { LeaderboardProvider } from "./context/leaderboardContext";
 import { SurveyProvider } from "./context/surveyContext";
 import { QuestionProvider } from "./context/questionContext";
 import { SurveySessionProvider } from "./context/surveySessionContext";
-import { NotificationProvider } from "./context/notificationContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

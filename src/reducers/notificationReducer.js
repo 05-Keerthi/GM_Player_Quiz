@@ -1,44 +1,29 @@
-const notificationReducer = (state, action) => {
+// Action types
+const ADD_NOTIFICATION = 'ADD_NOTIFICATION';
+const UPDATE_NOTIFICATION = 'UPDATE_NOTIFICATION';
+const SET_ERROR = 'SET_ERROR';
+
+// Notification reducer
+export const notificationReducer = (state, action) => {
   switch (action.type) {
-    case 'FETCH_NOTIFICATIONS_REQUEST':
+    case ADD_NOTIFICATION:
       return {
         ...state,
-        loading: true,
-        error: null
+        notifications: [...state.notifications, action.payload],
       };
-    case 'FETCH_NOTIFICATIONS_SUCCESS':
+    case UPDATE_NOTIFICATION:
       return {
         ...state,
-        notifications: action.payload,
-        loading: false,
-        error: null
+        notifications: state.notifications.map((notification) =>
+          notification._id === action.payload._id ? action.payload : notification
+        ),
       };
-    case 'FETCH_NOTIFICATIONS_FAILURE':
+    case SET_ERROR:
       return {
         ...state,
-        notifications: [],
-        loading: false,
-        error: action.payload
-      };
-    case 'MARK_AS_READ':
-      return {
-        ...state,
-        notifications: state.notifications.map(notification => 
-          notification._id === action.payload 
-            ? { ...notification, read: true }
-            : notification
-        )
-      };
-    case 'DELETE_NOTIFICATION':
-      return {
-        ...state,
-        notifications: state.notifications.filter(
-          notification => notification._id !== action.payload
-        )
+        error: action.payload,
       };
     default:
       return state;
   }
 };
-
-export default notificationReducer;

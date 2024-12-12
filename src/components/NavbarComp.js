@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
-import NotificationDropdown from "../models/notificationDropdown";
+import NotificationDropdown from "../models/NotificationDropdown";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
