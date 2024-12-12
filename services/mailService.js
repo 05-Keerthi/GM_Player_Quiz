@@ -174,3 +174,55 @@ The GM Play Team`,
 
   return transporter.sendMail(mailOptions);
 };
+
+// Send Survey Invitation Mail
+exports.sendSurveyInvitationMail = async (email, username, quizTitle, qrCodeData, joinCode) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Invitation to Join the "${quizTitle}" Survey!`,
+    text: `Hi ${username},
+
+You are invited to join the "${quizTitle}" survey!
+
+Join using this join code: ${joinCode}.
+
+
+Best regards,
+The GM Play Team`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Survey Invitation sent successfully to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending survey invitation email', error);
+    return false;
+  }
+};
+
+// Send Survey Session Update Mail
+exports.sendSurveySessionUpdateMail = async (email, username, surveyTitle) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Update for the "${surveyTitle}" Survey Session!`,
+    text: `Hi ${username},
+
+
+"This is a reminder that the Survey session for "${surveyTitle}" has started. If you have not yet joined, you won't be able to participate."
+
+Best regards,
+The GM Play Team`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Survey Session Update sent successfully to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending survey session update email', error);
+    return false;
+  }
+};
