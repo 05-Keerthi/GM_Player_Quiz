@@ -5,7 +5,7 @@ import { useAuthContext } from "../context/AuthContext";
 import { useNotificationContext } from "../context/notificationContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
-import NotificationDropdown from "../models/NotificationDropdown";
+import NotificationDropdown from "../models/notificationDropdown";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
@@ -16,23 +16,8 @@ const Navbar = () => {
 
   // Fetch notifications when user is authenticated
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (isAuthenticated && user?._id) {
-        try {
-          await getNotificationsByUserId(user._id);
-        } catch (error) {
-          console.error("Error fetching notifications:", error);
-        }
-      }
-    };
-
-    fetchNotifications();
-
-    // Set up polling for notifications every minute
-    const intervalId = setInterval(fetchNotifications, 60000);
-
-    return () => clearInterval(intervalId);
-  }, [isAuthenticated, user, getNotificationsByUserId]);
+         getNotificationsByUserId(user._id);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     setLogoError(false);
