@@ -261,6 +261,40 @@ module.exports = (io) => {
       }
     });
 
+      // Admin triggers notification
+      socket.on("send-notification", async ({ sessionId, notification }) => {
+        if (!sessionId || !notification) {
+          return socket.emit("error", "Session ID and notification data are required.");
+        }
+        try {
+          io.to(sessionId).emit("receive-notification", notification); 
+          console.log(`Notification sent to session ${sessionId}: ${notification.message}`);
+        } catch (error) {
+          console.error("Error sending notification:", error);
+          socket.emit("error", "An error occurred while sending the notification.");
+        }
+      });
+  
+      // Mark notification as read (real-time feedback)
+      socket.on("mark-notification-read", async ({ notificationId, userId }) => {
+        try {
+          const notification = await Notification.findOneAndUpdate(
+            { _id: notificationId, user: userId },
+            { read: true },
+            { new: true }
+          );
+  
+          if (!notification) {
+            return socket.emit("error", "Notification not found or unauthorized.");
+          }
+          socket.emit("notification-updated", notification);
+          console.log(`Notification ${notificationId} marked as read by user ${userId}`);
+        } catch (error) {
+          console.error("Error marking notification as read:", error);
+          socket.emit("error", "An error occurred while marking the notification as read.");
+        }
+      });
+
     // Handle quiz completion
     socket.on("quiz-completed", ({ sessionId }) => {
     io.to(sessionId).emit("quiz-completed", {

@@ -109,6 +109,18 @@ exports.createNotification = async (req, res) => {
 
     await Notification.insertMany(notifications);
 
+    // Emit WebSocket event
+    const io = req.app.get("socketio");
+    io.emit('new_notification', {
+      type,
+      message: finalMessage,
+      users: usersToNotify,
+      sessionId,
+      qrCodeData,
+      sixDigitCode,
+      quizTitle,
+    });    
+
     res.status(201).json({
       success: true,
       message: 'Notifications sent successfully',
@@ -197,6 +209,13 @@ exports.markAsRead = async (req, res) => {
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found or unauthorized' });
     }
+
+    // Emit WebSocket event
+    const io = req.app.get("socketio");
+    io.emit('notification_read', {
+      userId: req.user._id,
+      notificationId: id,
+    });
 
     res.status(200).json({ message: 'Notification marked as read', notification });
   } catch (error) {
