@@ -15,6 +15,7 @@ import { LeaderboardProvider } from "./context/leaderboardContext";
 import { SurveyProvider } from "./context/surveyContext";
 import { QuestionProvider } from "./context/questionContext";
 import { SurveySessionProvider } from "./context/surveySessionContext";
+import { NotificationProvider } from "./context/notificationContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -27,15 +28,17 @@ root.render(
               <SessionProvider>
                 <AnswerProvider>
                   <LeaderboardProvider>
-                    <SurveyProvider>
-                      <QuestionProvider>
-                        <SurveySessionProvider>
-                          <BrowserRouter>
-                            <App />
-                          </BrowserRouter>
-                        </SurveySessionProvider>
-                      </QuestionProvider>
-                    </SurveyProvider>
+                    <NotificationProvider>
+                      <SurveyProvider>
+                        <QuestionProvider>
+                          <SurveySessionProvider>
+                            <BrowserRouter>
+                              <App />
+                            </BrowserRouter>
+                          </SurveySessionProvider>
+                        </QuestionProvider>
+                      </SurveyProvider>
+                    </NotificationProvider>
                   </LeaderboardProvider>
                 </AnswerProvider>
               </SessionProvider>

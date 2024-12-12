@@ -271,7 +271,7 @@ const SurveyCreator = () => {
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-blue-700"
                 }`}
-                onClick={() => updateSurvey(surveyId, { status: "published" })}
+                onClick={() => updateSurvey(surveyId)}
                 disabled={loading}
               >
                 {loading ? "Saving..." : "Save"}

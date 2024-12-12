@@ -1,35 +1,55 @@
-// JoinQuiz.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
+import { useSurveySessionContext } from "../../context/surveySessionContext";
 import { Loader2 } from "lucide-react";
 
-const JoinQuiz = () => {
+const UnifiedJoin = () => {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
-  const { joinSession, loading } = useSessionContext();
   const navigate = useNavigate();
+
+  const { joinSession, loading: quizLoading } = useSessionContext();
+  const { joinSurveySession, loading: surveyLoading } =
+    useSurveySessionContext();
+
+  const loading = quizLoading || surveyLoading;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (!joinCode.trim()) {
-      setError("Please enter a Game PIN");
+      setError("Please enter a PIN");
       return;
     }
 
     try {
-      const response = await joinSession(joinCode);
-      if (response.session) {
-        navigate(
-          `/user-lobby?code=${joinCode}&sessionId=${response.session._id}`
-        );
-      } else {
-        setError("Invalid response from server");
+      // Try joining as a quiz session first
+      try {
+        const quizResponse = await joinSession(joinCode);
+        if (quizResponse.session) {
+          navigate(`/lobby`, {
+            search: `?type=quiz&code=${joinCode}&sessionId=${quizResponse.session._id}`,
+          });
+          return;
+        }
+      } catch (quizError) {
+        // If quiz join fails, try survey
+        try {
+          const surveyResponse = await joinSurveySession(joinCode);
+          if (surveyResponse.session) {
+            navigate(`/lobby`, {
+              search: `?type=survey&code=${joinCode}&sessionId=${surveyResponse.session._id}`,
+            });
+            return;
+          }
+        } catch (surveyError) {
+          throw new Error("Invalid PIN");
+        }
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid Game PIN");
+      setError(err.message || "Invalid PIN");
     }
   };
 
@@ -37,9 +57,7 @@ const JoinQuiz = () => {
     <div className="min-h-screen bg-purple-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <h1 className="text-2xl font-bold text-center mb-2">Ready to join?</h1>
-        <p className="text-gray-600 text-center mb-8">
-          Enter your game PIN below
-        </p>
+        <p className="text-gray-600 text-center mb-8">Enter your PIN below</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -49,7 +67,7 @@ const JoinQuiz = () => {
               onChange={(e) =>
                 setJoinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              placeholder="Game PIN"
+              placeholder="Enter PIN"
               className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-3xl tracking-wider"
               maxLength={6}
             />
@@ -74,11 +92,11 @@ const JoinQuiz = () => {
         </form>
 
         <p className="mt-6 text-sm text-gray-500 text-center">
-          Game PINs are 6 digits long
+          PINs are 6 digits long
         </p>
       </div>
     </div>
   );
 };
 
-export default JoinQuiz;
+export default UnifiedJoin;

@@ -10,23 +10,19 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
-import QuizList from "./components/QuizList";
 import PreviewPage from "./pages/Preview";
 import QuizCreator from "./pages/quizCreator";
-import QuizDetails from "./pages/QuizDetails";
-import Lobby from "./pages/Session/AdminLobby";
-import JoinQuiz from "./pages/Session/JoinQuiz";
-import UserLobby from "./pages/Session/UserLobby";
 import AdminStart from "./pages/Session/AdminStart";
 import UserPlay from "./pages/Session/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
-import SurveyPage from "./pages/SurveyPage";
 import HomePage from "./pages/Home";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import SurveyCreator from "./pages/SurveyCreator";
-import SurveyList from "./components/SurveyList";
-import SurveyDetails from "./pages/SurveyDetails";
-import SurveyLobby from "./pages/Survey/SurveyLobby";
+import UnifiedList from "./components/UnifiedList";
+import UnifiedDetails from "./pages/UnifiedDetails";
+import UnifiedAdminLobby from "./pages/Session/UnifiedAdminLobby";
+import UnifiedUserLobby from "./pages/Session/UnifiedUserLobby";
+import UnifiedJoin from "./pages/Session/unifiedJoin";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -85,18 +81,42 @@ export default function App() {
         />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/createSurvey/:surveyId" element={<SurveyCreator />} />
-        <Route path="/quizzes" element={<QuizList />} />
-        <Route path="/surveys" element={<SurveyList />} />
+        <Route path="/quiz-list" element={<UnifiedList contentType="quiz" />} />
+        <Route
+          path="/survey-list"
+          element={<UnifiedList contentType="survey" />}
+        />
+        <Route path="/details" element={<UnifiedDetails />} />
+        {/* Redirect routes for backward compatibility */}
+        <Route
+          path="/quiz-details"
+          element={
+            <Navigate
+              to={(location) => ({
+                pathname: "/details",
+                search: `type=quiz&${location.search.substring(1)}`,
+              })}
+              replace
+            />
+          }
+        />
+        <Route
+          path="/survey-details"
+          element={
+            <Navigate
+              to={(location) => ({
+                pathname: "/details",
+                search: `type=survey&${location.search.substring(1)}`,
+              })}
+              replace
+            />
+          }
+        />
         {/* Add new PreviewPage route */}
         <Route path="/preview/:quizId" element={<PreviewPage />} />{" "}
-        {/* New path */}
-        {/* Admin routes */}
-        <Route path="/quiz-details" element={<QuizDetails />} />
-        <Route path="/survey-details" element={<SurveyDetails />} />
-        <Route path="/lobby" element={<Lobby />} />
-        <Route path="/survey-lobby" element={<SurveyLobby />} />
-        <Route path="/join" element={<JoinQuiz />} />
-        <Route path="/user-lobby" element={<UserLobby />} />
+        <Route path="/admin-lobby" element={<UnifiedAdminLobby />} />
+        <Route path="/join" element={<UnifiedJoin />} />
+        <Route path="/lobby" element={<UnifiedUserLobby />} />
         <Route path="/start" element={<AdminStart />} />
         <Route path="/play" element={<UserPlay />} />
         <Route
@@ -109,7 +129,6 @@ export default function App() {
             />
           }
         />
-        <Route path="survey" element={<SurveyPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>

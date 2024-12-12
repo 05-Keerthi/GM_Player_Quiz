@@ -89,7 +89,7 @@ export default function HomePage() {
             description: "Manage and monitor all quizzes",
             buttonText: "Go to Quizzes",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
-            path: "/quizzes",
+            path: "/quiz-list",
           },
 
           {
@@ -107,7 +107,7 @@ export default function HomePage() {
             description: "Manage and monitor all survey's",
             buttonText: "Go to Survey",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
-            path: "/surveys",
+            path: "/survey-list",
           },
         ];
       case "user":
