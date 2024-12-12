@@ -1,25 +1,71 @@
+// InviteModal.jsx
 import React, { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
+import { useNotificationContext } from "../context/notificationContext";
 
 const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [localError, setLocalError] = useState("");
 
-//   const { users, loading, error, listusers } = useUserContext();
-  const { user: currentUser, listUsers, users,loading,error } = useAuthContext();
+  const {
+    user: currentUser,
+    listUsers,
+    users,
+    loading,
+    error,
+  } = useAuthContext();
+  const { createNotification } = useNotificationContext();
 
   useEffect(() => {
     if (isOpen) {
-    listUsers();
+      console.log("Modal opened, fetching users");
+      // Reset states when modal opens
+      setLocalError("");
+      setSearchQuery("");
+      setSelectedUsers([]);
+      // Fetch users list
+      listUsers();
     }
   }, [isOpen]);
+  
+  // Add this to see what's happening with users
+  useEffect(() => {
+    console.log("Current users:", users);
+    console.log("Current filtered users:", filteredUsers);
+  }, [users, filteredUsers]);
+
+
+
+  useEffect(() => {
+    if (isOpen) {
+      console.log("Received session data:", sessionData);
+      
+      // Check if this is a quiz session or survey session
+      const validSessionId = sessionData?.sessionId || sessionData?._id;
+      const isValid = !!validSessionId;
+
+      if (!isValid) {
+        console.error("Invalid session data received:", sessionData);
+        setLocalError("Invalid session data");
+        onClose();
+      }
+    }
+  }, [isOpen, sessionData, onClose]);
+
+  useEffect(() => {
+    if (isOpen && !sessionData?.sessionId) {
+      setLocalError("Invalid session data");
+      onClose();
+    }
+  }, [isOpen, sessionData, onClose]);
 
   useEffect(() => {
     if (users) {
       const filtered = users
-        .filter((user) => user._id !== currentUser?._id) // Exclude current user
+        .filter((user) => user._id !== currentUser?._id)
         .filter(
           (user) =>
             user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -39,11 +85,44 @@ const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
     });
   };
 
-  const handleInvite = () => {
-    onInvite(selectedUsers);
-    onClose();
-    setSelectedUsers([]);
-    setSearchQuery("");
+
+
+  const handleInvite = async () => {
+    try {
+      setLocalError("");
+
+      // Get the correct session ID whether it's a quiz or survey session
+      const sessionId = sessionData?.sessionId || sessionData?._id;
+      if (!sessionId) {
+        setLocalError("Session ID is required");
+        return;
+      }
+
+      if (selectedUsers.length === 0) {
+        setLocalError("Please select at least one user to invite");
+        return;
+      }
+
+      const notificationData = {
+        type: "invitation",
+        message: `You've been invited to join the session!`,
+        users: selectedUsers.map((user) => user._id),
+        sessionId: sessionId
+      };
+
+      await createNotification(notificationData);
+
+      // Call the parent onInvite function with selected users
+      onInvite?.(selectedUsers);
+
+      // Reset and close modal
+      setSelectedUsers([]);
+      setSearchQuery("");
+      onClose();
+    } catch (error) {
+      setLocalError(error.message || "Failed to send invitations");
+      console.error("Error sending invitations:", error);
+    }
   };
 
   if (!isOpen) return null;
@@ -60,6 +139,13 @@ const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Error Message */}
+        {(localError || error) && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {localError || error}
+          </div>
+        )}
 
         <div className="mb-6">
           <div className="relative">
@@ -82,8 +168,6 @@ const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-500">{error}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredUsers.map((user) => (
@@ -109,7 +193,7 @@ const InviteModal = ({ isOpen, onClose, sessionData, onInvite }) => {
                   </div>
                 </div>
               ))}
-              {filteredUsers.length === 0 && !loading && !error && (
+              {filteredUsers.length === 0 && (
                 <div className="col-span-2 text-center py-8 text-gray-500">
                   No users found
                 </div>

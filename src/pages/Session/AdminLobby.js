@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useSessionContext } from "../../context/sessionContext";
+import { useNotificationContext } from "../../context/notificationContext";
 import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../components/NavbarComp";
@@ -20,8 +21,10 @@ const AdminLobby = () => {
   const [slides, setSlides] = useState([]);
   const [players, setPlayers] = useState([]);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
+  const [error, setError] = useState(null);
 
   const { startSession, nextQuestion, loading } = useSessionContext();
+  const { createNotification } = useNotificationContext();
 
   const quizId = searchParams.get("quizId");
 
@@ -30,7 +33,11 @@ const AdminLobby = () => {
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
 
-    return () => newSocket.disconnect();
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
   }, []);
 
   // Initialize session using passed data
@@ -52,41 +59,47 @@ const AdminLobby = () => {
 
   // Listen for player updates
   useEffect(() => {
-    if (socket && sessionData) {
-      socket.on("player-joined", (data) => {
-        console.log("Player joined:", data);
-        setPlayers((currentPlayers) => {
-          const newPlayer = data.user || data;
-          if (!newPlayer) return currentPlayers;
+    if (!socket || !sessionData) return;
 
-          if (!currentPlayers.some((p) => p._id === newPlayer._id)) {
-            return [...currentPlayers, newPlayer];
-          }
-          return currentPlayers;
-        });
+    const handlePlayerJoined = (data) => {
+      console.log("Player joined:", data);
+      setPlayers((currentPlayers) => {
+        const newPlayer = data.user || data;
+        if (!newPlayer) return currentPlayers;
+
+        if (!currentPlayers.some((p) => p._id === newPlayer._id)) {
+          return [...currentPlayers, newPlayer];
+        }
+        return currentPlayers;
       });
+    };
 
-      socket.on("player-left", (data) => {
-        console.log("Player left:", data);
-        setPlayers((currentPlayers) =>
-          currentPlayers.filter((p) => p._id !== data.userId)
-        );
-      });
+    const handlePlayerLeft = (data) => {
+      console.log("Player left:", data);
+      setPlayers((currentPlayers) =>
+        currentPlayers.filter((p) => p._id !== data.userId)
+      );
+    };
 
-      socket.on("answer-submitted", (answerDetails) => {
-        console.log("Answer received:", answerDetails);
-      });
+    const handleAnswerSubmitted = (answerDetails) => {
+      console.log("Answer received:", answerDetails);
+      // Handle answer submission logic here
+    };
 
-      return () => {
-        socket.off("player-joined");
-        socket.off("player-left");
-        socket.off("answer-submitted");
-      };
-    }
+    socket.on("player-joined", handlePlayerJoined);
+    socket.on("player-left", handlePlayerLeft);
+    socket.on("answer-submitted", handleAnswerSubmitted);
+
+    return () => {
+      socket.off("player-joined", handlePlayerJoined);
+      socket.off("player-left", handlePlayerLeft);
+      socket.off("answer-submitted", handleAnswerSubmitted);
+    };
   }, [socket, sessionData]);
 
   const handleStartSession = async () => {
     try {
+      setError(null);
       const response = await startSession(
         sessionData.joinCode,
         sessionData._id
@@ -96,10 +109,7 @@ const AdminLobby = () => {
       setQuestions(response.questions || []);
       setSlides(response.slides || []);
 
-      navigate(
-        `/start?quizId=${quizId}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
-      );
-
+      // Emit socket event for session start
       if (socket) {
         socket.emit("session-started", {
           sessionId: sessionData._id,
@@ -107,13 +117,20 @@ const AdminLobby = () => {
           slides: response.slides,
         });
       }
+
+      // Navigate to start page
+      navigate(
+        `/start?quizId=${quizId}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
+      );
     } catch (error) {
       console.error("Failed to start session:", error);
+      setError("Failed to start session. Please try again.");
     }
   };
 
   const handleNextItem = async () => {
     try {
+      setError(null);
       const response = await nextQuestion(
         sessionData.joinCode,
         sessionData._id
@@ -134,18 +151,33 @@ const AdminLobby = () => {
       }
     } catch (error) {
       console.error("Failed to get next item:", error);
+      setError("Failed to get next item. Please try again.");
     }
   };
 
-  const handleInviteUsers = (selectedUsers) => {
-    if (socket && sessionData) {
-      selectedUsers.forEach((userid) => {
+  const handleInviteUsers = async (selectedUsers) => {
+    try {
+      setError(null);
+      if (!socket || !sessionData?._id) {
+        console.error("Missing socket or session data");
+        return;
+      }
+
+      console.log("Processing invites for users:", selectedUsers);
+
+      // Emit socket events for each selected user
+      selectedUsers.forEach((user) => {
         socket.emit("invite-user", {
           sessionId: sessionData._id,
-          userId: userid,
+          userId: user._id,
           joinCode: sessionData.joinCode,
         });
       });
+
+      setInviteModalOpen(false);
+    } catch (error) {
+      console.error("Error processing invitations:", error);
+      setError("Failed to process invitations. Please try again.");
     }
   };
 
@@ -226,35 +258,37 @@ const AdminLobby = () => {
             </span>
           </div>
           <div className="flex gap-2">
-            <div>
+            <button
+              onClick={() => setInviteModalOpen(true)}
+              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Invite
+            </button>
+            {!currentItem && (
               <button
-                onClick={() => setInviteModalOpen(true)}
-                className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                onClick={handleStartSession}
+                disabled={loading || !players?.length}
+                className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Invite
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Starting...
+                  </div>
+                ) : (
+                  "Start Game"
+                )}
               </button>
-            </div>
-            <div>
-              {!currentItem && (
-                <button
-                  onClick={handleStartSession}
-                  disabled={loading || !players?.length}
-                  className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Starting...
-                    </div>
-                  ) : (
-                    "Start Game"
-                  )}
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg p-6 shadow-lg">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -280,7 +314,7 @@ const AdminLobby = () => {
                 </div>
               </div>
             );
-          }) || null}
+          })}
         </div>
       </div>
     </div>
@@ -334,10 +368,8 @@ const AdminLobby = () => {
                 </div>
               </div>
 
-              {/* Players Section */}
               {renderPlayers()}
 
-              {/* Current Item Display */}
               {currentItem && (
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   {renderCurrentItem()}
@@ -351,7 +383,10 @@ const AdminLobby = () => {
       <InviteModal
         isOpen={isInviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
-        sessionData={sessionData}
+        sessionData={{
+          sessionId: sessionData?._id,
+          joinCode: sessionData?.joinCode, // Changed from surveyJoinCode to joinCode
+        }}
         onInvite={handleInviteUsers}
       />
     </div>

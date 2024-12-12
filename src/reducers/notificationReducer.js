@@ -1,44 +1,63 @@
-const notificationReducer = (state, action) => {
+// notificationReducer.js
+export const initialState = {
+  notifications: [],
+  currentNotification: null,
+  loading: false,
+  error: null,
+};
+
+export const ACTIONS = {
+  SET_NOTIFICATIONS: 'SET_NOTIFICATIONS',
+  ADD_NOTIFICATION: 'ADD_NOTIFICATION',
+  UPDATE_NOTIFICATION: 'UPDATE_NOTIFICATION',
+  DELETE_NOTIFICATION: 'DELETE_NOTIFICATION',
+  SET_CURRENT_NOTIFICATION: 'SET_CURRENT_NOTIFICATION',
+  SET_LOADING: 'SET_LOADING',
+  SET_ERROR: 'SET_ERROR',
+};
+
+export const notificationReducer = (state, action) => {
   switch (action.type) {
-    case 'FETCH_NOTIFICATIONS_REQUEST':
-      return {
-        ...state,
-        loading: true,
-        error: null
-      };
-    case 'FETCH_NOTIFICATIONS_SUCCESS':
+    case ACTIONS.SET_NOTIFICATIONS:
       return {
         ...state,
         notifications: action.payload,
-        loading: false,
-        error: null
       };
-    case 'FETCH_NOTIFICATIONS_FAILURE':
+    case ACTIONS.ADD_NOTIFICATION:
       return {
         ...state,
-        notifications: [],
-        loading: false,
-        error: action.payload
+        notifications: [...state.notifications, action.payload],
       };
-    case 'MARK_AS_READ':
+    case ACTIONS.UPDATE_NOTIFICATION:
       return {
         ...state,
-        notifications: state.notifications.map(notification => 
-          notification._id === action.payload 
-            ? { ...notification, read: true }
-            : notification
-        )
+        notifications: state.notifications.map((notification) =>
+          notification._id === action.payload._id ? action.payload : notification
+        ),
       };
-    case 'DELETE_NOTIFICATION':
+    case ACTIONS.DELETE_NOTIFICATION:
       return {
         ...state,
         notifications: state.notifications.filter(
-          notification => notification._id !== action.payload
-        )
+          (notification) => notification._id !== action.payload
+        ),
+      };
+    case ACTIONS.SET_CURRENT_NOTIFICATION:
+      return {
+        ...state,
+        currentNotification: action.payload,
+      };
+    case ACTIONS.SET_LOADING:
+      return {
+        ...state,
+        loading: action.payload,
+      };
+    case ACTIONS.SET_ERROR:
+      return {
+        ...state,
+        error: action.payload,
       };
     default:
       return state;
   }
 };
-
-export default notificationReducer;

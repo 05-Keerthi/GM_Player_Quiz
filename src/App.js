@@ -28,6 +28,8 @@ import SurveyCreator from "./pages/SurveyCreator";
 import UnifiedDetails from "./pages/UnifiedDetails";
 import UnifiedList from "./components/UnifiedList";
 import SurveyLobby from "./pages/Session/SurveyLobby";
+import SurveyJoin from "./pages/Session/SurveyJoin";
+import SurveyUserLobby from "./pages/Session/SurveyUserLobby";
 // import UnifiedJoin from "./pages/Session/UnifiedJoin";
 
 // Protected Route Component
@@ -130,8 +132,11 @@ export default function App() {
         <Route path="/survey-lobby" element={<SurveyLobby />} />
         {/* <Route path="/admin-lobby" element={<UnifiedAdminLobby />} /> */}
         <Route path="/join" element={<JoinQuiz />} />
+        <Route path="/joinsurvey" element={<SurveyJoin />} />
+
         {/* <Route path="/join" element={<UnifiedJoin />} /> */}
         <Route path="/user-lobby" element={<UserLobby />} />
+        <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
         {/* <Route path="/lobby" element={<UnifiedUserLobby />} /> */}
         <Route path="/start" element={<AdminStart />} />
         <Route path="/play" element={<UserPlay />} />

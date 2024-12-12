@@ -1,17 +1,38 @@
+// NavbarComp.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
+import { useNotificationContext } from "../context/notificationContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
 import NotificationDropdown from "../models/notificationDropdown";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
+  const { getNotificationsByUserId } = useNotificationContext();
   const navigate = useNavigate();
-
   const [logoSrc, setLogoSrc] = useState(defaultLogo);
   const [logoError, setLogoError] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+
+  // Fetch notifications when user is authenticated
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (isAuthenticated && user?._id) {
+        try {
+          await getNotificationsByUserId(user._id);
+        } catch (error) {
+          console.error("Error fetching notifications:", error);
+        }
+      }
+    };
+
+    fetchNotifications();
+
+    // Set up polling for notifications every minute
+    const intervalId = setInterval(fetchNotifications, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, user, getNotificationsByUserId]);
 
   useEffect(() => {
     setLogoError(false);
@@ -25,7 +46,6 @@ const Navbar = () => {
       ) {
         setLogoSrc(tenantLogo);
       } else {
-        console.log("Using default logo due to invalid tenant logo");
         setLogoSrc(defaultLogo);
       }
     } catch (error) {
@@ -34,19 +54,6 @@ const Navbar = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    // Mock fetching notifications (Replace with actual API call)
-    const mockNotifications = [
-      { id: 1, message: "Welcome to GM Play!", isRead: false, time: "2 mins ago" },
-      { id: 2, message: "Your profile is updated.", isRead: true, time: "5 hours ago" },
-      { id: 3, message: "Welcome to GM Play!", isRead: false, time: "2 mins ago" },
-      { id: 4, message: "Your profile is updated.", isRead: true, time: "5 hours ago" },
-      { id: 5, message: "Welcome to GM Play!", isRead: false, time: "2 mins ago" },
-      { id: 6, message: "Your profile is updated.", isRead: true, time: "5 hours ago" },
-    ];
-    setNotifications(mockNotifications);
-  }, []);
-
   const handleLogoError = () => {
     if (!logoError) {
       setLogoError(true);
@@ -54,19 +61,22 @@ const Navbar = () => {
     }
   };
 
-  const handleNotificationClick = (id) => {
-    // Mark notification as read
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    );
-    console.log(`Notification with id ${id} clicked`);
+  const getContrastColor = (hexColor) => {
+    try {
+      const r = parseInt(hexColor.slice(1, 3), 16);
+      const g = parseInt(hexColor.slice(3, 5), 16);
+      const b = parseInt(hexColor.slice(5, 7), 16);
+
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness < 128 ? "#FFFFFF" : "#000000";
+    } catch (error) {
+      console.error("Error calculating contrast color:", error);
+      return "#000000";
+    }
   };
 
   const primaryColor = user?.tenantId?.primaryColor || "#2929FF";
   const secondaryColor = user?.tenantId?.secondaryColor || "#FFFFFF";
-
   const areColorsSame =
     primaryColor.toLowerCase() === secondaryColor.toLowerCase();
 
@@ -79,26 +89,19 @@ const Navbar = () => {
     fontFamily: user?.tenantId?.fontFamily || "inherit",
   };
 
-  function getContrastColor(hexColor) {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness < 128 ? "#FFFFFF" : "#000000";
-  }
-
   return (
     <div className="border-b-4 p-2" style={navbarStyle}>
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer border-2 group transition-transform duration-200 ease-in-out hover:scale-110">
+          <div
+            className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer border-2 group transition-transform duration-200 ease-in-out hover:scale-110"
+            onClick={() => navigate("/")}
+          >
             <img
               key={logoSrc}
               src={logoSrc}
               alt={user?.tenantId?.name || "GMI"}
               className="h-full w-full object-cover"
-              onClick={() => navigate("/")}
               onError={handleLogoError}
             />
           </div>
@@ -116,17 +119,13 @@ const Navbar = () => {
         <div className="flex items-center gap-4 relative">
           {isAuthenticated ? (
             <>
-              {/* Notification Dropdown */}
-              <NotificationDropdown
-                notifications={notifications}
-                onNotificationClick={handleNotificationClick}
-              />
+              <NotificationDropdown />
               <ProfileDropdown user={user} onLogout={logout} />
             </>
           ) : (
             <button
-              className="hover:bg-gray-200 py-1 px-2 rounded-lg bg-red-100 transition-colors duration-200"
               onClick={() => navigate("/login")}
+              className="hover:bg-gray-200 py-1 px-2 rounded-lg bg-red-100 transition-colors duration-200"
             >
               Get Started
             </button>

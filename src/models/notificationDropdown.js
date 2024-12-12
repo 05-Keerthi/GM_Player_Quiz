@@ -1,36 +1,99 @@
-import React, { useEffect, useState } from 'react';
-import { FaBell } from 'react-icons/fa';
+// NotificationDropdown.js
+import React, { useState, useEffect, useCallback } from "react";
+import { FaBell } from "react-icons/fa";
 import { useNotificationContext } from "../context/notificationContext";
+import io from "socket.io-client";
 
-const NotificationDropdown = ({onNotificationClick, userId }) => {
-  const { 
-    notifications, 
-    fetchNotifications, 
-    markNotificationAsRead 
-  } = useNotificationContext();
+const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const {
+    notifications,
+    loading,
+    error,
+    getNotificationsByUserId,
+    markAsRead,
+  } = useNotificationContext();
+  const [socket, setSocket] = useState(null);
 
-  // Add userId dependency to useEffect
+  // Initialize socket connection
   useEffect(() => {
-    if (userId) {
-      fetchNotifications(userId);
-    }
-  }, [userId, fetchNotifications]);
+    const newSocket = io("http://localhost:5000");
+    setSocket(newSocket);
 
-  const handleNotificationClick = (notification) => {
-    markNotificationAsRead(notification._id);
-    if (notification.qrcodedata) {
-      window.open(notification.qrcodedata, '_blank');
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
+  }, []);
+
+  // Handle socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = async (data) => {
+      // Refresh notifications when a new one is received
+      if (data.userId) {
+        await getNotificationsByUserId(data.userId);
+      }
+    };
+
+    socket.on("new_notification", handleNewNotification);
+
+    return () => {
+      socket.off("new_notification", handleNewNotification);
+    };
+  }, [socket, getNotificationsByUserId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && !event.target.closest(".notification-dropdown")) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [isOpen]);
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      if (!notification.read) {
+        await markAsRead(notification._id);
+      }
+
+      if (notification.qrCodeData) {
+        window.open(notification.qrCodeData, "_blank");
+      }
+
+      // Close dropdown after clicking
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
     }
-    onNotificationClick?.(notification._id);
   };
 
- 
+  const formatNotificationTime = useCallback((createdAt) => {
+    const now = new Date();
+    const notificationDate = new Date(createdAt);
+    const diffInMinutes = Math.floor((now - notificationDate) / (1000 * 60));
+
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return notificationDate.toLocaleDateString();
+  }, []);
 
   return (
-    <div className="relative notification-dropdown" onClick={(e) => e.stopPropagation()}>
-      {/* Bell Icon with Badge */}
-      <div className="cursor-pointer relative" onClick={() => setIsOpen(!isOpen)}>
+    <div
+      className="relative notification-dropdown"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        className="cursor-pointer relative"
+        onClick={() => setIsOpen(!isOpen)}
+      >
         <FaBell className="text-gray-600 hover:text-gray-800" size={24} />
         {notifications.some((n) => !n.read) && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -39,52 +102,60 @@ const NotificationDropdown = ({onNotificationClick, userId }) => {
         )}
       </div>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
           <div className="p-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Notifications
+            </h3>
           </div>
 
-          {/* Scrollable Notification List */}
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length > 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : error ? (
+              <div className="p-4 text-center text-red-500">
+                {error.message}
+              </div>
+            ) : notifications.length > 0 ? (
               notifications.map((notification) => (
-                <a
+                <div
                   key={notification._id}
-                  href={notification.qrcodedata}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    !notification.read ? 'bg-blue-50' : ''
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
+                    !notification.read ? "bg-blue-50" : ""
                   }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNotificationClick(notification);
-                  }}
                 >
                   <div className="flex flex-col gap-2">
                     <div className="text-sm">
-                      <span className="text-gray-600">You're invited to join</span>
-                      <span className="font-semibold text-gray-800"> {notification.quizTitle}</span>
+                      <span className="text-gray-600">
+                        {notification.message}
+                      </span>
                     </div>
 
                     {notification.sixDigitCode && (
                       <div className="text-xs text-gray-500">
-                        Code: <span className="font-medium">{notification.sixDigitCode}</span>
+                        Code:{" "}
+                        <span className="font-medium">
+                          {notification.sixDigitCode}
+                        </span>
                       </div>
                     )}
 
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-gray-500">
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {formatNotificationTime(notification.createdAt)}
                       </span>
-                      {/* <span className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                        Join now →
-                      </span> */}
+                      {!notification.read && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          New
+                        </span>
+                      )}
                     </div>
                   </div>
-                </a>
+                </div>
               ))
             ) : (
               <div className="p-4 text-center text-gray-500">
@@ -93,15 +164,18 @@ const NotificationDropdown = ({onNotificationClick, userId }) => {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-3 border-t border-gray-200">
-            <button
-              className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
-              onClick={() => alert("Navigate to all notifications")}
-            >
-              View All Notifications
-            </button>
-          </div>
+          {notifications.length > 0 && (
+            <div className="p-3 border-t border-gray-200">
+              <button
+                className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
+                onClick={() => {
+                  /* Handle view all notifications */
+                }}
+              >
+                View All Notifications
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -34,7 +34,7 @@ const SurveyLobby = () => {
 
   // Initialize session using passed data
   useEffect(() => {
-    if (socket && sessionId) {
+    if (socket && state?.sessionData) {
       setSessionData(state?.sessionData);
       if (state?.sessionData?.participants) {
         setParticipants(state.sessionData.participants);
@@ -42,7 +42,7 @@ const SurveyLobby = () => {
 
       socket.emit("create-survey-session", {
         sessionId: sessionId,
-        joinCode: state?.sessionData?.joinCode,
+        surveyJoinCode: state?.sessionData?.surveyJoinCode,
       });
 
       setTimeout(() => setShowPin(true), 1000);
@@ -132,7 +132,7 @@ const SurveyLobby = () => {
         socket.emit("invite-user-survey", {
           sessionId: sessionId,
           userId: user._id,
-          joinCode: sessionData.joinCode,
+          surveyJoinCode: sessionData.surveyJoinCode,
         });
       });
     }

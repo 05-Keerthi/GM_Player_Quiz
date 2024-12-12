@@ -1,18 +1,19 @@
-import React, { createContext, useReducer, useContext } from 'react';
-import axios from 'axios';
-import notificationReducer from '../reducers/notificationReducer'; // Your reducer file
+// notificationContext.js
+import React, { createContext, useContext, useReducer } from "react";
+import axios from "axios";
+import {
+  notificationReducer,
+  ACTIONS,
+  initialState,
+} from "../reducers/notificationReducer";
 
-const BASE_URL = "http://localhost:5000/api";
-
-// Create axios instance
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Add request interceptor to always get fresh token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -21,76 +22,129 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Create Notification Context
-const NotificationContext = createContext();
+export const NotificationContext = createContext();
 
-// Initial State
-const initialState = {
-  notifications: [],
-  loading: false,
-  error: null,
-};
-
-// Context Provider Component
 export const NotificationProvider = ({ children }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
 
-  // Fetch all notifications
-  const fetchNotifications = async (userId) => {
-    dispatch({ type: 'FETCH_NOTIFICATIONS_REQUEST' });
-    try {
-      const response = await api.get(`/notifications/${userId}`);
-      dispatch({
-        type: 'FETCH_NOTIFICATIONS_SUCCESS',
-        payload: response.data.notifications,
-      });
-    } catch (error) {
-      dispatch({
-        type: 'FETCH_NOTIFICATIONS_FAILURE',
-        payload: error.response?.data?.message || 'Failed to fetch notifications',
-      });
-    }
+  const actions = {
+    getNotificationsByUserId: async (userId) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data } = await api.get(`/notifications/${userId}`);
+        dispatch({
+          type: ACTIONS.SET_NOTIFICATIONS,
+          payload: data.notifications,
+        });
+        return data.notifications;
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message:
+              error.response?.data?.message || "Failed to fetch notifications",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    createNotification: async (notificationData) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data: newNotification } = await api.post(
+          "/notifications",
+          notificationData
+        );
+        dispatch({ type: ACTIONS.ADD_NOTIFICATION, payload: newNotification });
+        return newNotification;
+      } catch (error) {
+        const errorPayload = {
+          message:
+            error.response?.data?.message || "Failed to create notification",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    markAsRead: async (id) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data: updatedNotification } = await api.put(
+          `/notifications/${id}`
+        );
+        dispatch({
+          type: ACTIONS.UPDATE_NOTIFICATION,
+          payload: updatedNotification,
+        });
+        return updatedNotification;
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message:
+              error.response?.data?.message ||
+              "Failed to mark notification as read",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    deleteNotification: async (id) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        await api.delete(`/notifications/${id}`);
+        dispatch({ type: ACTIONS.DELETE_NOTIFICATION, payload: id });
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message:
+              error.response?.data?.message || "Failed to delete notification",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
+    clearError: () => {
+      dispatch({ type: ACTIONS.SET_ERROR, payload: null });
+    },
   };
 
-  // Mark a notification as read
-  const markNotificationAsRead = async (userId) => {
-    try {
-      await api.put(`/notifications/${userId}`);
-      dispatch({
-        type: 'MARK_AS_READ',
-        payload:userId,
-      });
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  // Delete a notification (admin only)
-  const deleteNotification = async (userId) => {
-    try {
-      await api.delete(`/notifications/${userId}`);
-      dispatch({
-        type: 'DELETE_NOTIFICATION',
-        payload: userId,
-      });
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-    }
+  const contextValue = {
+    state,
+    notifications: state.notifications,
+    currentNotification: state.currentNotification,
+    loading: state.loading,
+    error: state.error,
+    ...actions,
   };
 
   return (
-    <NotificationContext.Provider
-      value={{
-        ...state,
-        fetchNotifications,
-        markNotificationAsRead,
-        deleteNotification,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );
 };
 
-// Custom hook to use Notification Context
-export const useNotificationContext = () => useContext(NotificationContext);
+export const useNotificationContext = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error(
+      "useNotificationContext must be used within a NotificationProvider"
+    );
+  }
+  return context;
+};
