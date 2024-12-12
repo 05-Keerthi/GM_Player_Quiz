@@ -353,7 +353,7 @@ const UnifiedList = ({ contentType }) => {
                 My {contentType.charAt(0).toUpperCase() + contentType.slice(1)}s
               </h1>
               <button
-                onClick={() => navigate(`/select-${contentType}-category`)}
+                onClick={() => navigate(`/select${contentType}category`)}
                 className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
               >
                 <PlusCircle className="w-4 h-4" />

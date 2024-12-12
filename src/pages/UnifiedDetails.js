@@ -55,13 +55,13 @@ const UnifiedDetails = () => {
       let sessionData;
       if (contentType === "survey") {
         sessionData = await createSurveySession(contentId);
-        navigate(`/admin-lobby`, {
+        navigate(`/survey-lobby`, {
           state: { sessionData },
           search: `?type=survey&surveyId=${contentId}&sessionId=${sessionData._id}`,
         });
       } else {
         sessionData = await createSession(contentId);
-        navigate(`/admin-lobby`, {
+        navigate(`/lobby`, {
           state: { sessionData },
           search: `?type=quiz&quizId=${contentId}&sessionId=${sessionData._id}`,
         });

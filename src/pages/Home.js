@@ -80,7 +80,7 @@ export default function HomePage() {
             description: "Design and launch new quizzes",
             buttonText: "Create Now",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
-            path: "/select-category",
+            path: "/selectQuizCategory",
           },
 
           {

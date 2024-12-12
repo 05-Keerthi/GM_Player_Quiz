@@ -177,7 +177,7 @@ const AdminStart = () => {
         socket.emit("end-session", { sessionId });
       }
 
-      navigate("/quizzes");
+      navigate("/quiz-list");
     } catch (error) {
       console.error("Error ending quiz:", error);
     }
