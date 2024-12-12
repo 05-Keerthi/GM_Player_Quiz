@@ -336,43 +336,25 @@ module.exports = (io) => {
       }
     });
     
-
-    // // Handle survey answer submission
-    // socket.on("survey-answer-submitted", async ({ sessionId, answerDetails }) => {
-    //   try {
-    //     console.log("Survey answer submitted:", { sessionId, answerDetails });
-
-    //     // Emit the answer submission event
-    //     io.to(sessionId).emit("survey-answer-submitted", { answerDetails });
-
-    //     // Fetch and emit updated answer counts if applicable
-    //     if (answerDetails.questionId) {
-    //       const answers = await SurveyAnswer.find({
-    //         session: sessionId,
-    //         question: answerDetails.questionId,
-    //       });
-
-    //       const question = await SurveyQuestion.findById(answerDetails.questionId);
-    //       if (question && question.options) {
-    //         const optionCounts = {};
-    //         question.options.forEach((option, index) => {
-    //           const letter = String.fromCharCode(65 + index); // A, B, C, D
-    //           optionCounts[letter] = answers.filter(
-    //             (a) => a.answer === option.text
-    //           ).length;
-    //         });
-
-    //         io.to(sessionId).emit("survey-answer-counts-updated", {
-    //           questionId: answerDetails.questionId,
-    //           counts: optionCounts,
-    //         });
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error("Error handling survey answer submission:", error);
-    //   }
-    // });
-
+    // Listen for the 'survey-submit-answer' event
+    socket.on("survey-submit-answer", ({ sessionId, questionId, userId, answer, timeTaken }) => {
+      try {
+        // Emit the answer submission to all clients in the session
+        io.to(sessionId).emit("survey-answer-submitted", {
+          message: `User ${userId} answered question ${questionId}`,
+          answer,
+          timeTaken,
+          userId,
+          questionId,
+        });
+    
+        // Optionally, you can track the submission or update the status of the session if needed
+        console.log(`Answer submitted for session ${sessionId} by user ${userId}: ${answer}`);
+      } catch (error) {
+        console.error("Error submitting survey answer:", error);
+      }
+    });
+    
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);
     });
