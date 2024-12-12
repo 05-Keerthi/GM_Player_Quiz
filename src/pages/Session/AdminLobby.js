@@ -154,10 +154,10 @@ const AdminLobby = () => {
 
   const handleInviteUsers = (selectedUsers) => {
     if (socket && sessionData) {
-      selectedUsers.forEach((user) => {
+      selectedUsers.forEach((userid) => {
         socket.emit("invite-user", {
           sessionId: sessionData._id,
-          userId: user._id,
+          userId: userid,
           joinCode: sessionData.joinCode,
         });
       });

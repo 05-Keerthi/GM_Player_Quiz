@@ -12,6 +12,7 @@ import { QuizProvider } from "./context/quizContext";
 import { SessionProvider } from "./context/sessionContext";
 import { AnswerProvider } from "./context/answerContext";
 import { LeaderboardProvider } from "./context/leaderboardContext";
+import { NotificationProvider } from "./context/notificationContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -24,9 +25,11 @@ root.render(
               <SessionProvider>
                 <AnswerProvider>
                   <LeaderboardProvider>
+                  <NotificationProvider>
                     <BrowserRouter>
                       <App />
                     </BrowserRouter>
+                    </NotificationProvider>
                   </LeaderboardProvider>
                 </AnswerProvider>
               </SessionProvider>
