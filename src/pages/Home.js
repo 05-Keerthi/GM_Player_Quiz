@@ -107,7 +107,7 @@ export default function HomePage() {
             description: "Manage and monitor all survey's",
             buttonText: "Go to Survey",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
-            path: "/survey",
+            path: "/surveys",
           },
         ];
       case "user":

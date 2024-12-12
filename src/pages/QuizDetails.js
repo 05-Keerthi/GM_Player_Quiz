@@ -1,3 +1,4 @@
+// QuizDetails.js
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuizContext } from "../context/quizContext";
@@ -21,8 +22,10 @@ const QuizDetails = () => {
 
   const handleStartQuiz = async () => {
     try {
-      await createSession(quizId);
-      navigate(`/lobby?quizId=${quizId}`);
+      const sessionData = await createSession(quizId);
+      navigate(`/lobby?quizId=${quizId}`, {
+        state: { sessionData },
+      });
     } catch (error) {
       console.error("Failed to create session:", error);
     }

@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  X,
-  Trash2,
-  AlertCircle,
-} from "lucide-react";
+import { X, Trash2, AlertCircle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuestionTypeModal from "../models/QuestionTypeModal";
 import SettingsModal from "../models/SettingsModal";
@@ -13,11 +9,11 @@ import Navbar from "../components/NavbarComp";
 import SlideTypeModal from "../models/SlideTypeModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import SlideEditor from "../components/SlideEditor";
-import PreviewModal from '../models/previewModal';
+import PreviewModal from "../models/previewModal";
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
- 
+
   const bgColor = type === "error" ? "bg-red-50" : "bg-blue-50";
   const textColor = type === "error" ? "text-red-800" : "text-blue-800";
   const borderColor = type === "error" ? "border-red-200" : "border-blue-200";
@@ -60,8 +56,8 @@ const QuizCreator = () => {
   const { quizId } = useParams();
   const navigate = useNavigate();
   const handlePreviewClick = () => {
-      navigate(`/Preview/${quizId}`);
-    };
+    navigate(`/Preview/${quizId}`);
+  };
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
     setTimeout(() => setAlert({ message: "", type: "error" }), 5000);
@@ -500,11 +496,14 @@ const QuizCreator = () => {
                 >
                   Exit
                 </button>
-   {/* Preview Button handlePreviewClick*/}
-   <button onClick={handlePreviewClick} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2">
-        Preview
-      </button>
-    
+                {/* Preview Button handlePreviewClick*/}
+                <button
+                  onClick={handlePreviewClick}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
+                >
+                  Preview
+                </button>
+
                 <button
                   className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
                     loading
@@ -701,12 +700,12 @@ const QuizCreator = () => {
               description: quiz?.description || "",
             }}
           />
-           <PreviewModal 
-  isOpen={isPreviewOpen} 
-  onClose={() => setIsPreviewOpen(false)}
-  slides={slides}
-  questions={questions}
-/>
+          <PreviewModal
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            slides={slides}
+            questions={questions}
+          />
           <ConfirmationModal
             isOpen={showDeleteQuestionModal}
             onClose={() => {
