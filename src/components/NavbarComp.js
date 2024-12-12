@@ -5,7 +5,7 @@ import { useAuthContext } from "../context/AuthContext";
 import { useNotificationContext } from "../context/notificationContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
-import NotificationDropdown from "../models/notificationDropdown";
+import NotificationDropdown from "../models/NotificationDropdown";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
@@ -77,8 +77,7 @@ const Navbar = () => {
 
   const primaryColor = user?.tenantId?.primaryColor || "#2929FF";
   const secondaryColor = user?.tenantId?.secondaryColor || "#FFFFFF";
-  const areColorsSame =
-    primaryColor.toLowerCase() === secondaryColor.toLowerCase();
+  const areColorsSame = primaryColor.toLowerCase() === secondaryColor.toLowerCase();
 
   const navbarStyle = {
     backgroundColor: primaryColor,
