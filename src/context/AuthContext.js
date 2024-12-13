@@ -82,10 +82,6 @@ export const AuthProvider = ({ children }) => {
               updateAuthHeader(newToken);
             } catch (refreshError) {
               await handleSessionExpiry();
-              dispatch({
-                type: ACTIONS.SET_ERROR,
-                payload: "Session expired. Please login again.",
-              });
             }
           }
         }
