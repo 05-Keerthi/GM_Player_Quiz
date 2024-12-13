@@ -19,7 +19,7 @@ const AdminStart = () => {
   const [isQuizEnded, setIsQuizEnded] = useState(false);
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
   const [timerInterval, setTimerInterval] = useState(null);
-
+  const [submittedAnswers, setSubmittedAnswers] = useState([]);
   const quizId = searchParams.get("quizId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
@@ -72,6 +72,23 @@ const AdminStart = () => {
     };
   }, [sessionId, joinCode]);
 
+  useEffect(() => {
+    if (socket) {
+      const handleAnswerSubmitted = (data) => {
+        if (currentItem && data.answerDetails.questionId === currentItem._id) {
+          if (currentItem.type === "open_ended") {
+            setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
+          }
+        }
+      };
+
+      socket.on("answer-submitted", handleAnswerSubmitted);
+
+      return () => {
+        socket.off("answer-submitted", handleAnswerSubmitted);
+      };
+    }
+  }, [socket, currentItem]);
   // Function to start timer
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
@@ -100,6 +117,7 @@ const AdminStart = () => {
 
   const handleNext = async () => {
     try {
+      setSubmittedAnswers([]);
       if (!joinCode) {
         console.error("Join code is missing");
         return;
@@ -222,6 +240,7 @@ const AdminStart = () => {
                 isLastItem={isLastItem}
                 onEndQuiz={handleEndQuiz}
                 isQuizEnded={isQuizEnded}
+                submittedAnswers={submittedAnswers} // Add this prop
               />
             </>
           )}

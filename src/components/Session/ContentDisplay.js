@@ -11,13 +11,18 @@ const ContentDisplay = ({
   onEndSession,
   isSessionEnded,
   sessionType = "quiz",
+  submittedAnswers = [],
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const [openEndedAnswer, setOpenEndedAnswer] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
 
   useEffect(() => {
     setSelectedOption(null);
+    setOpenEndedAnswer("");
     setIsTimeUp(false);
+    setIsAnswerSubmitted(false);
   }, [item]);
 
   useEffect(() => {
@@ -26,7 +31,6 @@ const ContentDisplay = ({
     }
   }, [timeLeft, sessionType]);
 
-  // Background colors for different options - matching with AnswerCountDisplay
   const bgColors = [
     "bg-red-300",
     "bg-green-200",
@@ -39,6 +43,78 @@ const ContentDisplay = ({
   ];
 
   const isSlide = sessionType === "quiz" && item?.type === "bullet_points";
+  const isOpenEnded = item?.type === "open_ended";
+
+  const handleOpenEndedSubmit = () => {
+    if (!isAdmin && openEndedAnswer.trim() && !isTimeUp && !isAnswerSubmitted) {
+      onSubmitAnswer?.({
+        type: "open_ended",
+        answer: openEndedAnswer.trim(),
+        questionId: item._id,
+      });
+      setIsAnswerSubmitted(true);
+    }
+  };
+
+  const renderOpenEndedQuestion = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl">{item?.title}</h3>
+      {item?.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt="Question"
+          className="w-full max-h-64 object-contain rounded-lg"
+        />
+      )}
+      {isAdmin ? (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium mb-2">Submitted Answers:</h4>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {submittedAnswers.map((answer, index) => (
+              <div
+                key={index}
+                className="p-3 bg-white rounded border border-gray-200"
+              >
+                {answer}
+              </div>
+            ))}
+            {submittedAnswers.length === 0 && (
+              <p className="text-gray-500 italic">No answers submitted yet</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <textarea
+            value={openEndedAnswer}
+            onChange={(e) => setOpenEndedAnswer(e.target.value)}
+            placeholder="Type your answer here..."
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={4}
+            disabled={isTimeUp || isAnswerSubmitted}
+          />
+          <button
+            onClick={handleOpenEndedSubmit}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
+              ${
+                isTimeUp || isAnswerSubmitted
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }
+            `}
+            disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
+          >
+            Submit Answer
+          </button>
+          {isAnswerSubmitted && (
+            <p className="text-green-600 font-medium text-center">
+              Answer submitted successfully!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   const renderSlide = () => (
     <div className="space-y-6">
@@ -96,33 +172,6 @@ const ContentDisplay = ({
     </div>
   );
 
-  const renderQuestion = () => (
-    <div className="space-y-6">
-      <h3 className="text-xl">{item?.title}</h3>
-      {item?.imageUrl && (
-        <img
-          src={item.imageUrl}
-          alt="Question"
-          className="w-full max-h-64 object-contain rounded-lg"
-        />
-      )}
-      {renderOptions()}
-      {/* Status Messages */}
-      {!isAdmin && sessionType === "quiz" && (
-        <div className="mt-4 text-center">
-          {isTimeUp && !selectedOption && (
-            <p className="text-red-600 font-medium">
-              Time's up! You can no longer submit an answer.
-            </p>
-          )}
-          {selectedOption && (
-            <p className="text-green-600 font-medium">Answer submitted!</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
   if (isSessionEnded) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">
@@ -157,7 +206,11 @@ const ContentDisplay = ({
         )}
       </div>
 
-      {isSlide ? renderSlide() : renderQuestion()}
+      {isSlide
+        ? renderSlide()
+        : isOpenEnded
+        ? renderOpenEndedQuestion()
+        : renderOptions()}
 
       {isAdmin && (
         <div className="flex justify-end mt-6">

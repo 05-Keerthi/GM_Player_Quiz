@@ -129,13 +129,13 @@ const UserPlay = () => {
   }, [socket, navigate]);
 
   // In UserPlay.js, modify the handleSubmitAnswer function:
-  const handleSubmitAnswer = async (option) => {
+  const handleSubmitAnswer = async (answer) => {
     if (
       currentItem.type === "bullet_points" ||
       timeLeft <= 0 ||
       isTimeUp ||
       hasSubmitted ||
-      !option ||
+      !answer ||
       !questionStartTime ||
       !user
     ) {
@@ -145,8 +145,9 @@ const UserPlay = () => {
     try {
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
+      // Handle different answer formats based on question type
       const answerData = {
-        answer: option.text,
+        answer: currentItem.type === "open_ended" ? answer.answer : answer.text,
         userId: user._id,
         timeTaken,
       };
@@ -159,8 +160,10 @@ const UserPlay = () => {
         const answerDetails = {
           questionId: currentItem._id,
           userId: user.id,
-          answer: option.text,
+          answer:
+            currentItem.type === "open_ended" ? answer.answer : answer.text,
           timeTaken,
+          type: currentItem.type,
         };
 
         socket.emit("answer-submitted", {
