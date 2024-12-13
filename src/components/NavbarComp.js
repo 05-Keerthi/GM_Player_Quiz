@@ -16,18 +16,10 @@ const Navbar = () => {
 
   // Fetch notifications when user is authenticated
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (isAuthenticated && user?._id) {
-        try {
-          await getNotificationsByUserId(user._id);
-        } catch (error) {
-          console.error("Error fetching notifications:", error);
-        }
-      }
-    };
-
-    fetchNotifications();
-  }, [isAuthenticated, user]);
+    if (user) {
+      getNotificationsByUserId(user.id);
+    }
+  }, [user]);
   
   useEffect(() => {
     setLogoError(false);
@@ -111,7 +103,7 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4 relative">
-          {isAuthenticated ? (
+          {isAuthenticated && user ? (
             <>
               <NotificationDropdown />
               <ProfileDropdown user={user} onLogout={logout} />
