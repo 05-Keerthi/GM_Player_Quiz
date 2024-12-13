@@ -1,11 +1,13 @@
+// UserLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSessionContext } from "../../../context/sessionContext";
+
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
-import { useAuthContext } from "../../context/AuthContext";
-import { useSurveySessionContext } from "../../context/surveySessionContext";
+import { useAuthContext } from "../../../context/AuthContext";
 
-const SurveyUserLobby = () => {
+const UserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
@@ -13,81 +15,71 @@ const SurveyUserLobby = () => {
   const [currentItemType, setCurrentItemType] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
-  const [isLastItem, setIsLastItem] = useState(false);
-  const [submittedTime, setSubmittedTime] = useState(null);
-  const { joinSurveySession, loading: sessionLoading } =
-    useSurveySessionContext();
+  const { joinSession, loading: sessionLoading } = useSessionContext();
 
   const joinCode = searchParams.get("code");
   const sessionId = searchParams.get("sessionId");
 
-  // Initialize socket and join survey session
+  // Initialize socket and join session
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
-      // Use the new survey-specific join method
-      newSocket.emit("join-survey-session", {
+      newSocket.emit("join-session", {
         sessionId,
         joinCode,
         userId: user._id,
         username: user.username,
       });
 
-      // Listen for user joined confirmation
-      newSocket.on("user-joined-survey", (data) => {
-        console.log("Joined survey session:", data);
-      });
-
       return () => newSocket.disconnect();
     }
-  }, [isAuthenticated, user,joinCode, sessionId]);
+  }, [isAuthenticated, user, joinCode, sessionId]);
 
-  // Listen for survey session events
+  // Listen for game events
   useEffect(() => {
     if (socket) {
-      // Handle next survey question
-      socket.on("next-survey-question", ({ question, isLastQuestion }) => {
-        console.log("Next survey question:", question);
-        setCurrentItem(question);
-        setCurrentItemType("question");
-        setSelectedAnswer(null);
-        setIsLastItem(isLastQuestion);
+      socket.on("session-started", (data) => {
+        console.log("Session started data:", data);
+        navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
       });
 
-      // Handle survey session end
-      socket.on("survey-session-ended", () => {
-        navigate("/survey-results");
+      socket.on("next-item", ({ type, item }) => {
+        console.log("Next item received:", { type, item });
+        setCurrentItem(item);
+        setCurrentItemType(type);
+        setSelectedAnswer(null);
+      });
+
+      socket.on("session-ended", () => {
+        navigate("/results");
       });
 
       return () => {
-        socket.off("next-survey-question");
-        socket.off("survey-session-ended");
+        socket.off("session-started");
+        socket.off("next-item");
+        socket.off("session-ended");
       };
     }
-  }, [socket, navigate]);
+  }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
     if (currentItemType !== "question" || selectedAnswer || !user) return;
 
-    const startTime = submittedTime || Date.now();
-    const timeTaken = Date.now() - startTime;
-
     setSelectedAnswer(option);
-
     if (socket) {
-      socket.emit("survey-submit-answer", {
+      socket.emit("answer-submitted", {
         sessionId,
-        questionId: currentItem._id,
-        userId: user._id,
-        answer: option.text,
-        timeTaken,
+        answerDetails: {
+          answer: option.text,
+          questionId: currentItem._id,
+          userId: user._id,
+        },
       });
     }
   };
 
-  // Loading and authentication states remain similar to previous implementation
   if (authLoading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
@@ -108,7 +100,7 @@ const SurveyUserLobby = () => {
           </div>
           <div className="space-y-4">
             <p className="text-gray-600">
-              Please log in or register to join the survey session.
+              Please log in or register to join the session.
             </p>
             <div className="flex gap-4">
               <button
@@ -135,7 +127,7 @@ const SurveyUserLobby = () => {
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Joining survey session...</span>
+          <span>Joining session...</span>
         </div>
       </div>
     );
@@ -147,10 +139,10 @@ const SurveyUserLobby = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
           <div className="text-center py-6">
             <h2 className="text-xl font-semibold mb-2">
-              Waiting for survey to start...
+              Waiting for session to start...
             </h2>
             <p className="text-gray-600">
-              The host will begin the survey shortly
+              The host will begin the session shortly
             </p>
           </div>
         </div>
@@ -162,36 +154,49 @@ const SurveyUserLobby = () => {
     <div className="min-h-screen bg-purple-100 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-bold">{currentItem.title}</h2>
-          {currentItem.imageUrl && (
-            <img
-              src={currentItem.imageUrl}
-              alt="Survey Question"
-              className="mt-4 rounded-lg w-full"
-            />
+          {currentItemType === "question" ? (
+            <>
+              <h2 className="text-xl font-bold">{currentItem.title}</h2>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt="Question"
+                  className="mt-4 rounded-lg w-full"
+                />
+              )}
+            </>
+          ) : (
+            <div>
+              <h2 className="text-xl font-bold mb-2">{currentItem.title}</h2>
+              <p className="text-gray-700">{currentItem.content}</p>
+              {currentItem.imageUrl && (
+                <img
+                  src={currentItem.imageUrl}
+                  alt={currentItem.title}
+                  className="mt-4 rounded-lg w-full"
+                />
+              )}
+            </div>
           )}
         </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 gap-4">
-            {currentItem.options?.map((option) => (
-              <button
-                key={option._id}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={selectedAnswer !== null}
-                className={`h-24 text-lg rounded-lg border transition-colors ${
-                  selectedAnswer === option
-                    ? "bg-blue-100 border-blue-500 text-blue-700"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                {option.text}
-              </button>
-            ))}
-          </div>
-        </div>
-        {isLastItem && (
-          <div className="p-4 text-center text-gray-600">
-            This is the last question in the survey
+        {currentItemType === "question" && (
+          <div className="p-6">
+            <div className="grid grid-cols-2 gap-4">
+              {currentItem.options?.map((option) => (
+                <button
+                  key={option._id}
+                  onClick={() => handleAnswerSubmit(option)}
+                  disabled={selectedAnswer !== null}
+                  className={`h-24 text-lg rounded-lg border transition-colors ${
+                    selectedAnswer === option
+                      ? "bg-blue-100 border-blue-500 text-blue-700"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  {option.text}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -199,4 +204,4 @@ const SurveyUserLobby = () => {
   );
 };
 
-export default SurveyUserLobby;
+export default UserLobby;

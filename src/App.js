@@ -12,11 +12,11 @@ import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
 import PreviewPage from "./pages/Preview";
 import QuizCreator from "./pages/quizCreator";
-import Lobby from "./pages/Session/AdminLobby";
-import JoinQuiz from "./pages/Session/JoinQuiz";
-import UserLobby from "./pages/Session/UserLobby";
-import AdminStart from "./pages/Session/AdminStart";
-import UserPlay from "./pages/Session/UserPlay";
+import Lobby from "./pages/Session/Lobby/AdminLobby";
+import JoinQuiz from "./pages/Session/UserJoin/JoinQuiz";
+import UserLobby from "./pages/Session/UserLobby/UserLobby";
+import AdminStart from "./pages/Session/Start/AdminStart";
+import UserPlay from "./pages/Session/Play/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 import SurveyPage from "./pages/SurveyPage";
 import HomePage from "./pages/Home";
@@ -24,9 +24,9 @@ import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import SurveyCreator from "./pages/SurveyCreator";
 import UnifiedDetails from "./pages/UnifiedDetails";
 import UnifiedList from "./components/UnifiedList";
-import SurveyLobby from "./pages/Session/SurveyLobby";
-import SurveyJoin from "./pages/Session/SurveyJoin";
-import SurveyUserLobby from "./pages/Session/SurveyUserLobby";
+import SurveyLobby from "./pages/Session/Lobby/SurveyLobby";
+import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
+import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {

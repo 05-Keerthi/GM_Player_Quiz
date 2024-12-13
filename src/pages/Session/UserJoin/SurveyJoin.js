@@ -1,13 +1,13 @@
-// JoinQuiz.js
+// SurveyJoin.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSessionContext } from "../../context/sessionContext";
 import { Loader2 } from "lucide-react";
+import { useSurveySessionContext } from "../../../context/surveySessionContext";
 
-const JoinQuiz = () => {
+const SurveyJoin = () => {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
-  const { joinSession, loading } = useSessionContext();
+  const { joinSurveySession, loading } = useSurveySessionContext();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,10 +20,10 @@ const JoinQuiz = () => {
     }
 
     try {
-      const response = await joinSession(joinCode);
+      const response = await joinSurveySession(joinCode);
       if (response.session) {
         navigate(
-          `/user-lobby?code=${joinCode}&sessionId=${response.session._id}`
+          `/survey-user-lobby?code=${joinCode}&sessionId=${response.session._id}`
         );
       } else {
         setError("Invalid response from server");
@@ -81,4 +81,4 @@ const JoinQuiz = () => {
   );
 };
 
-export default JoinQuiz;
+export default SurveyJoin;
