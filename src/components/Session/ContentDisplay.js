@@ -156,6 +156,7 @@ const ContentDisplay = ({
                 if (!isAdmin && !isDisabled) {
                   setSelectedOption(option);
                   onSubmitAnswer?.(option);
+                  setIsAnswerSubmitted(true);
                 }
               }}
               className={`p-4 text-lg rounded-lg border transition-all
@@ -179,10 +180,14 @@ const ContentDisplay = ({
           );
         })}
       </div>
+      {!isAdmin && isAnswerSubmitted && (
+        <p className="text-green-600 font-medium text-center mt-4">
+          Answer submitted successfully!
+        </p>
+      )}
     </div>
   );
 
-  
   if (isSessionEnded) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">
