@@ -1,43 +1,34 @@
+//SuvrveyUserLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
-import { useAuthContext } from "../../../context/AuthContext";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
+import { useAuthContext } from "../../../context/AuthContext";
 
 const SurveyUserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
   const [currentItem, setCurrentItem] = useState(null);
-  const [currentItemType, setCurrentItemType] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
-  const [submittedTime, setSubmittedTime] = useState(null);
-  const { joinSurveySession, loading: sessionLoading } =
-    useSurveySessionContext();
-
+  const { loading: sessionLoading } = useSurveySessionContext();
   const joinCode = searchParams.get("code");
   const sessionId = searchParams.get("sessionId");
 
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
-      console.log("Attempting to join with:", { sessionId, joinCode, user });
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
   
-      // Join the survey session
+      // Join the survey session with full user details
       newSocket.emit("join-survey-session", {
         sessionId,
-        joinCode,
         userId: user._id,
-        username: user.username || user.name || "Anonymous"
-      });
-  
-      // Listen for confirmation
-      newSocket.on("user-joined-survey", (data) => {
-        console.log("Join confirmation received:", data);
+        username: user.username,
+        email: user.email  // Add email to the emission
       });
   
       return () => newSocket.disconnect();
@@ -47,13 +38,18 @@ const SurveyUserLobby = () => {
   // Listen for survey session events
   useEffect(() => {
     if (socket) {
+      socket.on("survey-session-started", (data) => {
+        console.log("survey Session started data:", data);
+        navigate(
+          `/survey-play?surveyId=${data.surveyId}&sessionId=${sessionId}`
+        );
+      });
+
       // Handle next survey question
-      socket.on("next-survey-question", ({ question, isLastQuestion }) => {
-        console.log("Next survey question:", question);
-        setCurrentItem(question);
-        setCurrentItemType("question");
+      socket.on("next-survey-question", ({ item }) => {
+        console.log("Next survey question:", { item });
+        setCurrentItem(item);
         setSelectedAnswer(null);
-        setIsLastItem(isLastQuestion);
       });
 
       // Handle survey session end
@@ -62,27 +58,26 @@ const SurveyUserLobby = () => {
       });
 
       return () => {
+        socket.off("survey-session-started");
         socket.off("next-survey-question");
         socket.off("survey-session-ended");
       };
     }
-  }, [socket, navigate]);
+  }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
-    if (currentItemType !== "question" || selectedAnswer || !user) return;
-
-    const startTime = submittedTime || Date.now();
-    const timeTaken = Date.now() - startTime;
+    if (currentItem !== "question" || selectedAnswer || !user) return;
 
     setSelectedAnswer(option);
 
     if (socket) {
       socket.emit("survey-submit-answer", {
         sessionId,
-        questionId: currentItem._id,
-        userId: user._id,
-        answer: option.text,
-        timeTaken,
+        answerDetails: {
+          answer: option.text,
+          questionId: currentItem._id,
+          userId: user._id,
+        },
       });
     }
   };

@@ -17,7 +17,7 @@ const SurveyLobby = () => {
   const [currentItem, setCurrentItem] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [questions, setQuestions] = useState([]);
-  const [participants, setParticipants] = useState([]);
+  const [surveyPlayers, setSurveyPlayers] = useState([]);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [error, setError] = useState(null);
 
@@ -46,9 +46,8 @@ const SurveyLobby = () => {
       console.log("Initializing session with data:", state.sessionData);
       setSessionData(state.sessionData);
 
-      if (state.sessionData?.participants) {
-        setParticipants(state.sessionData.participants);
-      }
+      // Initialize empty players array from session data
+      setSurveyPlayers(state.sessionData.surveyPlayers || []);
 
       socket.emit("create-survey-session", {
         sessionId: state.sessionData._id,
@@ -59,48 +58,35 @@ const SurveyLobby = () => {
     }
   }, [socket, state]);
 
-
-  //Listen for participants updates
+  //Listen for surveyPlayers updates
   useEffect(() => {
     if (!socket || !sessionData) return;
-
-    const handleParticipantJoined = (data) => {
-      console.log("Participants joined:", data);
-      setParticipants((currentParticipants) => {
-        const newParticipants = data.user || data;
-        if (!newParticipants) return currentParticipants;
-
-        if (!currentParticipants.some((p) => p._id === newParticipants._id)) {
-          return [...currentParticipants, newParticipants];
+  
+    const handleSurveyPlayersJoined = (data) => {
+      console.log("Survey player joined data:", data);
+      setSurveyPlayers((currentSurveyPlayers) => {
+        // Make sure we're getting the full user object from the data
+        const newPlayer = data.user || data;
+        if (!newPlayer || !newPlayer._id) return currentSurveyPlayers;
+  
+        // Check if player already exists and add with full details if not
+        if (!currentSurveyPlayers.some((p) => p._id === newPlayer._id)) {
+          return [...currentSurveyPlayers, {
+            _id: newPlayer._id,
+            username: newPlayer.username,
+            email: newPlayer.email
+          }];
         }
-        return currentParticipants;
+        return currentSurveyPlayers;
       });
     };
-
-    const handleParticipantLeft = (data) => {
-      console.log("Participant left:", data);
-      setParticipants((currentParticipants) =>
-        currentParticipants.filter((p) => p._id !== data.userId)
-      );
-    };
-
-    const handleAnswerSubmitted = (answerDetails) => {
-      console.log("Answer received:", answerDetails);
-      // Handle answer submission logic here
-    };
-
-    socket.on("participant-joined", handleParticipantJoined);
-    socket.on("participant-left", handleParticipantLeft);
-    socket.on("answer-submitted", handleAnswerSubmitted);
-
+  
+    socket.on("user-joined-survey", handleSurveyPlayersJoined);
+  
     return () => {
-      socket.off("participant-joined", handleParticipantJoined);
-      socket.off("participant-left", handleParticipantLeft);
-      socket.off("answer-submitted", handleAnswerSubmitted);
+      socket.off("user-joined-survey", handleSurveyPlayersJoined);
     };
-
   }, [socket, sessionData]);
-
 
   const handleStartSession = async () => {
     try {
@@ -121,9 +107,9 @@ const SurveyLobby = () => {
       }
 
       // Navigate to start session page
-    navigate(
-      `/start-survey?quizId=${surveyId}&sessionId=${sessionData._id}&joinCode=${sessionData.surveyJoinCode}&in_progress=true`
-    );
+      navigate(
+        `/start-survey?quizId=${surveyId}&sessionId=${sessionData._id}&joinCode=${sessionData.surveyJoinCode}&in_progress=true`
+      );
     } catch (error) {
       console.error("Failed to start survey session:", error);
       setError("Failed to start survey session. Please try again.");
@@ -181,16 +167,13 @@ const SurveyLobby = () => {
     }
   };
 
-
   const renderCurrentItem = () => {
     if (!currentItem) return null;
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">
-            Current question
-          </h3>
+          <h3 className="text-xl font-semibold">Current question</h3>
           <button
             onClick={handleNextItem}
             disabled={loading}
@@ -200,7 +183,7 @@ const SurveyLobby = () => {
           </button>
         </div>
         <div className="bg-gray-50 p-4 rounded-lg">
-          {currentItem? (
+          {currentItem ? (
             <div>
               <h4 className="font-medium text-xl mb-4">{currentItem.title}</h4>
               {currentItem.imageUrl && (
@@ -212,18 +195,13 @@ const SurveyLobby = () => {
               )}
               <div className="grid grid-cols-2 gap-4">
                 {currentItem.options?.map((option) => (
-                  <div
-                    key={option._id}
-                    className={`p-4 rounded-lg border`}
-                  >
-                    <span>
-                      {option.text}
-                    </span>
+                  <div key={option._id} className={`p-4 rounded-lg border`}>
+                    <span>{option.text}</span>
                   </div>
                 ))}
               </div>
               <div className="mt-4 text-sm text-gray-500">
-               Timer: {currentItem.timer}s
+                Timer: {currentItem.timer}s
               </div>
             </div>
           ) : (
@@ -244,14 +222,14 @@ const SurveyLobby = () => {
     );
   };
 
-  const renderParticipants = () => (
+  const renderSurveyPlayers = () => (
     <div className="space-y-6">
       <div className="bg-indigo-600 text-white p-4 rounded-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-6 h-6" />
             <span className="text-xl font-semibold">
-              Participants ({participants?.length || 0})
+              Players ({surveyPlayers?.length || 0})
             </span>
           </div>
           <div className="flex gap-2">
@@ -264,7 +242,7 @@ const SurveyLobby = () => {
             {!currentItem && (
               <button
                 onClick={handleStartSession}
-                disabled={loading || !participants?.length}
+                disabled={loading || !surveyPlayers?.length}
                 className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -289,9 +267,11 @@ const SurveyLobby = () => {
 
       <div className="bg-white rounded-lg p-6 shadow-lg">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {participants?.map((participant) => {
-            const playerId = participant?._id || participant?.id || "unknown";
-            const username = participant?.username || participant?.name || "Anonymous";
+          {surveyPlayers.map((participant) => {
+            console.log("Rendering participant:", participant); // Debug log
+            const playerId = participant._id || participant.id || "unknown";
+            const username =
+              participant.username || participant.name || "Anonymous";
             const initial = username[0]?.toUpperCase() || "?";
 
             return (
@@ -316,7 +296,6 @@ const SurveyLobby = () => {
       </div>
     </div>
   );
-
 
   return (
     <div className="min-h-screen bg-purple-100">
@@ -366,7 +345,7 @@ const SurveyLobby = () => {
                 </div>
               </div>
 
-              {renderParticipants()}
+              {renderSurveyPlayers()}
 
               {currentItem && (
                 <div className="bg-white rounded-lg shadow-lg p-6">

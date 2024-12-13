@@ -1,8 +1,8 @@
 // SurveyJoin.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
+import { Loader2 } from "lucide-react";
 
 const SurveyJoin = () => {
   const [joinCode, setJoinCode] = useState("");
