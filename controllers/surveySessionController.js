@@ -65,59 +65,66 @@ exports.createSurveySession = async (req, res) => {
 };
 
 exports.joinSurveySession = async (req, res) => {
-    const { joinCode } = req.params;
-    const userId = req.user._id;
-  
-    try {
-      // Find the session using the join code
-      let session = await SurveySession.findOne({ surveyJoinCode: joinCode })
-        .populate('surveyPlayers', 'username email')
-        .populate('surveyHost', 'username email')
-        .populate('surveyQuiz');
-  
-      if (!session) {
-        return res.status(404).json({ message: 'Survey session not found' });
-      }
-  
-      // Check if the session is open for joining
-      if (session.surveyStatus !== 'waiting') {
-        return res.status(400).json({ message: 'Survey session is not open for joining' });
-      }
-  
-      // Check if the user has already joined the session
-      if (session.surveyPlayers.some((player) => player._id.toString() === userId.toString())) {
-        return res.status(400).json({ message: 'User has already joined this session' });
-      }
-  
-      // Get user details
-      const user = await User.findById(userId).select('username email');
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Add the user to the session's players
-      session.surveyPlayers.push(userId);
-      await session.save();
-  
-      // Refresh the populated session
-      session = await SurveySession.findById(session._id)
-        .populate('surveyPlayers', 'username email')
-        .populate('surveyHost', 'username email')
-        .populate('surveyQuiz');
-  
-      // Emit the join event using socket.io
-      const io = req.app.get('socketio');
-      io.emit('player-joined-survey', { sessionId: session._id, user });
-  
-      res.status(200).json({
-        message: 'User successfully joined the survey session',
-        session,
-      });
-    } catch (error) {
-      console.error('Error joining survey session:', error);
-      res.status(500).json({ message: 'Error joining survey session', error });
+  const { joinCode } = req.params;
+  const userId = req.user._id;
+
+  try {
+    // Find the session using the join code
+    let session = await SurveySession.findOne({ surveyJoinCode: joinCode })
+      .populate('surveyPlayers', 'username email')
+      .populate('surveyHost', 'username email')
+      .populate('surveyQuiz');
+
+    if (!session) {
+      return res.status(404).json({ message: 'Survey session not found' });
     }
-  };
+
+    // Check if the session is open for joining
+    if (session.surveyStatus !== 'waiting') {
+      return res.status(400).json({ message: 'Survey session is not open for joining' });
+    }
+
+    // Check if the user has already joined the session
+    if (session.surveyPlayers.some((player) => player._id.toString() === userId.toString())) {
+      return res.status(400).json({ message: 'User has already joined this session' });
+    }
+
+    // Get user details with specific fields
+    const user = await User.findById(userId).select('_id username email');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Add the user to the session's players
+    session.surveyPlayers.push(userId);
+    await session.save();
+
+    // Refresh the populated session
+    session = await SurveySession.findById(session._id)
+      .populate('surveyPlayers', 'username email')
+      .populate('surveyHost', 'username email')
+      .populate('surveyQuiz');
+
+    // Emit the join event using socket.io with full user details
+    const io = req.app.get('socketio');
+    io.emit('user-joined-survey', { 
+      sessionId: session._id, 
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
+
+    res.status(200).json({
+      message: 'User successfully joined the survey session',
+      session,
+    });
+  } catch (error) {
+    console.error('Error joining survey session:', error);
+    res.status(500).json({ message: 'Error joining survey session', error });
+  }
+};
 
 exports.startSurveySession = async (req, res) => {
   const { joinCode, sessionId } = req.params;

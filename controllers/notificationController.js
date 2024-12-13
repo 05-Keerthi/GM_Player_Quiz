@@ -183,13 +183,6 @@ exports.getNotificationsByUserId = async (req, res) => {
     // Fetch all notifications for the user (either the authenticated user or the user specified in the URL)
     const notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 });
 
-    if (notifications.length === 0) {
-      // Return a specific message if no notifications exist for the user
-      return res.status(404).json({ 
-        message: `No invitations have been sent to this user (User ID: ${userId}).`, 
-        notifications: null 
-      });
-    }
 
     // For each notification, fetch session details and include quiz information
     const notificationsWithSessionData = await Promise.all(notifications.map(async (notification) => {

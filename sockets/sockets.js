@@ -335,19 +335,26 @@ module.exports = (io) => {
     });
 
     // Join a specific room for a survey session
-    socket.on("join-survey-session", async ({ sessionId, userId, username }) => {
-      try {
-        socket.join(sessionId);
-        console.log(`Socket ${socket.id} joined survey room ${sessionId}`);
-        io.to(sessionId).emit("user-joined-survey", {
-          message: "A new user has joined the survey session.",
-          userId,
-          username,
-        });
-      } catch (error) {
-        console.error("Error joining survey session:", error);
-      }
-    });
+  socket.on("join-survey-session", async ({ sessionId, userId, username }) => {
+    try {
+      socket.join(sessionId);
+      console.log(`Socket ${socket.id} joined survey room ${sessionId}`);
+      
+      // Fetch full user details from the database
+      const user = await User.findById(userId).select('_id username email');
+      
+      io.to(sessionId).emit("user-joined-survey", {
+        message: "A new user has joined the survey session.",
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email
+        }
+      });
+    } catch (error) {
+      console.error("Error joining survey session:", error);
+    }
+  });
 
     // Handle next survey question
     socket.on("next-survey-question", ({ sessionId, question, isLastQuestion }) => {
