@@ -1,6 +1,5 @@
-// JoinQuiz.js
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSessionContext } from "../../../context/sessionContext";
 import { Loader2 } from "lucide-react";
 
@@ -9,6 +8,16 @@ const JoinQuiz = () => {
   const [error, setError] = useState("");
   const { joinSession, loading } = useSessionContext();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get code from URL parameters and set it in the input
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const codeFromUrl = params.get("code");
+    if (codeFromUrl) {
+      setJoinCode(codeFromUrl);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
