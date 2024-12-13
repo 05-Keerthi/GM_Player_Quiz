@@ -133,45 +133,56 @@ const ContentDisplay = ({
   );
 
   const renderOptions = () => (
-    <div className="grid grid-cols-2 gap-4">
-      {item?.options?.map((option, index) => {
-        const isQuizOption = sessionType === "quiz";
-        const isDisabled = isQuizOption
-          ? timeLeft === 0 || selectedOption || isTimeUp
-          : false;
-
-        return (
-          <button
-            key={option._id}
-            onClick={() => {
-              if (!isAdmin && !isDisabled) {
-                setSelectedOption(option);
-                onSubmitAnswer?.(option);
-              }
-            }}
-            className={`p-4 text-lg rounded-lg border transition-all
-              ${bgColors[index % bgColors.length]} 
-              ${
-                !isAdmin && selectedOption === option
-                  ? "border-blue-500 ring-2 ring-blue-500"
-                  : "hover:brightness-95"
-              }
-              ${
-                isAdmin && isQuizOption && option.isCorrect
-                  ? "ring-2 ring-green-500 border-green-500"
-                  : ""
-              }
-              ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}
-            `}
-            disabled={isDisabled}
-          >
-            {option.text}
-          </button>
-        );
-      })}
+    <div className="space-y-4">
+      <h3 className="text-xl mb-4">{item?.title}</h3>
+      {item?.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt="Question"
+          className="w-full max-h-64 object-contain rounded-lg mb-4"
+        />
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        {item?.options?.map((option, index) => {
+          const isQuizOption = sessionType === "quiz";
+          const isDisabled = isQuizOption
+            ? timeLeft === 0 || selectedOption || isTimeUp
+            : false;
+  
+          return (
+            <button
+              key={option._id || index}
+              onClick={() => {
+                if (!isAdmin && !isDisabled) {
+                  setSelectedOption(option);
+                  onSubmitAnswer?.(option);
+                }
+              }}
+              className={`p-4 text-lg rounded-lg border transition-all
+                ${bgColors[index % bgColors.length]} 
+                ${
+                  !isAdmin && selectedOption === option
+                    ? "border-blue-500 ring-2 ring-blue-500"
+                    : "hover:brightness-95"
+                }
+                ${
+                  isAdmin && isQuizOption && option.isCorrect
+                    ? "ring-2 ring-green-500 border-green-500"
+                    : ""
+                }
+                ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}
+              `}
+              disabled={isDisabled}
+            >
+              {option.text}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 
+  
   if (isSessionEnded) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">

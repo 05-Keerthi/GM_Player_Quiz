@@ -10,8 +10,8 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
       setSubmittedAnswers([]);
     } else if (currentItem?.options) {
       const initialCounts = {};
-      currentItem.options.forEach((_, index) => {
-        initialCounts[index] = 0;
+      currentItem.options.forEach((option, index) => {
+        initialCounts[option.text] = 0;
       });
       setOptionCounts(initialCounts);
     }
@@ -21,24 +21,16 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     if (!socket || !currentItem?._id) return;
 
     const handleAnswerSubmitted = (data) => {
-      if (data.questionId === currentItem._id) {
+      const { answerDetails } = data;
+
+      if (answerDetails.questionId === currentItem._id) {
         if (currentItem.type === "open_ended") {
-          setSubmittedAnswers((prev) => {
-            const newAnswers = [...prev];
-            newAnswers.push(data.answer);
-            return newAnswers;
-          });
+          setSubmittedAnswers((prev) => [...prev, answerDetails.answer]);
         } else {
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            const optionIndex = currentItem.options.findIndex(
-              (opt) => opt.text === data.answer
-            );
-            if (optionIndex !== -1) {
-              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-            }
-            return newCounts;
-          });
+          setOptionCounts((prev) => ({
+            ...prev,
+            [answerDetails.answer]: (prev[answerDetails.answer] || 0) + 1,
+          }));
         }
       }
     };
@@ -65,7 +57,7 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
 
   if (currentItem.type === "open_ended") {
     return (
-      <div className="flex flex-col gap-2 mb-2">
+      <div className="flex flex-col gap-2 mb-4">
         <div className="text-right text-gray-600 font-medium">
           Total Responses: {submittedAnswers.length}
         </div>
@@ -89,17 +81,27 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   }
 
   return (
-    <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-      {currentItem.options.map((_, index) => (
-        <div
-          key={index}
-          className={`${
-            bgColors[index % bgColors.length]
-          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-        >
-          {optionCounts[index] || 0}
-        </div>
-      ))}
+    <div className="flex flex-col gap-2 mb-4">
+      <div className="text-center text-gray-600 font-medium">
+        Total Responses:{" "}
+        {Object.values(optionCounts).reduce((a, b) => a + b, 0)}
+      </div>
+      <div className="flex flex-row justify-end gap-4 pr-2">
+        {currentItem.options.map((option, index) => (
+          <div
+            key={option._id || index}
+            className="flex flex-col items-center gap-2"
+          >
+            <div
+              className={`${
+                bgColors[index % bgColors.length]
+              } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+            >
+              {optionCounts[option.text] || 0}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
