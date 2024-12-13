@@ -3,6 +3,7 @@ const Answer = require('../models/answer');
 const Question = require('../models/question');
 const Session = require('../models/session');
 const Leaderboard = require('../models/leaderBoard');
+const ActivityLog = require('../models/ActivityLog');
 
 const calculateScore = (timeTaken, questionTimer, basePoints) => {
   const timeBonus = Math.max(0, questionTimer - timeTaken);
@@ -131,7 +132,20 @@ exports.submitAnswer = async (req, res) => {
         path: 'user',
         select: 'username email mobile role tenantId', // Select only necessary fields
       });
-  
+      
+
+      // Save activity log
+    await ActivityLog.create({
+      user: userId,
+      activityType: 'quiz_play',
+      details: {
+        sessionId,
+        questionId,
+        isCorrect: isCorrect.toString(),
+        pointsAwarded: pointsAwarded.toString(),
+      },
+    });
+
       // Return response
       res.status(201).json({
         message: 'Answer submitted successfully',
