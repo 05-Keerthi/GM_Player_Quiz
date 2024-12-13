@@ -1,65 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 
-const SettingsModal = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  initialData = {}, 
-  type = 'survey', // 'survey' or 'quiz'
-  apiEndpoint 
+const UnifiedSettingsModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialData = {},
+  type = "quiz", // 'quiz' or 'survey'
+  onTitleUpdate, // New prop for immediate title updates
 }) => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: ''
+    title: "",
+    description: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        title: initialData.title || '',
-        description: initialData.description || ''
+        title: initialData.title || "",
+        description: initialData.description || "",
       });
-      setError('');
+      setError("");
     }
   }, [isOpen, initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return;
     }
 
     try {
       setIsLoading(true);
-      setError('');
+      setError("");
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('Authentication token not found');
+        throw new Error("Authentication token not found");
       }
 
-      const response = await fetch(`${apiEndpoint}/${initialData.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: formData.title.trim(),
-          description: formData.description.trim(),
-        }),
-      });
+      const apiEndpoint =
+        type === "quiz"
+          ? "http://localhost:5000/api/quizzes"
+          : "http://localhost:5000/api/survey-quiz";
+
+      const response = await fetch(
+        `${apiEndpoint}/${initialData.id || initialData.quizId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -67,11 +75,17 @@ const SettingsModal = ({
       }
 
       const updatedData = await response.json();
+
+      // Update the title in the parent component immediately
+      if (onTitleUpdate) {
+        onTitleUpdate(formData.title.trim());
+      }
+
       if (onSave) onSave(updatedData);
       onClose();
     } catch (err) {
-      console.error('Error in handleSave:', err);
-      setError(err.message || 'An unknown error occurred');
+      console.error("Error in handleSave:", err);
+      setError(err.message || "An unknown error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +113,7 @@ const SettingsModal = ({
               disabled={isLoading || !formData.title.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Saving...' : 'Done'}
+              {isLoading ? "Saving..." : "Done"}
             </button>
           </div>
         </div>
@@ -111,7 +125,7 @@ const SettingsModal = ({
               {error}
             </div>
           )}
-          
+
           <div className="space-y-6">
             <div>
               <label className="block text-gray-700 mb-2">Title</label>
@@ -144,4 +158,4 @@ const SettingsModal = ({
   );
 };
 
-export default SettingsModal;
+export default UnifiedSettingsModal;

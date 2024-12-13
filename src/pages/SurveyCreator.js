@@ -3,13 +3,12 @@ import React, { useState, useEffect } from "react";
 import { X, Trash2, AlertCircle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import SurveyQuestionEditor from "../models/SurveyQuestionEditor";
-import SettingsModal from "../models/SettingsModal";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
 import ConfirmationModal from "../models/ConfirmationModal";
 import { useQuestionContext } from "../context/questionContext";
 import { useSurveyContext } from "../context/surveyContext";
-import SurveySettingsModal from "../models/SurveySettingsModal";
+import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -41,7 +40,7 @@ const SurveyCreator = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-
+  const [surveyTitle, setSurveyTitle] = useState("");
   const { surveyId } = useParams();
   const navigate = useNavigate();
 
@@ -219,7 +218,8 @@ const SurveyCreator = () => {
       }
 
       try {
-        await getSurveyById(surveyId);
+        const survey = await getSurveyById(surveyId);
+        setSurveyTitle(survey.title || ""); // Add this line
         await getAllQuestions(surveyId);
       } catch (error) {
         handleApiError(error);
@@ -251,7 +251,7 @@ const SurveyCreator = () => {
                 <input
                   type="text"
                   placeholder="Enter survey title..."
-                  value={currentSurvey?.title || ""}
+                  value={surveyTitle}
                   className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
                   onClick={() => setIsSettingsOpen(true)}
                   readOnly
@@ -373,14 +373,17 @@ const SurveyCreator = () => {
         </div>
 
         {/* Modals */}
-        <SurveySettingsModal
+        <UnifiedSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+          onSave={handleSettingsUpdate}
+          onTitleUpdate={setSurveyTitle}
           initialData={{
             id: surveyId,
             title: currentSurvey?.title || "",
             description: currentSurvey?.description || "",
           }}
+          type="survey"
         />
 
         <ConfirmationModal

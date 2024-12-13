@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { X, Trash2, AlertCircle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuestionTypeModal from "../models/QuestionTypeModal";
-import SettingsModal from "../models/SettingsModal";
 import QuestionEditor from "../components/QuestionEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
@@ -10,6 +9,9 @@ import SlideTypeModal from "../models/SlideTypeModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import SlideEditor from "../components/SlideEditor";
 import PreviewModal from "../models/previewModal";
+import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
+import { useQuizContext } from "../context/quizContext";
+
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -35,6 +37,8 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 };
 
 const QuizCreator = () => {
+  const { updateQuiz } = useQuizContext();
+
   const [slides, setSlides] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(null);
   const [isAddSlideOpen, setIsAddSlideOpen] = useState(false);
@@ -49,6 +53,7 @@ const QuizCreator = () => {
   const [showDeleteSlideModal, setShowDeleteSlideModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [selectedSlide, setSelectedSlide] = useState(null);
+  const [quizTitle, setQuizTitle] = useState("");
   const [quiz, setQuiz] = useState({
     title: "",
     description: "",
@@ -110,10 +115,15 @@ const QuizCreator = () => {
     }
   };
 
-  const handleSettingsUpdate = (updatedQuiz) => {
-    setQuiz(updatedQuiz);
-    setIsSettingsOpen(false);
-    showAlert("Quiz settings updated successfully", "success");
+  const handleSettingsUpdate = async (updatedQuiz) => {
+    try {
+      await updateQuiz(quizId, updatedQuiz);
+      setQuiz(updatedQuiz);
+      setIsSettingsOpen(false);
+      showAlert("Quiz settings updated successfully", "success");
+    } catch (error) {
+      handleApiError(error);
+    }
   };
 
   const handleSaveQuiz = async () => {
@@ -437,7 +447,7 @@ const QuizCreator = () => {
           title: quizData.title || "",
           description: quizData.description || "",
         });
-
+        setQuizTitle(quizData.title || ""); // Add this line
         setSlides(quizData.slides || []);
         setQuestions(quizData.questions || []);
       } catch (err) {
@@ -476,7 +486,7 @@ const QuizCreator = () => {
                   <input
                     type="text"
                     placeholder="Enter quiz title..."
-                    value={quiz?.title || ""}
+                    value={quizTitle}
                     className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
                     onClick={() => setIsSettingsOpen(true)}
                     readOnly
@@ -690,16 +700,19 @@ const QuizCreator = () => {
           />
 
           {/* Settings Modal */}
-          <SettingsModal
+          <UnifiedSettingsModal
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
             onSave={handleSettingsUpdate}
+            onTitleUpdate={setQuizTitle}
             initialData={{
-              quizId: quizId,
+              id: quizId,
               title: quiz?.title || "",
               description: quiz?.description || "",
             }}
+            type="quiz"
           />
+
           <PreviewModal
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
