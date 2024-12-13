@@ -119,7 +119,7 @@ const AdminLobby = () => {
 
       // Navigate to start page
       navigate(
-        `/start?quizId=${quizId}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
+        `/start?quizId=${response.session.quiz._id}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
       );
     } catch (error) {
       console.error("Failed to start session:", error);

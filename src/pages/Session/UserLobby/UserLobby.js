@@ -42,7 +42,7 @@ const UserLobby = () => {
     if (socket) {
       socket.on("session-started", (data) => {
         console.log("Session started data:", data);
-        navigate(`/play?quizId=${data.quizId}&sessionId=${sessionId}`);
+        navigate(`/play?quizId=${data.session.quiz._id}&sessionId=${sessionId}`);
       });
 
       socket.on("next-item", ({ type, item }) => {
