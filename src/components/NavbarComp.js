@@ -28,7 +28,7 @@ const Navbar = () => {
 
     fetchNotifications();
   }, [isAuthenticated, user]);
-
+  
   useEffect(() => {
     setLogoError(false);
     try {
