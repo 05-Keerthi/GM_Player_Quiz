@@ -608,6 +608,9 @@ const crypto = require('crypto');
 const Media = require('../models/Media');
 const Slide = require('../models/slide'); 
 const User = require("../models/User");
+const Report = require('../models/Report');
+const Answer = require('../models/answer');
+const Leaderboard = require('../models/leaderBoard');
 
 // create a new session for quiz
 exports.createSession = async (req, res) => {
@@ -925,26 +928,81 @@ exports.endSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
+    // Find the session
     const session = await Session.findOne({ joinCode, _id: sessionId })
       .populate("players", "username email")
       .populate("host", "username email");
 
     if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
+      return res.status(404).json({ message: "Session not found" });
     }
 
-    session.status = 'completed';
+    // Update session status
+    session.status = "completed";
     session.endTime = Date.now();
     await session.save();
 
-    // Emit the session end event
+    // Generate reports
+    const reports = [];
+    for (const player of session.players) {
+      const userId = player._id;
+
+      // Debug log for player ID
+      console.log(`Processing player: ${userId}`);
+
+      // Fetch leaderboard entry
+      const leaderboardEntry = await Leaderboard.findOne({ player: userId, session: sessionId });
+      if (!leaderboardEntry) {
+        console.warn(`No leaderboard entry found for user ${userId} in session ${sessionId}`);
+      }
+
+      // Ensure leaderboard score
+      const leaderboardScore = leaderboardEntry ? leaderboardEntry.score : 0;
+
+      // Log score details
+      console.log(`User ID: ${userId}, Leaderboard Score: ${leaderboardScore}`);
+
+      // Calculate stats from Answer model
+      const totalQuestions = await Answer.countDocuments({ session: sessionId, user: userId });
+      const correctAnswers = await Answer.countDocuments({ session: sessionId, user: userId, isCorrect: true });
+      const incorrectAnswers = totalQuestions - correctAnswers;
+
+      // Log calculated stats
+      console.log({
+        userId,
+        totalQuestions,
+        correctAnswers,
+        incorrectAnswers,
+        totalScore: leaderboardScore,
+      });
+
+      // Save report
+      const report = await Report.create({
+        quiz: session.quiz,
+        user: userId,
+        totalQuestions,
+        correctAnswers,
+        incorrectAnswers,
+        totalScore: leaderboardScore,
+        completedAt: session.endTime,
+      });
+
+      console.log("Report saved successfully:", report);
+      reports.push(report);
+    }
+
+    // Emit socket event
     const io = req.app.get("socketio");
     io.emit("session-ended", { session });
 
-    res.status(200).json({ message: 'Session ended successfully', session });
+    // Respond with success
+    res.status(200).json({
+      message: "Session ended successfully and reports generated",
+      session,
+      reports,
+    });
   } catch (error) {
     console.error("End session error:", error);
-    res.status(500).json({ message: "Error ending the session", error });
+    res.status(500).json({ message: "Error ending the session and generating reports", error });
   }
 };
-

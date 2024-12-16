@@ -22,6 +22,7 @@ const surveyQuizRoutes = require('./routes/surveyQuizRoutes');
 const surveySessionRoutes = require("./routes/surveySessionRoutes");
 const surveyAnswerRoutes = require("./routes/surveyAnswerRoutes");
 const surveyNotificationRoutes = require("./routes/surveyNotificationRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const path = require('path');
 
@@ -47,6 +48,7 @@ app.use('/api', answerRoutes);
 app.use('/api', leaderBoardRoutes);
 app.use('/api', notificationRoutes);
 app.use('/api', activityRoutes);
+app.use("/api", reportRoutes);
 
 app.use('/api', surveyQuestionRoutes);
 app.use('/api', surveyQuizRoutes);
