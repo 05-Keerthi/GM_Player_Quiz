@@ -27,7 +27,7 @@ import UnifiedList from "./components/UnifiedList";
 import SurveyLobby from "./pages/Session/Lobby/SurveyLobby";
 import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
 import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
-
+import Result from "../src/pages/Result";
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthContext();
@@ -60,7 +60,14 @@ export default function App() {
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
         <Route path="/" element={<HomePage />} />
-
+        <Route 
+          path="/Result" 
+          element={
+            <ProtectedRoute>
+              <Result/>
+            </ProtectedRoute>
+          } 
+        />
         {/* Protected Routes */}
         <Route
           path="/user/profile"
