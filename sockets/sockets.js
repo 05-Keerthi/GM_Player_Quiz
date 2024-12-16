@@ -395,6 +395,56 @@ module.exports = (io) => {
         console.error("Error submitting survey answer:", error);
       }
     });
+
+        // Admin triggers survey notification
+        socket.on("send-survey-notification", async ({ sessionId, notification }) => {
+          if (!sessionId || !notification) {
+            return socket.emit("error", "Session ID and notification data are required.");
+          }
+    
+          try {
+            // Emit notification to all users in the session
+            io.to(sessionId).emit("receive-survey-notification", notification);
+    
+            console.log(
+              `Survey notification sent to session ${sessionId}: ${notification.message}`
+            );
+          } catch (error) {
+            console.error("Error sending survey notification:", error);
+            socket.emit("error", "An error occurred while sending the notification.");
+          }
+        });
+    
+        // Mark survey notification as read
+        socket.on("mark-survey-notification-read", async ({ notificationId, userId }) => {
+          try {
+            const notification = await SurveyNotification.findOneAndUpdate(
+              { _id: notificationId, user: userId },
+              { read: true },
+              { new: true }
+            );
+    
+            if (!notification) {
+              return socket.emit(
+                "error",
+                "Survey notification not found or unauthorized."
+              );
+            }
+    
+            // Notify user about the updated status
+            io.to(notification.sessionId).emit("survey-notification-updated", {
+              notificationId,
+              userId,
+            });
+    
+            console.log(
+              `Survey notification ${notificationId} marked as read by user ${userId}`
+            );
+          } catch (error) {
+            console.error("Error marking survey notification as read:", error);
+            socket.emit("error", "An error occurred while marking the notification as read.");
+          }
+        });
     
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);

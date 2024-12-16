@@ -94,7 +94,7 @@ exports.createSurveyNotification = async (req, res) => {
       await SurveyNotification.insertMany(notificationsToInsert);
   
       const io = req.app.get('socketio');
-      io?.emit('survey_notification', {
+      io?.emit('send-survey-notification', {
         type,
         message: finalMessage,
         users: usersToNotify,
@@ -194,7 +194,7 @@ exports.markSurveyNotificationAsRead = async (req, res) => {
   
       // Emit WebSocket event
       const io = req.app.get("socketio");
-      io.emit('survey_notification_read', {
+      io.emit('mark-survey-notification-read', {
         userId: req.user._id,
         surveyNotificationId: id,
       });
