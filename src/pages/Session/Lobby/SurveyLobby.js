@@ -108,7 +108,7 @@ const SurveyLobby = () => {
 
       // Navigate to start session page
       navigate(
-        `/start-survey?quizId=${surveyId}&sessionId=${sessionData._id}&joinCode=${sessionData.surveyJoinCode}&in_progress=true`
+        `/start-survey?surveyId=${sessionData.surveyQuiz._id}&sessionId=${sessionData._id}&joinCode=${sessionData.surveyJoinCode}&in_progress=true`
       );
     } catch (error) {
       console.error("Failed to start survey session:", error);

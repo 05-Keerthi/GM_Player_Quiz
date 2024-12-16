@@ -120,6 +120,14 @@ export default function HomePage() {
             buttonColor: "bg-green-500 hover:bg-green-600",
             path: "/join",
           },
+          {
+            icon: <Trophy className="text-green-600" size={48} />,
+            title: "Join Survey",
+            description: "Participate in exciting Survey",
+            buttonText: "Join Now",
+            buttonColor: "bg-green-500 hover:bg-green-600",
+            path: "/joinsurvey",
+          },
         ];
       default:
         return [];

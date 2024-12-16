@@ -27,6 +27,9 @@ import UnifiedList from "./components/UnifiedList";
 import SurveyLobby from "./pages/Session/Lobby/SurveyLobby";
 import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
 import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
+import AdminSurveyStart from "./pages/Session/Start/AdminSurveyStart";
+import UserSurveyPlay from "./pages/Session/Play/UserSurveyPlay";
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthContext();
@@ -127,6 +130,9 @@ export default function App() {
         <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
         <Route path="/start" element={<AdminStart />} />
         <Route path="/play" element={<UserPlay />} />
+
+        <Route path="/start-survey" element={<AdminSurveyStart />} />
+        <Route path="/survey-play" element={<UserSurveyPlay />} />
         <Route
           path="/leaderboard"
           element={

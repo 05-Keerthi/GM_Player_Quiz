@@ -41,7 +41,7 @@ const SurveyUserLobby = () => {
       socket.on("survey-session-started", (data) => {
         console.log("survey Session started data:", data);
         navigate(
-          `/survey-play?surveyId=${data.surveyId}&sessionId=${sessionId}`
+          `/survey-play?surveyId=${data.session.surveyQuiz._id}&sessionId=${sessionId}`
         );
       });
 
