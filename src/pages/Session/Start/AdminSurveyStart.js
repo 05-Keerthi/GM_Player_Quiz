@@ -204,21 +204,6 @@ const AdminSurveyStart = () => {
             </div>
           ) : (
             <>
-              <div className="mb-4 p-4 bg-white rounded-lg shadow">
-                <h3 className="font-medium mb-2">
-                  Connected Users ({connectedUsers.length})
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {connectedUsers.map((user) => (
-                    <span
-                      key={user._id}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                    >
-                      {user.username}
-                    </span>
-                  ))}
-                </div>
-              </div>
               <AdminAnswerCounts
                 sessionId={sessionId}
                 currentItem={currentItem}
