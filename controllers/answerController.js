@@ -52,7 +52,7 @@ exports.submitAnswer = async (req, res) => {
         multiple_select: 'option',
         true_false: 'boolean',
         open_ended: 'text',
-        poll: 'text',
+        poll: 'option',
       };
   
       const answerType = answerTypeMap[question.type];
