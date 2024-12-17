@@ -15,7 +15,6 @@ const AdminSurveyStart = () => {
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
   const [isSurveyEnded, setIsSurveyEnded] = useState(false);
-  const [connectedUsers, setConnectedUsers] = useState([]);
   const surveyId = searchParams.get("surveyId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
@@ -129,10 +128,10 @@ const AdminSurveyStart = () => {
         setIsLastItem(response.questions.length === 1);
 
         socket?.emit("next-survey-question", {
-          sessionId,
-          question: transformedQuestion,
-          isLastQuestion: response.questions.length === 1,
-        });
+            sessionId,
+            question: transformedQuestion,
+            isLastQuestion: response.questions.length === 1,
+          });
       } else if (response.question) {
         // Handle single question
         const transformedQuestion = transformSurveyQuestion(response.question);
@@ -148,8 +147,8 @@ const AdminSurveyStart = () => {
       } else {
         console.log("No more questions, ending survey");
         setIsSurveyEnded(true);
-        socket?.emit("end-survey-session", { sessionId });
-      }
+                  socket?.emit("end-survey-session", { sessionId });
+              }
     } catch (error) {
       console.error("Error in handleNext:", error);
       if (error.response?.data?.message === "No more questions") {
