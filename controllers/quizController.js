@@ -40,6 +40,7 @@ exports.createQuiz = async (req, res) => {
       user: req.user._id,  // The user who created the quiz
       activityType: 'quiz_create',
       details: {
+        username: req.user.username,
         quizTitle: title,
         quizDescription: description,
         tenantId: tenantId,
