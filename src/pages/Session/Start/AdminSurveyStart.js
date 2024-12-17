@@ -2,14 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
-import { useSessionContext } from "../../../context/sessionContext";
+import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import ContentDisplay from "../../../components/Session/ContentDisplay";
 import AdminAnswerCounts from "../../../components/Session/AnswerCountDisplay";
 
 const AdminSurveyStart = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { nextQuestion, endSession, loading } = useSessionContext();
+  const { nextSurveyQuestion, endSurveySession, loading } =
+    useSurveySessionContext();
   const [currentItem, setCurrentItem] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
@@ -19,106 +20,179 @@ const AdminSurveyStart = () => {
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
+  // Helper function to transform survey question to the expected format
+  const transformSurveyQuestion = (question) => {
+    console.log("Transforming question:", question);
+    if (!question) return null;
+
+    const transformed = {
+      _id: question._id,
+      title: question.title,
+      type: "multiple_choice",
+      description: question.description,
+      imageUrl: question.imageUrl,
+      options:
+        question.answerOptions?.map((option) => ({
+          _id: option._id,
+          text: option.optionText,
+          isCorrect: false,
+        })) || [],
+      dimension: question.dimension,
+      timer: question.timer || null,
+    };
+    console.log("Transformed question:", transformed);
+    return transformed;
+  };
+
   useEffect(() => {
+    console.log("Setting up socket connection...");
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
     newSocket.emit("create-survey-session", { sessionId });
 
     const initializeSurvey = async () => {
       try {
+        console.log(
+          "Initializing survey with joinCode:",
+          joinCode,
+          "sessionId:",
+          sessionId
+        );
         if (joinCode && sessionId) {
-          const response = await nextQuestion(joinCode, sessionId);
-          if (response.item) {
-            setCurrentItem(response.item);
-            setIsLastItem(response.isLastItem || false);
+          const response = await nextSurveyQuestion(joinCode, sessionId);
+          console.log("Initial survey response:", response);
+
+          if (response.questions && response.questions.length > 0) {
+            // Handle initial questions array
+            const firstQuestion = response.questions[0];
+            const transformedQuestion = transformSurveyQuestion(firstQuestion);
+            console.log("Setting initial question:", transformedQuestion);
+
+            setCurrentItem(transformedQuestion);
+            setIsLastItem(response.questions.length === 1);
 
             newSocket.emit("next-survey-question", {
               sessionId,
-              question: response.item,
-              isLastQuestion: response.isLastItem || false
+              question: transformedQuestion,
+              isLastQuestion: response.questions.length === 1,
+            });
+          } else if (response.question) {
+            // Handle single question response
+            const transformedQuestion = transformSurveyQuestion(
+              response.question
+            );
+            console.log(
+              "Setting initial question (single):",
+              transformedQuestion
+            );
+
+            setCurrentItem(transformedQuestion);
+            setIsLastItem(response.isLastQuestion || false);
+
+            newSocket.emit("next-survey-question", {
+              sessionId,
+              question: transformedQuestion,
+              isLastQuestion: response.isLastQuestion || false,
             });
           }
         }
       } catch (error) {
-        console.error("Error fetching first question:", error);
+        console.error("Error in initializeSurvey:", error);
       }
     };
 
     initializeSurvey();
 
     return () => {
+      console.log("Cleaning up socket connection");
       newSocket.disconnect();
     };
   }, [sessionId, joinCode]);
 
-  useEffect(() => {
-    if (socket) {
-      // Listen for new users joining
-      socket.on("user-joined-survey", (data) => {
-        setConnectedUsers(prev => [...prev, data.user]);
-      });
-
-      // Listen for survey answer submissions
-      socket.on("survey-answer-submitted", (data) => {
-        console.log("Survey answer received:", data);
-      });
-
-      return () => {
-        socket.off("user-joined-survey");
-        socket.off("survey-answer-submitted");
-      };
-    }
-  }, [socket]);
-
   const handleNext = async () => {
     try {
+      console.log("Handling next question...");
       if (!joinCode) {
         console.error("Join code is missing");
         return;
       }
 
-      const response = await nextQuestion(joinCode, sessionId);
+      const response = await nextSurveyQuestion(joinCode, sessionId);
+      console.log("Next question response:", response);
 
-      if (response.item) {
-        setCurrentItem(response.item);
-        setIsLastItem(response.isLastItem || false);
+      if (response.questions && response.questions.length > 0) {
+        // Handle questions array
+        const nextQuestion = response.questions[0];
+        const transformedQuestion = transformSurveyQuestion(nextQuestion);
 
-        if (socket) {
-          socket.emit("next-survey-question", {
-            sessionId,
-            question: response.item,
-            isLastQuestion: response.isLastItem || false
-          });
-        }
+        setCurrentItem(transformedQuestion);
+        setIsLastItem(response.questions.length === 1);
+
+        socket?.emit("next-survey-question", {
+          sessionId,
+          question: transformedQuestion,
+          isLastQuestion: response.questions.length === 1,
+        });
+      } else if (response.question) {
+        // Handle single question
+        const transformedQuestion = transformSurveyQuestion(response.question);
+
+        setCurrentItem(transformedQuestion);
+        setIsLastItem(response.isLastQuestion || false);
+
+        socket?.emit("next-survey-question", {
+          sessionId,
+          question: transformedQuestion,
+          isLastQuestion: response.isLastQuestion || false,
+        });
       } else {
+        console.log("No more questions, ending survey");
         setIsSurveyEnded(true);
-        if (socket) {
-          socket.emit("end-survey-session", { sessionId });
-        }
+        socket?.emit("end-survey-session", { sessionId });
       }
     } catch (error) {
-      console.error("Error getting next item:", error);
+      console.error("Error in handleNext:", error);
+      if (error.response?.data?.message === "No more questions") {
+        setIsSurveyEnded(true);
+        socket?.emit("end-survey-session", { sessionId });
+      }
     }
   };
 
   const handleEndSurvey = async () => {
     try {
+      console.log("Ending survey...");
       if (!joinCode) {
         console.error("Join code is missing");
         return;
       }
 
-      await endSession(joinCode, sessionId);
-
-      if (socket) {
-        socket.emit("end-survey-session", { sessionId });
-      }
-
+      await endSurveySession(joinCode, sessionId);
+      socket?.emit("end-survey-session", { sessionId });
       navigate("/survey-list");
     } catch (error) {
-      console.error("Error ending survey:", error);
+      console.error("Error in handleEndSurvey:", error);
     }
   };
+
+  if (isSurveyEnded) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md w-full mx-4">
+          <h2 className="text-2xl font-bold mb-6">Survey Completed!</h2>
+          <p className="text-gray-600 mb-8">
+            All questions have been presented.
+          </p>
+          <button
+            onClick={handleEndSurvey}
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors w-full"
+          >
+            End Session
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -131,10 +205,15 @@ const AdminSurveyStart = () => {
           ) : (
             <>
               <div className="mb-4 p-4 bg-white rounded-lg shadow">
-                <h3 className="font-medium mb-2">Connected Users ({connectedUsers.length})</h3>
+                <h3 className="font-medium mb-2">
+                  Connected Users ({connectedUsers.length})
+                </h3>
                 <div className="flex flex-wrap gap-2">
-                  {connectedUsers.map(user => (
-                    <span key={user._id} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  {connectedUsers.map((user) => (
+                    <span
+                      key={user._id}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    >
                       {user.username}
                     </span>
                   ))}
@@ -144,6 +223,7 @@ const AdminSurveyStart = () => {
                 sessionId={sessionId}
                 currentItem={currentItem}
                 socket={socket}
+                sessionType="survey"
               />
               <ContentDisplay
                 item={currentItem}
