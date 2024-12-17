@@ -162,16 +162,16 @@ exports.submitAnswer = async (req, res) => {
       });
 
       // Save activity log
-      await ActivityLog.create({
-        user: userId,
-        activityType: 'quiz_play',
-        details: {
-          sessionId,
-          questionId,
-          isCorrect: isCorrect.toString(),
-          pointsAwarded: pointsAwarded.toString(),
-        },
-      });
+      // await ActivityLog.create({
+      //   user: userId,
+      //   activityType: 'quiz_play',
+      //   details: {
+      //     sessionId,
+      //     questionId,
+      //     isCorrect: isCorrect.toString(),
+      //     pointsAwarded: pointsAwarded.toString(),
+      //   },
+      // });
 
       // Return response with option statistics
       res.status(201).json({

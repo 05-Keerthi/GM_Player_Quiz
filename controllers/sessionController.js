@@ -611,6 +611,8 @@ const User = require("../models/User");
 const Report = require('../models/Report');
 const Answer = require('../models/answer');
 const Leaderboard = require('../models/leaderBoard');
+const ActivityLog = require('../models/ActivityLog');
+
 
 // create a new session for quiz
 exports.createSession = async (req, res) => {
@@ -931,7 +933,8 @@ exports.endSession = async (req, res) => {
     // Find the session
     const session = await Session.findOne({ joinCode, _id: sessionId })
       .populate("players", "username email")
-      .populate("host", "username email");
+      .populate("host", "username email")
+      .populate("quiz", "title description");
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -942,39 +945,31 @@ exports.endSession = async (req, res) => {
     session.endTime = Date.now();
     await session.save();
 
-    // Generate reports
+    const { title: quizTitle, description: quizDescription } = session.quiz;
+
+    // Fetch all leaderboard scores for this session
+    const leaderboardEntries = await Leaderboard.find({ session: sessionId }).sort({ score: -1 });
+
+    // Map user IDs to ranks
+    const rankMap = leaderboardEntries.reduce((map, entry, index) => {
+      map[entry.player.toString()] = index + 1; // Rank starts at 1
+      return map;
+    }, {});
+
     const reports = [];
+    const activityLogs = [];
+
     for (const player of session.players) {
       const userId = player._id;
+      const username = player.username;
 
-      // Debug log for player ID
-      console.log(`Processing player: ${userId}`);
-
-      // Fetch leaderboard entry
-      const leaderboardEntry = await Leaderboard.findOne({ player: userId, session: sessionId });
-      if (!leaderboardEntry) {
-        console.warn(`No leaderboard entry found for user ${userId} in session ${sessionId}`);
-      }
-
-      // Ensure leaderboard score
+      const leaderboardEntry = leaderboardEntries.find(entry => entry.player.toString() === userId.toString());
       const leaderboardScore = leaderboardEntry ? leaderboardEntry.score : 0;
+      const rank = rankMap[userId.toString()] || null;
 
-      // Log score details
-      console.log(`User ID: ${userId}, Leaderboard Score: ${leaderboardScore}`);
-
-      // Calculate stats from Answer model
       const totalQuestions = await Answer.countDocuments({ session: sessionId, user: userId });
       const correctAnswers = await Answer.countDocuments({ session: sessionId, user: userId, isCorrect: true });
       const incorrectAnswers = totalQuestions - correctAnswers;
-
-      // Log calculated stats
-      console.log({
-        userId,
-        totalQuestions,
-        correctAnswers,
-        incorrectAnswers,
-        totalScore: leaderboardScore,
-      });
 
       // Save report
       const report = await Report.create({
@@ -987,8 +982,25 @@ exports.endSession = async (req, res) => {
         completedAt: session.endTime,
       });
 
-      console.log("Report saved successfully:", report);
       reports.push(report);
+
+      // Save activity log with rank
+      const activityLog = await ActivityLog.create({
+        user: userId,
+        activityType: "quiz_play",
+        details: {
+          sessionId,
+          username,
+          quizTitle,
+          quizDescription,
+          rank,
+          correctAnswers,
+          incorrectAnswers,
+          totalScore: leaderboardScore,
+        },
+      });
+
+      activityLogs.push(activityLog);
     }
 
     // Emit socket event
@@ -1000,9 +1012,13 @@ exports.endSession = async (req, res) => {
       message: "Session ended successfully and reports generated",
       session,
       reports,
+      activityLogs,
     });
   } catch (error) {
     console.error("End session error:", error);
     res.status(500).json({ message: "Error ending the session and generating reports", error });
   }
 };
+
+
+
