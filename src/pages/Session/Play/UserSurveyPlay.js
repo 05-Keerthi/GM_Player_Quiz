@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAnswerContext } from "../../../context/answerContext";
-import ContentDisplay from "../../../components/Session/ContentDisplay";
+import { useSurveyAnswerContext } from "../../../context/surveyAnswerContext"; // Updated import
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
+import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
 
 const UserSurveyPlay = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
-  const { submitAnswer } = useAnswerContext();
+  const { submitSurveyAnswer } = useSurveyAnswerContext(); // Updated context usage
   const [currentItem, setCurrentItem] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSurveyEnded, setIsSurveyEnded] = useState(false);
   const [startTime, setStartTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   const sessionId = searchParams.get("sessionId");
 
@@ -47,20 +48,27 @@ const UserSurveyPlay = () => {
   useEffect(() => {
     if (socket) {
       socket.on("next-survey-question", (data) => {
-        const { question, isLastQuestion } = data;
+        console.log("Received question data:", data);
+        const { question, isLastQuestion, initialTime } = data;
         setCurrentItem(question);
         setIsLastItem(isLastQuestion);
         setHasSubmitted(false);
         setStartTime(Date.now());
+        setTimeLeft(initialTime || question.timer || 30);
+      });
+
+      socket.on("timer-sync", (data) => {
+        setTimeLeft(data.timeLeft);
       });
 
       socket.on("survey-session-ended", () => {
         setIsSurveyEnded(true);
-        navigate("/join");
+        navigate("/joinsurvey");
       });
 
       return () => {
         socket.off("next-survey-question");
+        socket.off("timer-sync");
         socket.off("survey-session-ended");
       };
     }
@@ -79,7 +87,8 @@ const UserSurveyPlay = () => {
         timeTaken,
       };
 
-      await submitAnswer(sessionId, currentItem._id, answerData);
+      // Updated to use surveyAnswerContext
+      await submitSurveyAnswer(sessionId, currentItem._id, answerData);
       setHasSubmitted(true);
 
       if (socket) {
@@ -126,13 +135,14 @@ const UserSurveyPlay = () => {
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-4xl px-6">
-          <ContentDisplay
+          <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
             onSubmitAnswer={handleSubmitAnswer}
+            timeLeft={timeLeft}
             isLastItem={isLastItem}
             hasSubmitted={hasSubmitted}
-            sessionType="survey"
+            isSurveyEnded={isSurveyEnded}
           />
         </div>
       </div>
