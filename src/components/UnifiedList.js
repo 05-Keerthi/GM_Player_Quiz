@@ -135,7 +135,7 @@ const UnifiedList = ({ contentType }) => {
     const allowedTransitions = {
       active: ["draft", "closed"],
       draft: ["active"],
-      closed: ["active"],
+      closed: ["draft","active"],
     };
 
     if (
