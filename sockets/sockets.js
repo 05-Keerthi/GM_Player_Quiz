@@ -357,13 +357,28 @@ module.exports = (io) => {
   });
 
     // Handle next survey question
-    socket.on("next-survey-question", ({ sessionId, question, isLastQuestion }) => {
+    socket.on("next-survey-question", ({ sessionId, type, item, isLastItem, initialTime }) => {
+      console.log("Emitting next survey question to session:", sessionId);
+      console.log("Question data:", item);
+      
+      // Transform the item to match the expected structure on the client side
+      const transformedQuestion = {
+        _id: item._id,
+        title: item.title,
+        imageUrl: item.imageUrl,
+        timer: item.timer,
+        type: item.type,
+        options: item.options
+      };
+      
       io.to(sessionId).emit("next-survey-question", {
-        question,
-        isLastQuestion,
+        question: transformedQuestion,
+        isLastQuestion: isLastItem,
+        initialTime: initialTime
       });
     });
 
+    
      // Handle survey session completion
      socket.on("end-survey-session", ({ sessionId }) => {
       try {
