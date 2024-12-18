@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
+import SurveyResults from "./SurveyResults";
 
 const AdminSurveyStart = () => {
   const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ const AdminSurveyStart = () => {
   const [isSurveyEnded, setIsSurveyEnded] = useState(false);
   const [timerInterval, setTimerInterval] = useState(null);
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
+  const [showResults, setShowResults] = useState(false);
 
   const surveyId = searchParams.get("surveyId");
   const sessionId = searchParams.get("sessionId");
@@ -38,8 +40,8 @@ const AdminSurveyStart = () => {
               _id: response.question._id,
               title: response.question.title,
               imageUrl: response.question.imageUrl,
-              description: response.question.description,  // Added this line
-              dimension: response.question.dimension,  
+              description: response.question.description,
+              dimension: response.question.dimension,
               timer: response.question.timer,
               type: "question",
               options: response.question.answerOptions.map((option) => ({
@@ -79,6 +81,20 @@ const AdminSurveyStart = () => {
     };
   }, [sessionId, joinCode]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on("survey-submit-answer", (data) => {
+        if (currentItem && data.questionId === currentItem._id) {
+          setSubmittedAnswers((prev) => [...prev, data]);
+        }
+      });
+
+      return () => {
+        socket.off("survey-submit-answer");
+      };
+    }
+  }, [socket, currentItem]);
+
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -104,22 +120,13 @@ const AdminSurveyStart = () => {
     setTimerInterval(interval);
   };
 
-  useEffect(() => {
-    if (socket) {
-      socket.on("survey-submit-answer", (data) => {
-        if (currentItem && data.questionId === currentItem._id) {
-          setSubmittedAnswers((prev) => [...prev, data]);
-        }
-      });
-
-      return () => {
-        socket.off("survey-submit-answer");
-      };
-    }
-  }, [socket, currentItem]);
-
   const handleNext = async () => {
     try {
+      if (isLastItem) {
+        setShowResults(true);
+        return;
+      }
+
       setSubmittedAnswers([]);
       if (!joinCode) {
         console.error("Join code is missing");
@@ -128,7 +135,6 @@ const AdminSurveyStart = () => {
 
       if (timerInterval) {
         clearInterval(timerInterval);
-        // AdminSurveyStart.js (continued)
         setTimerInterval(null);
       }
 
@@ -139,8 +145,8 @@ const AdminSurveyStart = () => {
           _id: response.question._id,
           title: response.question.title,
           imageUrl: response.question.imageUrl,
-          description: response.question.description,  // Added this line
-          dimension: response.question.dimension,  
+          description: response.question.description,
+          dimension: response.question.dimension,
           timer: response.question.timer,
           type: "question",
           options: response.question.answerOptions.map((option) => ({
@@ -167,23 +173,9 @@ const AdminSurveyStart = () => {
 
           startTimer(socket, sessionId, newTime);
         }
-      } else {
-        setIsSurveyEnded(true);
-        if (socket) {
-          socket.emit("survey-completed", { sessionId });
-        }
       }
     } catch (error) {
-      if (
-        error.response?.data?.message === "No more items left in the session"
-      ) {
-        setIsSurveyEnded(true);
-        if (socket) {
-          socket.emit("end-survey-session", { sessionId });
-        }
-      } else {
-        console.error("Error getting next question:", error);
-      }
+      console.error("Error getting next question:", error);
     }
   };
 
@@ -211,6 +203,18 @@ const AdminSurveyStart = () => {
     }
   };
 
+  // Render survey results if showResults is true
+  if (showResults) {
+    return (
+      <SurveyResults
+        sessionId={sessionId}
+        joinCode={joinCode}
+        onBackToSurvey={() => setShowResults(false)}
+      />
+    );
+  }
+
+  // Render survey completed state
   if (isSurveyEnded) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
@@ -228,6 +232,7 @@ const AdminSurveyStart = () => {
     );
   }
 
+  // Render main survey content
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">

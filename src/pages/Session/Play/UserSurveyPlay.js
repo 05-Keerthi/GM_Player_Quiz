@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useSurveyAnswerContext } from "../../../context/surveyAnswerContext"; // Updated import
+import { useSurveyAnswerContext } from "../../../context/surveyAnswerContext";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
@@ -10,7 +10,7 @@ const UserSurveyPlay = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
-  const { submitSurveyAnswer } = useSurveyAnswerContext(); // Updated context usage
+  const { submitSurveyAnswer } = useSurveyAnswerContext();
   const [currentItem, setCurrentItem] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isLastItem, setIsLastItem] = useState(false);
@@ -81,16 +81,18 @@ const UserSurveyPlay = () => {
 
     try {
       const timeTaken = Math.round((Date.now() - startTime) / 1000);
+
+      // Format the answer data to match the backend API expectations
       const answerData = {
-        answer: answer.text,
-        userId: user._id,
+        answer: answer.text, // Changed from surveyAnswer to answer to match backend
         timeTaken,
       };
 
-      // Updated to use surveyAnswerContext
+      // Submit to backend
       await submitSurveyAnswer(sessionId, currentItem._id, answerData);
       setHasSubmitted(true);
 
+      // Emit socket event with the same structure as backend emits
       if (socket) {
         socket.emit("survey-submit-answer", {
           sessionId,
@@ -102,6 +104,8 @@ const UserSurveyPlay = () => {
       }
     } catch (error) {
       console.error("Error submitting answer:", error);
+      // Optionally show error to user
+      // toast.error("Failed to submit answer. Please try again.");
     }
   };
 
