@@ -1,4 +1,3 @@
-// AdminSurveyStart.js
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -29,7 +28,7 @@ const AdminSurveyStart = () => {
   useEffect(() => {
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
-    newSocket.emit("create-session", { sessionId });
+    newSocket.emit("create-survey-session", { sessionId });
 
     const initializeSurvey = async () => {
       try {
@@ -83,14 +82,22 @@ const AdminSurveyStart = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.on("survey-submit-answer", (data) => {
+      socket.on("survey-answer-submitted", (data) => {
         if (currentItem && data.questionId === currentItem._id) {
-          setSubmittedAnswers((prev) => [...prev, data]);
+          setSubmittedAnswers((prev) => [
+            ...prev,
+            {
+              questionId: data.questionId,
+              answer: data.answer,
+              userId: data.userId,
+              timeTaken: data.timeTaken,
+            },
+          ]);
         }
       });
 
       return () => {
-        socket.off("survey-submit-answer");
+        socket.off("survey-answer-submitted");
       };
     }
   }, [socket, currentItem]);
@@ -122,24 +129,28 @@ const AdminSurveyStart = () => {
 
   const handleNext = async () => {
     try {
-      if (isLastItem) {
-        setShowResults(true);
-        return;
-      }
-
       setSubmittedAnswers([]);
       if (!joinCode) {
         console.error("Join code is missing");
         return;
       }
-
+  
       if (timerInterval) {
         clearInterval(timerInterval);
         setTimerInterval(null);
       }
-
+  
       const response = await nextSurveyQuestion(joinCode, sessionId);
-
+      
+      // Check if we got the "no more questions" message
+      if (response.message === "No more questions left in the survey session") {
+        setShowResults(true);
+        if (socket) {
+          socket.emit("survey-completed", { sessionId });
+        }
+        return;
+      }
+  
       if (response.question) {
         const transformedItem = {
           _id: response.question._id,
@@ -155,13 +166,13 @@ const AdminSurveyStart = () => {
             isCorrect: false,
           })),
         };
-
+  
         setCurrentItem(transformedItem);
         const newTime = transformedItem.timer || 30;
         setTimeLeft(newTime);
         setTimerActive(true);
         setIsLastItem(response.isLastItem || false);
-
+  
         if (socket) {
           socket.emit("next-survey-question", {
             sessionId,
@@ -170,15 +181,21 @@ const AdminSurveyStart = () => {
             isLastItem: response.isLastItem || false,
             initialTime: newTime,
           });
-
+  
           startTimer(socket, sessionId, newTime);
         }
       }
     } catch (error) {
       console.error("Error getting next question:", error);
+      // Check if the error indicates no more questions
+      if (error.response?.data?.message === "No more questions left in the survey session") {
+        setShowResults(true);
+        if (socket) {
+          socket.emit("survey-completed", { sessionId });
+        }
+      }
     }
   };
-
   const handleEndSurvey = async () => {
     try {
       if (!joinCode) {
@@ -194,7 +211,7 @@ const AdminSurveyStart = () => {
       await endSurveySession(joinCode, sessionId);
 
       if (socket) {
-        socket.emit("end-session", { sessionId });
+        socket.emit("end-survey-session", { sessionId });
       }
 
       navigate("/survey-list");
@@ -203,7 +220,6 @@ const AdminSurveyStart = () => {
     }
   };
 
-  // Render survey results if showResults is true
   if (showResults) {
     return (
       <SurveyResults
@@ -214,25 +230,7 @@ const AdminSurveyStart = () => {
     );
   }
 
-  // Render survey completed state
-  if (isSurveyEnded) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Survey Completed</h2>
-          <p className="mb-6">All participants have completed the survey.</p>
-          <button
-            onClick={handleEndSurvey}
-            className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-            End Session
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render main survey content
+  // Rest of the render logic remains the same
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
