@@ -33,7 +33,6 @@
 //     if (!socket) return;
 
 //     const handleNewNotification = async (data) => {
-//       // Refresh notifications when a new one is received
 //       if (data.userId) {
 //         await getNotificationsByUserId(data.userId);
 //       }
@@ -65,9 +64,14 @@
 //       }
 
 //       // Handle different types of notifications
-//       if (notification.sixDigitCode) {
+//       if (notification.type === "quiz_result" && notification.sessionId) {
+//         // Navigate to results page with specific session ID
+//         navigate(`/leaderboard?sessionId=${notification.sessionId}`);
+//       } else if (notification.sixDigitCode) {
+//         // Handle join code notifications
 //         navigate(`/join?code=${notification.sixDigitCode}`);
 //       } else if (notification.qrCodeData) {
+//         // Open QR code data in a new tab
 //         window.open(notification.qrCodeData, "_blank");
 //       }
 
@@ -89,195 +93,31 @@
 //     return notificationDate.toLocaleDateString();
 //   }, []);
 
-//   return (
-//     <div
-//       className="relative notification-dropdown"
-//       onClick={(e) => e.stopPropagation()}
-//     >
-//       <div
-//         className="cursor-pointer relative"
-//         onClick={() => setIsOpen(!isOpen)}
-//       >
-//         <FaBell className="text-gray-600 hover:text-gray-800" size={24} />
-//         {notifications.some((n) => !n.read) && (
-//           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-//             {notifications.filter((n) => !n.read).length}
+//   const renderNotificationMessage = (notification) => {
+//     // Special handling for quiz result notifications
+//     if (notification.type === "quiz_result") {
+//       return (
+//         <div className="text-sm">
+//           <span className="text-gray-600 font-medium">
+//             Quiz Result Available:
 //           </span>
-//         )}
-//       </div>
-
-//       {isOpen && (
-//         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
-//           <div className="p-3 border-b border-gray-200">
-//             <h3 className="text-lg font-semibold text-gray-800">
-//               Notifications
-//             </h3>
+//           <div className="text-gray-500 text-sm mt-1">
+//             <span>Score:{notification.score}</span>
 //           </div>
-
-//           <div className="max-h-96 overflow-y-auto">
-//             {loading ? (
-//               <div className="flex justify-center py-4">
-//                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-//               </div>
-//             ) : error ? (
-//               <div className="p-4 text-center text-red-500">
-//                 {error.message}
-//               </div>
-//             ) : notifications.length > 0 ? (
-//               notifications.map((notification) => (
-//                 <div
-//                   key={notification._id}
-//                   onClick={() => handleNotificationClick(notification)}
-//                   className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
-//                     !notification.read ? "bg-blue-50" : ""
-//                   }`}
-//                 >
-//                   <div className="flex flex-col gap-2">
-//                     <div className="text-sm">
-//                       <span className="text-gray-600">
-//                         {notification.message}
-//                       </span>
-//                     </div>
-
-//                     {notification.sixDigitCode && (
-//                       <div className="text-xs text-gray-500">
-//                         Code:{" "}
-//                         <span className="font-medium">
-//                           {notification.sixDigitCode}
-//                         </span>
-//                       </div>
-//                     )}
-
-//                     <div className="flex items-center justify-between mt-1">
-//                       <span className="text-xs text-gray-500">
-//                         {formatNotificationTime(notification.createdAt)}
-//                       </span>
-//                       {!notification.read && (
-//                         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-//                           New
-//                         </span>
-//                       )}
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))
-//             ) : (
-//               <div className="p-4 text-center text-gray-500">
-//                 No notifications yet
-//               </div>
-//             )}
+//           <div className="text-xs text-gray-500 mt-1">
+//             <span className="font-medium">Click to view full results</span>
 //           </div>
-
-//           {notifications.length > 0 && (
-//             <div className="p-3 border-t border-gray-200">
-//               <button
-//                 className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
-//                 onClick={() => {
-//                   /* Handle view all notifications */
-//                 }}
-//               >
-//                 View All Notifications
-//               </button>
-//             </div>
-//           )}
 //         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// import React, { useState, useEffect, useCallback } from "react";
-// import { FaBell } from "react-icons/fa";
-// import { useNavigate } from "react-router-dom";
-// import { useNotificationContext } from "../context/notificationContext";
-// import io from "socket.io-client";
-
-// const NotificationDropdown = () => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const {
-//     notifications,
-//     loading,
-//     error,
-//     getNotificationsByUserId,
-//     markAsRead,
-//   } = useNotificationContext();
-//   const [socket, setSocket] = useState(null);
-//   const navigate = useNavigate();
-
-//   // Initialize socket connection
-//   useEffect(() => {
-//     const newSocket = io("http://localhost:5000");
-//     setSocket(newSocket);
-
-//     return () => {
-//       if (newSocket) {
-//         newSocket.disconnect();
-//       }
-//     };
-//   }, []);
-
-//   // Handle socket events
-//   useEffect(() => {
-//     if (!socket) return;
-
-//     const handleNewNotification = async (data) => {
-//       // Refresh notifications when a new one is received
-//       if (data.userId) {
-//         await getNotificationsByUserId(data.userId);
-//       }
-//     };
-
-//     socket.on("new_notification", handleNewNotification);
-
-//     return () => {
-//       socket.off("new_notification", handleNewNotification);
-//     };
-//   }, [socket, getNotificationsByUserId]);
-
-//   // Close dropdown when clicking outside
-//   useEffect(() => {
-//     const handleClickOutside = (event) => {
-//       if (isOpen && !event.target.closest(".notification-dropdown")) {
-//         setIsOpen(false);
-//       }
-//     };
-
-//     document.addEventListener("click", handleClickOutside);
-//     return () => document.removeEventListener("click", handleClickOutside);
-//   }, [isOpen]);
-
-//   const handleNotificationClick = async (notification) => {
-//     try {
-//       if (!notification.read) {
-//         await markAsRead(notification._id);
-//       }
-
-//       // Handle different types of notifications
-//       if (notification.sixDigitCode) {
-//         navigate(`/join?code=${notification.sixDigitCode}`);
-//       } else if (notification.qrCodeData) {
-//         window.open(notification.qrCodeData, "_blank");
-//       } else if (notification.quizResultSessionId) {
-//         navigate(`/results?sessionId=${notification.quizResultSessionId}`);
-//       }
-
-//       // Close dropdown after clicking
-//       setIsOpen(false);
-//     } catch (error) {
-//       console.error("Error handling notification click:", error);
+//       );
 //     }
+
+//     // Default message rendering
+//     return (
+//       <div className="text-sm">
+//         <span className="text-gray-600">{notification.message}</span>
+//       </div>
+//     );
 //   };
-
-//   const formatNotificationTime = useCallback((createdAt) => {
-//     const now = new Date();
-//     const notificationDate = new Date(createdAt);
-//     const diffInMinutes = Math.floor((now - notificationDate) / (1000 * 60));
-
-//     if (diffInMinutes < 1) return "Just now";
-//     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-//     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-//     return notificationDate.toLocaleDateString();
-//   }, []);
 
 //   return (
 //     <div
@@ -323,30 +163,7 @@
 //                   }`}
 //                 >
 //                   <div className="flex flex-col gap-2">
-//                     <div className="text-sm">
-//                       <span className="text-gray-600">
-//                         {notification.message}
-//                       </span>
-//                     </div>
-
-//                     {/* Quiz Result Specific Display */}
-//                     {notification.quizResultSessionId && (
-//                       <div className="text-xs text-gray-500">
-//                         Quiz Session:{" "}
-//                         <span className="font-medium">
-//                           {notification.quizResultSessionId}
-//                         </span>
-//                       </div>
-//                     )}
-
-//                     {notification.sixDigitCode && (
-//                       <div className="text-xs text-gray-500">
-//                         Code:{" "}
-//                         <span className="font-medium">
-//                           {notification.sixDigitCode}
-//                         </span>
-//                       </div>
-//                     )}
+//                     {renderNotificationMessage(notification)}
 
 //                     <div className="flex items-center justify-between mt-1">
 //                       <span className="text-xs text-gray-500">
@@ -373,7 +190,7 @@
 //               <button
 //                 className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
 //                 onClick={() => {
-//                   /* Handle view all notifications */
+//                   navigate("/notifications");
 //                 }}
 //               >
 //                 View All Notifications
@@ -391,6 +208,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { FaBell } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useNotificationContext } from "../context/notificationContext";
+import { useSurveyNotificationContext } from "../context/SurveynotificationContext";  // Import the SurveyNotificationContext
 import io from "socket.io-client";
 
 const NotificationDropdown = () => {
@@ -402,6 +220,13 @@ const NotificationDropdown = () => {
     getNotificationsByUserId,
     markAsRead,
   } = useNotificationContext();
+  const {
+    notifications: surveyNotifications,
+    loading: surveyLoading,
+    error: surveyError,
+    getNotificationsByUserId: getSurveyNotificationsByUserId,
+    markAsRead: markSurveyAsRead,
+  } = useSurveyNotificationContext();  // Access survey notifications
   const [socket, setSocket] = useState(null);
   const navigate = useNavigate();
 
@@ -417,7 +242,7 @@ const NotificationDropdown = () => {
     };
   }, []);
 
-  // Handle socket events
+  // Handle socket events for regular notifications
   useEffect(() => {
     if (!socket) return;
 
@@ -433,6 +258,23 @@ const NotificationDropdown = () => {
       socket.off("new_notification", handleNewNotification);
     };
   }, [socket, getNotificationsByUserId]);
+
+  // Handle socket events for survey notifications
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewSurveyNotification = async (data) => {
+      if (data.userId) {
+        await getSurveyNotificationsByUserId(data.userId);
+      }
+    };
+
+    socket.on("new_survey_notification", handleNewSurveyNotification);
+
+    return () => {
+      socket.off("new_survey_notification", handleNewSurveyNotification);
+    };
+  }, [socket, getSurveyNotificationsByUserId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -453,21 +295,34 @@ const NotificationDropdown = () => {
       }
 
       // Handle different types of notifications
-      if (notification.type === 'quiz_result' && notification.sessionId) {
-        // Navigate to results page with specific session ID
-        navigate(`/results?sessionId=${notification.sessionId}`);
+      if (notification.type === "quiz_result" && notification.sessionId) {
+        navigate(`/leaderboard?sessionId=${notification.sessionId}`);
       } else if (notification.sixDigitCode) {
-        // Handle join code notifications
         navigate(`/join?code=${notification.sixDigitCode}`);
       } else if (notification.qrCodeData) {
-        // Open QR code data in a new tab
         window.open(notification.qrCodeData, "_blank");
       }
 
-      // Close dropdown after clicking
       setIsOpen(false);
     } catch (error) {
       console.error("Error handling notification click:", error);
+    }
+  };
+
+  const handleSurveyNotificationClick = async (notification) => {
+    try {
+      if (!notification.read) {
+        await markSurveyAsRead(notification.id);
+      }
+
+      // Handle survey invitation notification
+      if (notification.type === "Survey_Invitation" && notification.surveyId) {
+        navigate(`/survey/${notification.surveyId}`);
+      }
+
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error handling survey notification click:", error);
     }
   };
 
@@ -483,11 +338,15 @@ const NotificationDropdown = () => {
   }, []);
 
   const renderNotificationMessage = (notification) => {
-    // Special handling for quiz result notifications
-    if (notification.type === 'quiz_result') {
+    if (notification.type === "quiz_result") {
       return (
         <div className="text-sm">
-          <span className="text-gray-600">{notification.message}</span>
+          <span className="text-gray-600 font-medium">
+            Quiz Result Available:
+          </span>
+          <div className="text-gray-500 text-sm mt-1">
+            <span>Score: {notification.score}</span>
+          </div>
           <div className="text-xs text-gray-500 mt-1">
             <span className="font-medium">Click to view full results</span>
           </div>
@@ -495,7 +354,20 @@ const NotificationDropdown = () => {
       );
     }
 
-    // Default message rendering
+    if (notification.type === "survey_invitation") {
+      return (
+        <div className="text-sm">
+          <span className="text-gray-600 font-medium">Survey Invitation:</span>
+          <div className="text-gray-500 text-sm mt-1">
+            <span>{notification.surveyName}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            <span className="font-medium">Click to participate</span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="text-sm">
         <span className="text-gray-600">{notification.message}</span>
@@ -504,18 +376,12 @@ const NotificationDropdown = () => {
   };
 
   return (
-    <div
-      className="relative notification-dropdown"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div
-        className="cursor-pointer relative"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+    <div className="relative notification-dropdown" onClick={(e) => e.stopPropagation()}>
+      <div className="cursor-pointer relative" onClick={() => setIsOpen(!isOpen)}>
         <FaBell className="text-gray-600 hover:text-gray-800" size={24} />
-        {notifications.some((n) => !n.read) && (
+        {(notifications.some((n) => !n.read) || surveyNotifications.some((n) => !n.read)) && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {notifications.filter((n) => !n.read).length}
+            {notifications.filter((n) => !n.read).length + surveyNotifications.filter((n) => !n.read).length}
           </span>
         )}
       </div>
@@ -523,60 +389,47 @@ const NotificationDropdown = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
           <div className="p-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Notifications
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
-            {loading ? (
+            {loading || surveyLoading ? (
               <div className="flex justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
-            ) : error ? (
+            ) : error || surveyError ? (
               <div className="p-4 text-center text-red-500">
-                {error.message}
+                {error?.message || surveyError?.message}
               </div>
-            ) : notifications.length > 0 ? (
-              notifications.map((notification) => (
-                <div
-                  key={notification._id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    !notification.read ? "bg-blue-50" : ""
-                  }`}
-                >
-                  <div className="flex flex-col gap-2">
-                    {renderNotificationMessage(notification)}
+            ) : (
+              <>
+                {notifications.concat(surveyNotifications).map((notification) => (
+                  <div
+                    key={notification.id || notification._id}
+                    onClick={() => notification.type === "survey_invitation" ? handleSurveyNotificationClick(notification) : handleNotificationClick(notification)}
+                    className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.read ? "bg-blue-50" : ""}`}
+                  >
+                    <div className="flex flex-col gap-2">
+                      {renderNotificationMessage(notification)}
 
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500">
-                        {formatNotificationTime(notification.createdAt)}
-                      </span>
-                      {!notification.read && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          New
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-gray-500">
+                          {formatNotificationTime(notification.createdAt)}
                         </span>
-                      )}
+                        {!notification.read && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">New</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">
-                No notifications yet
-              </div>
+                ))}
+              </>
             )}
           </div>
 
-          {notifications.length > 0 && (
+          {notifications.length > 0 || surveyNotifications.length > 0 && (
             <div className="p-3 border-t border-gray-200">
-              <button
-                className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
-                onClick={() => {
-                  navigate("/notifications");
-                }}
-              >
+              <button className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium" onClick={() => navigate("/notifications")}>
                 View All Notifications
               </button>
             </div>

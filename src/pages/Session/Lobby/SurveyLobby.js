@@ -5,7 +5,7 @@ import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import { Loader2, ChevronRight, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../../components/NavbarComp";
-import InviteModal from "../../../models/InviteModal";
+import SurveyInviteModal from "../../../models/SurveyInviteModal";
 
 const SurveyLobby = () => {
   const navigate = useNavigate();
@@ -357,7 +357,7 @@ const SurveyLobby = () => {
         </div>
       </div>
 
-      <InviteModal
+      <SurveyInviteModal
         isOpen={isInviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
         sessionData={{
