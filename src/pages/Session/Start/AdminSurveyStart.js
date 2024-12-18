@@ -134,23 +134,24 @@ const AdminSurveyStart = () => {
         console.error("Join code is missing");
         return;
       }
-  
+
       if (timerInterval) {
         clearInterval(timerInterval);
         setTimerInterval(null);
       }
-  
+
       const response = await nextSurveyQuestion(joinCode, sessionId);
-      
+
       // Check if we got the "no more questions" message
       if (response.message === "No more questions left in the survey session") {
-        setShowResults(true);
         if (socket) {
           socket.emit("survey-completed", { sessionId });
         }
+        // Navigate to results page with necessary params
+        navigate(`/results/${sessionId}?joinCode=${joinCode}`);
         return;
       }
-  
+
       if (response.question) {
         const transformedItem = {
           _id: response.question._id,
@@ -166,13 +167,13 @@ const AdminSurveyStart = () => {
             isCorrect: false,
           })),
         };
-  
+
         setCurrentItem(transformedItem);
         const newTime = transformedItem.timer || 30;
         setTimeLeft(newTime);
         setTimerActive(true);
         setIsLastItem(response.isLastItem || false);
-  
+
         if (socket) {
           socket.emit("next-survey-question", {
             sessionId,
@@ -181,21 +182,26 @@ const AdminSurveyStart = () => {
             isLastItem: response.isLastItem || false,
             initialTime: newTime,
           });
-  
+
           startTimer(socket, sessionId, newTime);
         }
       }
     } catch (error) {
       console.error("Error getting next question:", error);
       // Check if the error indicates no more questions
-      if (error.response?.data?.message === "No more questions left in the survey session") {
-        setShowResults(true);
+      if (
+        error.response?.data?.message ===
+        "No more questions left in the survey session"
+      ) {
         if (socket) {
           socket.emit("survey-completed", { sessionId });
         }
+        // Navigate to results page with necessary params
+        navigate(`/results/${sessionId}?joinCode=${joinCode}`);
       }
     }
   };
+
   const handleEndSurvey = async () => {
     try {
       if (!joinCode) {
