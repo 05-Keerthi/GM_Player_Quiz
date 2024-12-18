@@ -1,26 +1,81 @@
-// NavbarComp.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
 import { useNotificationContext } from "../context/notificationContext";
+import { useSurveyNotificationContext } from "../context/SurveynotificationContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
 import NotificationDropdown from "../models/notificationDropdown";
+import io from "socket.io-client";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
   const { getNotificationsByUserId } = useNotificationContext();
+  const { getNotificationsByUserId: getSurveyNotificationsByUserId } =
+    useSurveyNotificationContext();
   const navigate = useNavigate();
   const [logoSrc, setLogoSrc] = useState(defaultLogo);
   const [logoError, setLogoError] = useState(false);
+  const [socket, setSocket] = useState(null);
 
-  // Fetch notifications when user is authenticated
+  // Initialize socket connection
   useEffect(() => {
     if (user) {
-      getNotificationsByUserId(user.id);
+      const newSocket = io("http://localhost:5000");
+      setSocket(newSocket);
+
+      // Join user-specific room for notifications
+      newSocket.emit("join-user-room", { userId: user.id });
+
+      return () => {
+        if (newSocket) {
+          newSocket.disconnect();
+        }
+      };
     }
   }, [user]);
-  
+
+  // Handle socket events for notifications
+  useEffect(() => {
+    if (socket && user) {
+      // Listen for new survey notifications
+      const handleNewSurveyNotification = async (data) => {
+        console.log("Received new survey notification:", data);
+        await getSurveyNotificationsByUserId(user.id);
+      };
+
+      // Listen for regular notifications
+      const handleNewNotification = async (data) => {
+        console.log("Received new notification:", data);
+        await getNotificationsByUserId(user.id);
+      };
+
+      socket.on("new_survey_notification", handleNewSurveyNotification);
+      socket.on("receive-notification", handleNewNotification);
+
+      return () => {
+        socket.off("new_survey_notification", handleNewSurveyNotification);
+        socket.off("receive-notification", handleNewNotification);
+      };
+    }
+  }, [socket, user, getNotificationsByUserId, getSurveyNotificationsByUserId]);
+
+  // Fetch both types of notifications when user is authenticated
+  useEffect(() => {
+    if (user) {
+      // Fetch regular notifications
+      getNotificationsByUserId(user.id);
+      // Fetch survey notifications
+      getSurveyNotificationsByUserId(user.id);
+
+      // Also get any unread notifications
+      if (socket) {
+        socket.emit("get-unread-survey-notifications", { userId: user.id });
+      }
+    }
+  }, [user]);
+
+  // Logo handling code remains the same...
   useEffect(() => {
     setLogoError(false);
     try {
@@ -64,7 +119,8 @@ const Navbar = () => {
 
   const primaryColor = user?.tenantId?.primaryColor || "#2929FF";
   const secondaryColor = user?.tenantId?.secondaryColor || "#FFFFFF";
-  const areColorsSame = primaryColor.toLowerCase() === secondaryColor.toLowerCase();
+  const areColorsSame =
+    primaryColor.toLowerCase() === secondaryColor.toLowerCase();
 
   const navbarStyle = {
     backgroundColor: primaryColor,
