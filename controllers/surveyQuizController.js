@@ -3,7 +3,7 @@ const SurveyQuestion = require('../models/surveyQuestion');
 const SurveyQuiz = require('../models/surveyQuiz'); 
 const Media = require('../models/Media');
 
-const ActivityLog = require('../models/ActivityLog'); 
+// const ActivityLog = require('../models/ActivityLog'); 
 
 // Create a new SurveyQuiz
 exports.createSurveyQuiz = async (req, res) => {
@@ -32,20 +32,20 @@ exports.createSurveyQuiz = async (req, res) => {
     // Save to database
     await surveyQuiz.save();
 
-    const activityLog = new ActivityLog({
-      user: req.user._id,
-      activityType: 'survey_create',
-      details: {
-        username: req.user.username,
-        surveyTitle: title,
-        surveyDescription: description,
-        tenantId: req.user.tenantId || 'defaultTenantId', 
-        duration: req.body.duration || 'N/A',           
-      },
-      createdAt: new Date(),
-    });
+    // const activityLog = new ActivityLog({
+    //   user: req.user._id,
+    //   activityType: 'survey_create',
+    //   details: {
+    //     username: req.user.username,
+    //     surveyTitle: title,
+    //     surveyDescription: description,
+    //     tenantId: req.user.tenantId || 'defaultTenantId', 
+    //     duration: req.body.duration || 'N/A',           
+    //   },
+    //   createdAt: new Date(),
+    // });
     
-    await activityLog.save();
+    // await activityLog.save();
 
         // Fetch the saved surveyQuiz with populated fields
     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
