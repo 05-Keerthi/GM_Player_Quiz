@@ -29,8 +29,8 @@ import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
 import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
 import AdminSurveyStart from "./pages/Session/Start/AdminSurveyStart";
 import UserSurveyPlay from "./pages/Session/Play/UserSurveyPlay";
-import QuestionDetails from "./pages/Session/Start/QuestionDetails";
 import SurveyResults from "./pages/Session/Start/SurveyResults";
+import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -136,7 +136,7 @@ export default function App() {
         <Route path="/start-survey" element={<AdminSurveyStart />} />
         <Route
           path="/question-details/:sessionId/:questionId"
-          element={<QuestionDetails />}
+          element={<QuestionDetailsResult />}
         />
         <Route path="/results/:sessionId" element={<SurveyResults />} />
         <Route path="/survey-play" element={<UserSurveyPlay />} />

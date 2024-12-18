@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-const QuestionDetails = () => {
+const QuestionDetailsResult = () => {
   const { questionId, sessionId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -140,4 +140,4 @@ const QuestionDetails = () => {
   );
 };
 
-export default QuestionDetails;
+export default QuestionDetailsResult;
