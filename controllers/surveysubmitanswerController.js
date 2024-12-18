@@ -43,7 +43,7 @@ exports.submitSurveyAnswer = async (req, res) => {
         surveyQuestion: questionId,
         surveyPlayers: userId,
         surveySession: sessionId,
-        answer,
+        surveyAnswer: answer,
         timeTaken,
       });
   
