@@ -2,45 +2,46 @@ import React, { useState, useEffect } from "react";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   const [optionCounts, setOptionCounts] = useState({});
-  const [submittedAnswers, setSubmittedAnswers] = useState([]);
 
+  // Initialize counts when question changes
   useEffect(() => {
-    // Reset states when question changes
-    if (currentItem?.type === "open_ended") {
-      setSubmittedAnswers([]);
-    } else if (currentItem?.options) {
+    if (currentItem?.options) {
       const initialCounts = {};
-      currentItem.options.forEach((option, index) => {
-        initialCounts[option.text] = 0;
+      currentItem.options.forEach((_, index) => {
+        initialCounts[index] = 0;
       });
       setOptionCounts(initialCounts);
     }
-  }, [currentItem]);
+  }, [currentItem?.options]);
 
+  // Socket event listener
   useEffect(() => {
-    if (!socket || !currentItem?._id) return;
-
-    const handleAnswerSubmitted = (data) => {
-      const { answerDetails } = data;
-
-      if (answerDetails.questionId === currentItem._id) {
-        if (currentItem.type === "open_ended") {
-          setSubmittedAnswers((prev) => [...prev, answerDetails.answer]);
-        } else {
-          setOptionCounts((prev) => ({
-            ...prev,
-            [answerDetails.answer]: (prev[answerDetails.answer] || 0) + 1,
-          }));
+    if (socket && currentItem?._id && currentItem.type !== "bullet_points") {
+      const handleAnswerSubmitted = ({ answerDetails }) => {
+        if (answerDetails.questionId === currentItem._id) {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = currentItem.options.findIndex(
+              (opt) => opt.text === answerDetails.answer
+            );
+            if (optionIndex !== -1) {
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            }
+            return newCounts;
+          });
         }
-      }
-    };
+      };
 
-    socket.on("answer-submitted", handleAnswerSubmitted);
-
-    return () => socket.off("answer-submitted", handleAnswerSubmitted);
+      socket.on("answer-submitted", handleAnswerSubmitted);
+      return () => socket.off("answer-submitted", handleAnswerSubmitted);
+    }
   }, [socket, currentItem]);
 
-  if (!currentItem || currentItem.type === "bullet_points") {
+  if (
+    !currentItem ||
+    currentItem.type === "bullet_points" ||
+    !currentItem.options
+  ) {
     return null;
   }
 
@@ -55,53 +56,18 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     "bg-orange-200",
   ];
 
-  if (currentItem.type === "open_ended") {
-    return (
-      <div className="flex flex-col gap-2 mb-4">
-        <div className="text-right text-gray-600 font-medium">
-          Total Responses: {submittedAnswers.length}
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow max-h-96 overflow-y-auto">
-          {submittedAnswers.map((answer, index) => (
-            <div
-              key={index}
-              className="p-2 mb-2 bg-gray-50 rounded-lg border border-gray-200"
-            >
-              {answer}
-            </div>
-          ))}
-          {submittedAnswers.length === 0 && (
-            <p className="text-gray-500 italic text-center">
-              No answers submitted yet
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2 mb-4">
-      <div className="text-center text-gray-600 font-medium">
-        Total Responses:{" "}
-        {Object.values(optionCounts).reduce((a, b) => a + b, 0)}
-      </div>
-      <div className="flex flex-row justify-end gap-4 pr-2">
-        {currentItem.options.map((option, index) => (
-          <div
-            key={option._id || index}
-            className="flex flex-col items-center gap-2"
-          >
-            <div
-              className={`${
-                bgColors[index % bgColors.length]
-              } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-            >
-              {optionCounts[option.text] || 0}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
+      {currentItem.options.map((_, index) => (
+        <div
+          key={index}
+          className={`${
+            bgColors[index % bgColors.length]
+          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+        >
+          {optionCounts[index] || 0}
+        </div>
+      ))}
     </div>
   );
 };
