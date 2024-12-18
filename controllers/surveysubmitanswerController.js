@@ -71,7 +71,7 @@ exports.submitSurveyAnswer = async (req, res) => {
   };
   
   
-exports.getAllAnswersForSession = async (req, res) => {
+  exports.getAllAnswersForSession = async (req, res) => {
     const { sessionId } = req.params; 
   
     try {
@@ -98,20 +98,17 @@ exports.getAllAnswersForSession = async (req, res) => {
             return res.status(404).json({ message: "No answers found for this session" });
         }
   
-        // Format questions and group answers by users
-        const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
-
-        // Map to store questions with their details
+        const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
         const questionsMap = {};
-        // Group answers by users
         const userAnswers = {};
+        const groupedAnswersByQuestion = {};
 
         answers.forEach(answer => {
             const question = answer.surveyQuestion.toObject();
 
             // Format the image URL if available
             if (question.imageUrl) {
-                const encodedImagePath = encodeURIComponent(question.imageUrl.path.split('\\').pop());
+                const encodedImagePath = encodeURIComponent(question.imageUrl.path.split("\\").pop());
                 question.imageUrl = `${baseUrl}${encodedImagePath}`;
             }
 
@@ -119,6 +116,23 @@ exports.getAllAnswersForSession = async (req, res) => {
             if (!questionsMap[question._id]) {
                 questionsMap[question._id] = question;
             }
+
+            // Group answers by question
+            if (!groupedAnswersByQuestion[question._id]) {
+                groupedAnswersByQuestion[question._id] = {};
+            }
+
+            const option = answer.surveyAnswer; 
+            if (!groupedAnswersByQuestion[question._id][option]) {
+                groupedAnswersByQuestion[question._id][option] = { count: 0, users: [] };
+            }
+
+            groupedAnswersByQuestion[question._id][option].count += 1;
+            groupedAnswersByQuestion[question._id][option].users.push({
+                username: answer.surveyPlayers.username,
+                email: answer.surveyPlayers.email,
+                timeTaken: answer.timeTaken,
+            });
 
             // Add user and their answer to the userAnswers map
             const userId = answer.surveyPlayers._id.toString();
@@ -145,6 +159,7 @@ exports.getAllAnswersForSession = async (req, res) => {
             message: "Answers retrieved successfully",
             questions: Object.values(questionsMap),
             userAnswers: Object.values(userAnswers), 
+            groupedAnswers: groupedAnswersByQuestion, // Grouped counts and users for each question
         });
     } catch (error) {
         console.error("Get all answers for session error:", error);
@@ -154,6 +169,7 @@ exports.getAllAnswersForSession = async (req, res) => {
         });
     }
 };
+
 
   exports.getAnswersForSpecificQuestion = async (req, res) => {
     const { sessionId, questionId } = req.params;
