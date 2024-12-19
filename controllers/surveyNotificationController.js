@@ -132,29 +132,22 @@ exports.getSurveyNotificationsByUserId = async (req, res) => {
       // Fetch all survey notifications related to the user
       const notifications = await SurveyNotification.find({ user: userId }).sort({ createdAt: -1 });
   
-      if (notifications.length === 0) {
-        // If no notifications exist for the user
-        return res.status(404).json({
-          message: `No survey invitations have been sent to this user (User ID: ${userId}).`,
-          notifications: null,
-        });
-      }
   
       // Map over notifications and fetch the related survey session details
       const notificationsWithSessionData = await Promise.all(
         notifications.map(async (notification) => {
-          if (!notification.surveySessionId) {
-            return notification; // If no sessionId, return the notification as is
+          if (!notification.sessionId) {
+            return notification; 
           }
   
-          const surveySession = await Session.findById(notification.surveySessionId).populate(
+          const surveySession = await SurveySession.findById(notification.sessionId).populate(
             'surveyQuiz',
             'title description'
           ).exec();
   
           if (surveySession) {
-            const qrCodeData = surveySession.qrData;
-            const joinCode = surveySession.joinCode;
+            const qrCodeData = surveySession.surveyQrData;
+            const joinCode = surveySession.surveyJoinCode;
             const surveyTitle = surveySession.surveyQuiz?.title;
   
             return {
@@ -164,7 +157,7 @@ exports.getSurveyNotificationsByUserId = async (req, res) => {
               surveyTitle,
             };
           } else {
-            return notification; // Return as-is if no session details exist
+            return notification; 
           }
         })
       );
