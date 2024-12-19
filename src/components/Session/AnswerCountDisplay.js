@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   const [optionCounts, setOptionCounts] = useState({});
+  const [openEndedCount, setOpenEndedCount] = useState(0);
 
   // Initialize counts when question changes
   useEffect(() => {
@@ -11,24 +12,30 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
         initialCounts[index] = 0;
       });
       setOptionCounts(initialCounts);
+    } else if (currentItem?.type === "open_ended") {
+      setOpenEndedCount(0);
     }
-  }, [currentItem?.options]);
+  }, [currentItem]);
 
   // Socket event listener
   useEffect(() => {
     if (socket && currentItem?._id && currentItem.type !== "bullet_points") {
       const handleAnswerSubmitted = ({ answerDetails }) => {
         if (answerDetails.questionId === currentItem._id) {
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            const optionIndex = currentItem.options.findIndex(
-              (opt) => opt.text === answerDetails.answer
-            );
-            if (optionIndex !== -1) {
-              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-            }
-            return newCounts;
-          });
+          if (currentItem.type === "open_ended") {
+            setOpenEndedCount((prev) => prev + 1);
+          } else {
+            setOptionCounts((prev) => {
+              const newCounts = { ...prev };
+              const optionIndex = currentItem.options.findIndex(
+                (opt) => opt.text === answerDetails.answer
+              );
+              if (optionIndex !== -1) {
+                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+              }
+              return newCounts;
+            });
+          }
         }
       };
 
@@ -37,11 +44,7 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     }
   }, [socket, currentItem]);
 
-  if (
-    !currentItem ||
-    currentItem.type === "bullet_points" ||
-    !currentItem.options
-  ) {
+  if (!currentItem || currentItem.type === "bullet_points") {
     return null;
   }
 
@@ -56,6 +59,18 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     "bg-orange-200",
   ];
 
+  // For open-ended questions, show a single response count
+  if (currentItem.type === "open_ended") {
+    return (
+      <div className="flex flex-row justify-end mb-2 pr-2">
+        <div className="bg-blue-200 p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md">
+          {openEndedCount}
+        </div>
+      </div>
+    );
+  }
+
+  // For multiple choice questions, show count for each option
   return (
     <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
       {currentItem.options.map((_, index) => (

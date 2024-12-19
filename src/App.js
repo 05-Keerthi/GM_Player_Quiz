@@ -23,7 +23,7 @@ import HomePage from "./pages/Home";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import SurveyCreator from "./pages/SurveyCreator";
 import UnifiedDetails from "./pages/UnifiedDetails";
-import UnifiedList from "./components/UnifiedList";
+import UnifiedList from "./pages/UnifiedList";
 import SurveyLobby from "./pages/Session/Lobby/SurveyLobby";
 import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
 import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
