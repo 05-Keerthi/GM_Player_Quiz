@@ -1,6 +1,6 @@
 // SurveyJoin.js
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import { Loader2 } from "lucide-react";
 
@@ -9,6 +9,16 @@ const SurveyJoin = () => {
   const [error, setError] = useState("");
   const { joinSurveySession, loading } = useSurveySessionContext();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get code from URL parameters and set it in the input
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const codeFromUrl = params.get("code");
+    if (codeFromUrl) {
+      setJoinCode(codeFromUrl);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

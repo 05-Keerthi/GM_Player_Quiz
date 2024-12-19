@@ -121,8 +121,8 @@
 //   const allNotifications = [...regularNotifications, ...surveyNotifications]
 //     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-//   const unreadCount = 
-//     regularNotifications.filter(n => !n.read).length + 
+//   const unreadCount =
+//     regularNotifications.filter(n => !n.read).length +
 //     surveyNotifications.filter(n => !n.read).length;
 
 //   return (
@@ -220,11 +220,11 @@ const NotificationDropdown = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const userId = localStorage.getItem('userId');
+        const userId = localStorage.getItem("userId");
         if (userId) {
           await Promise.all([
             getRegularNotifications(userId),
-            getSurveyNotifications(userId)
+            getSurveyNotifications(userId),
           ]);
         }
       } catch (error) {
@@ -241,11 +241,11 @@ const NotificationDropdown = () => {
     setSocket(newSocket);
 
     newSocket.on("newNotification", async () => {
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem("userId");
       if (userId) {
         await Promise.all([
           getRegularNotifications(userId),
-          getSurveyNotifications(userId)
+          getSurveyNotifications(userId),
         ]);
       }
     });
@@ -256,6 +256,8 @@ const NotificationDropdown = () => {
     };
   }, [getRegularNotifications, getSurveyNotifications]);
 
+
+  
   const handleSurveyNotificationClick = async (notification) => {
     try {
       console.log("Handling survey notification:", notification);
@@ -263,19 +265,19 @@ const NotificationDropdown = () => {
         const notificationId = notification._id;
         await markSurveyAsRead(notificationId);
         // Refresh notifications
-        const userId = localStorage.getItem('userId');
+        const userId = localStorage.getItem("userId");
         if (userId) {
           await getSurveyNotifications(userId);
         }
       }
 
-      // Navigate using the correct field names from backend
-      if (notification.surveyQrData) {
-        const surveyPath = notification.surveyQrData.split('/join')[0];
-        navigate(surveyPath);
-      } else if (notification.surveyJoinCode) {
-        navigate(`/survey/join?code=${notification.surveyJoinCode}`);
+      // Navigate to survey join page with the correct code
+      if (notification.joinCode) {
+        navigate(`/joinsurvey?code=${notification.joinCode}`);
+      } else if (notification.type === "survey_result" && notification.sessionId) {
+        navigate(`/leaderboard?sessionId=${notification.sessionId}`);
       }
+      setIsOpen(false);
       setIsOpen(false);
     } catch (error) {
       console.error("Error handling survey notification:", error);
@@ -287,7 +289,7 @@ const NotificationDropdown = () => {
       console.log("Handling regular notification:", notification);
       if (!notification.read) {
         await markRegularAsRead(notification._id);
-        const userId = localStorage.getItem('userId');
+        const userId = localStorage.getItem("userId");
         if (userId) {
           await getRegularNotifications(userId);
         }
@@ -295,7 +297,10 @@ const NotificationDropdown = () => {
 
       if (notification.type === "quiz_result" && notification.sessionId) {
         navigate(`/leaderboard?sessionId=${notification.sessionId}`);
+      } else if (notification.sixDigitCode) {
+        navigate(`/join?code=${notification.sixDigitCode}`);
       }
+
       setIsOpen(false);
     } catch (error) {
       console.error("Error handling regular notification:", error);
@@ -335,7 +340,9 @@ const NotificationDropdown = () => {
       case "quiz_result":
         return (
           <div className="text-sm">
-            <span className="text-gray-600 font-medium">Quiz Result Available</span>
+            <span className="text-gray-600 font-medium">
+              Quiz Result Available
+            </span>
             <div className="text-gray-500 text-sm mt-1">
               <span>Score: {notification.score}</span>
             </div>
@@ -357,16 +364,24 @@ const NotificationDropdown = () => {
   }, [surveyNotifications, regularNotifications]);
 
   // Combine and sort all notifications
-  const allNotifications = [...regularNotifications, ...surveyNotifications]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const allNotifications = [
+    ...regularNotifications,
+    ...surveyNotifications,
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const unreadCount = 
-    regularNotifications.filter(n => !n.read).length + 
-    surveyNotifications.filter(n => !n.read).length;
+  const unreadCount =
+    regularNotifications.filter((n) => !n.read).length +
+    surveyNotifications.filter((n) => !n.read).length;
 
   return (
-    <div className="relative notification-dropdown" onClick={(e) => e.stopPropagation()}>
-      <div className="cursor-pointer relative" onClick={() => setIsOpen(!isOpen)}>
+    <div
+      className="relative notification-dropdown"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        className="cursor-pointer relative"
+        onClick={() => setIsOpen(!isOpen)}
+      >
         <FaBell className="text-gray-600 hover:text-gray-800" size={24} />
         {unreadCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -378,7 +393,9 @@ const NotificationDropdown = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
           <div className="p-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Notifications
+            </h3>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
