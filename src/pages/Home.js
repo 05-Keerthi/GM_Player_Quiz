@@ -7,6 +7,7 @@ import {
   Rocket,
   Users,
   Building,
+  Activity
 } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
@@ -108,6 +109,14 @@ export default function HomePage() {
             buttonText: "Go to Survey",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
             path: "/survey-list",
+          },
+          {
+            icon: <Activity className="text-blue-600" size={48} />,
+            title: "View Activity log",
+            description: "Manage and monitor the Activities",
+            buttonText: "Go to Activity log",
+            buttonColor: "bg-blue-500 hover:bg-orange-600",
+            path: "/Activity-log",
           },
         ];
       case "user":

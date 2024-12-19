@@ -31,6 +31,7 @@ import AdminSurveyStart from "./pages/Session/Start/AdminSurveyStart";
 import UserSurveyPlay from "./pages/Session/Play/UserSurveyPlay";
 import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
+import ActivityLogPage from "./pages/Activity/ActivityLog";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -151,6 +152,8 @@ export default function App() {
           }
         />
         <Route path="survey" element={<SurveyPage />} />
+        <Route path="/Activity-log" element={<ActivityLogPage />} />
+
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
