@@ -1,14 +1,16 @@
 const Category = require('../models/category'); 
 const SurveyQuestion = require('../models/surveyQuestion'); 
 const SurveyQuiz = require('../models/surveyQuiz'); 
+const SurveySlide = require('../models/surveySlide'); 
 const Media = require('../models/Media');
+
 
 // const ActivityLog = require('../models/ActivityLog'); 
 
 // Create a new SurveyQuiz
 exports.createSurveyQuiz = async (req, res) => {
   try {
-    const { title, description, categoryId, questions, isPublic } = req.body;
+    const { title, description, categoryId, slides, questions, isPublic } = req.body;
 
     if (!categoryId) {
       return res.status(400).json({ message: 'Category ID is required' });
@@ -16,6 +18,7 @@ exports.createSurveyQuiz = async (req, res) => {
 
         // Validate categories, slides, and questions are valid ObjectIds
     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
+    const slideIds = await SurveySlide.find({ '_id': { $in: slides } });
     const questionIds = await SurveyQuestion.find({ '_id': { $in: questions } });
 
     // Create the SurveyQuiz document
@@ -23,6 +26,7 @@ exports.createSurveyQuiz = async (req, res) => {
       title,
       description,
       categories: categoryId,
+      slides,
       questions,
       createdBy: req.user._id, // Assuming you have a user in the request
       status: 'draft', // Default status as draft
@@ -49,7 +53,8 @@ exports.createSurveyQuiz = async (req, res) => {
 
         // Fetch the saved surveyQuiz with populated fields
     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
-      .populate('categories') 
+      .populate('categories')
+      .populate('slides')
       .populate('questions'); 
 
     res.status(201).json({ message: 'SurveyQuiz created successfully', surveyQuiz: populatedSurveyQuiz  });
@@ -64,21 +69,41 @@ exports.getAllSurveyQuizzes = async (req, res) => {
     // Fetch all survey quizzes and populate related fields
     const surveyQuizzes = await SurveyQuiz.find()
       .populate('categories')
+      .populate('slides')
       .populate('questions');
 
     const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
 
-    // Process each survey quiz to handle full image URLs for categories and questions
-    const surveysWithImageUrls = await Promise.all(
-      surveyQuizzes.map(async (survey) => {
+    // Process each survey quiz to handle full image URLs for slides and questions
+    const surveyQuizzesWithImageUrls = await Promise.all(
+      surveyQuizzes.map(async (surveyQuiz) => {
+        // Process slides
+        const slidesWithImageUrls = await Promise.all(
+          surveyQuiz.slides.map(async (slide) => {
+            let fullImageUrl = null;
+            if (slide.imageUrl) {
+              const media = await Media.findById(slide.imageUrl); // Find media by its ObjectId
+              if (media && media.path) {
+                // Construct full URL, encoding spaces and normalizing slashes
+                const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+                fullImageUrl = `${baseUrl}${encodedPath.split('/').pop()}`;
+              }
+            }
+            return {
+              ...slide.toObject(),
+              imageUrl: fullImageUrl, // Replace ObjectId with full URL
+            };
+          })
+        );
 
         // Process questions
         const questionsWithImageUrls = await Promise.all(
-          survey.questions.map(async (question) => {
+          surveyQuiz.questions.map(async (question) => {
             let fullImageUrl = null;
             if (question.imageUrl) {
               const media = await Media.findById(question.imageUrl); // Find media by its ObjectId
               if (media && media.path) {
+                // Construct full URL, encoding spaces and normalizing slashes
                 const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
                 fullImageUrl = `${baseUrl}${encodedPath.split('/').pop()}`;
               }
@@ -91,13 +116,14 @@ exports.getAllSurveyQuizzes = async (req, res) => {
         );
 
         return {
-          ...survey.toObject(),
+          ...surveyQuiz.toObject(),
+          slides: slidesWithImageUrls,
           questions: questionsWithImageUrls,
         };
       })
     );
 
-    res.status(200).json(surveysWithImageUrls);
+    res.status(200).json(surveyQuizzesWithImageUrls);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -111,6 +137,7 @@ exports.getSurveyQuizById = async (req, res) => {
     // Find the survey quiz by ID and populate related fields
     const surveyQuiz = await SurveyQuiz.findById(id)
       .populate('categories')
+      .populate('slides')
       .populate('questions');
 
     if (!surveyQuiz) {
@@ -118,6 +145,25 @@ exports.getSurveyQuizById = async (req, res) => {
     }
 
     const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+
+    // Process slides to handle full image URLs
+    const slidesWithImageUrls = await Promise.all(
+      surveyQuiz.slides.map(async (slide) => {
+        let fullImageUrl = null;
+        if (slide.imageUrl) {
+          const media = await Media.findById(slide.imageUrl); // Find media by its ObjectId
+          if (media && media.path) {
+            // Construct full URL, encoding spaces and normalizing slashes
+            const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
+            fullImageUrl = `${baseUrl}${encodedPath.split('/').pop()}`;
+          }
+        }
+        return {
+          ...slide.toObject(),
+          imageUrl: fullImageUrl, // Replace ObjectId with full URL
+        };
+      })
+    );
 
     // Process questions to handle full image URLs
     const questionsWithImageUrls = await Promise.all(
@@ -139,6 +185,7 @@ exports.getSurveyQuizById = async (req, res) => {
 
     res.status(200).json({
       ...surveyQuiz.toObject(),
+      slides: slidesWithImageUrls,
       questions: questionsWithImageUrls,
     });
   } catch (error) {
@@ -150,7 +197,7 @@ exports.getSurveyQuizById = async (req, res) => {
 exports.updateSurveyQuiz = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, questions, isPublic, status } = req.body;
+    const { title, description, slides, questions, isPublic, status } = req.body;
 
     // Fetch the survey quiz by ID
     const surveyQuiz = await SurveyQuiz.findById(id);
@@ -167,6 +214,15 @@ exports.updateSurveyQuiz = async (req, res) => {
         return res.status(400).json({ message: 'Some question IDs are invalid' });
       }
       surveyQuiz.questions = questions; // Update the questions
+    }
+
+    // Validate provided slides
+    if (slides && slides.length > 0) {
+      const slideRecords = await SurveySlide.find({ '_id': { $in: slides } });
+      if (slideRecords.length !== slides.length) {
+        return res.status(400).json({ message: 'Some slide IDs are invalid' });
+      }
+      surveyQuiz.slides = slides; // Update the slides
     }
 
     // Update other fields

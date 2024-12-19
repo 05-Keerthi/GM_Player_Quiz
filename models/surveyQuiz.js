@@ -5,6 +5,7 @@ const SurveyquizSchema = new mongoose.Schema({
   description: { type: String },
   isPublic: { type: Boolean, default: true },
   categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true }],
+  slides: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SurveySlide' }],
   questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SurveyQuestion' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: { type: String, enum: ['draft', 'active', 'closed'], default: 'draft' },
