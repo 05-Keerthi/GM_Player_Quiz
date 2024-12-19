@@ -49,39 +49,13 @@ const SurveyResults = () => {
     fetchSessionAnswers();
   }, [sessionId]);
 
-  const getGroupedAnswers = (questionId) => {
-    const answerGroups = {};
-    const question = questions.find(q => q._id === questionId);
-    
-    if (question && question.answerOptions) {
-      question.answerOptions.forEach(option => {
-        answerGroups[option.optionText] = {
-          count: 0,
-          users: []
-        };
-      });
-    }
-
-    userAnswers.forEach((userAnswer) => {
-      const answer = userAnswer.answers.find(
-        (a) => a.questionId === questionId
+  const getTotalResponses = (questionId) => {
+    return userAnswers.reduce((total, userAnswer) => {
+      const hasAnswered = userAnswer.answers.some(
+        answer => answer.questionId === questionId && answer.answer
       );
-      if (answer && answer.answer) {
-        if (!answerGroups[answer.answer]) {
-          answerGroups[answer.answer] = {
-            count: 0,
-            users: []
-          };
-        }
-        answerGroups[answer.answer].count += 1;
-        answerGroups[answer.answer].users.push({
-          username: userAnswer.user.username,
-          timeTaken: answer.timeTaken
-        });
-      }
-    });
-
-    return answerGroups;
+      return hasAnswered ? total + 1 : total;
+    }, 0);
   };
 
   const handleRowClick = (questionId) => {
@@ -170,39 +144,32 @@ const SurveyResults = () => {
                     <th className="text-left p-3 border border-gray-200">
                       Description
                     </th>
-                    {questions[0]?.answerOptions?.map((option) => (
-                      <th key={option.optionText} className="text-center p-3 border border-gray-200">
-                        {option.optionText}
-                      </th>
-                    ))}
+                    <th className="text-center p-3 border border-gray-200">
+                      Total Responses
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((question) => {
-                    const groupedAnswers = getGroupedAnswers(question._id);
-                    return (
-                      <tr
-                        key={question._id}
-                        onClick={() => handleRowClick(question._id)}
-                        className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <td className="p-3 border border-gray-200">
-                          {question.title}
-                        </td>
-                        <td className="p-3 border border-gray-200">
-                          {question.dimension}
-                        </td>
-                        <td className="p-3 border border-gray-200">
-                          {question.description}
-                        </td>
-                        {question.answerOptions?.map((option) => (
-                          <td key={option.optionText} className="text-center p-3 border border-gray-200">
-                            {groupedAnswers[option.optionText]?.count || 0}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
+                  {questions.map((question) => (
+                    <tr
+                      key={question._id}
+                      onClick={() => handleRowClick(question._id)}
+                      className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <td className="p-3 border border-gray-200">
+                        {question.title}
+                      </td>
+                      <td className="p-3 border border-gray-200">
+                        {question.dimension}
+                      </td>
+                      <td className="p-3 border border-gray-200">
+                        {question.description}
+                      </td>
+                      <td className="text-center p-3 border border-gray-200">
+                        {getTotalResponses(question._id)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
