@@ -32,6 +32,7 @@ import UserSurveyPlay from "./pages/Session/Play/UserSurveyPlay";
 import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
+import Reports from "./pages/Report/Report";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -97,6 +98,16 @@ export default function App() {
         />
         <Route path="/details" element={<UnifiedDetails />} />
 
+        {/* Reports Route */}
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Redirect routes for backward compatibility */}
         <Route
           path="/quiz-details"
@@ -153,7 +164,6 @@ export default function App() {
         />
         <Route path="survey" element={<SurveyPage />} />
         <Route path="/Activity-log" element={<ActivityLogPage />} />
-
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />

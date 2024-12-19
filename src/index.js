@@ -18,6 +18,7 @@ import { SurveySessionProvider } from "./context/surveySessionContext";
 import { NotificationProvider } from "./context/notificationContext";
 import { SurveyAnswerProvider } from "./context/surveyAnswerContext";
 import { SurveyNotificationProvider } from "./context/SurveynotificationContext";
+import { ReportProvider } from "./context/ReportContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -28,25 +29,27 @@ root.render(
           <CategoryProvider>
             <QuizProvider>
               <SessionProvider>
-                <AnswerProvider>
-                  <LeaderboardProvider>
-                    <NotificationProvider>
-                      <SurveyProvider>
-                        <SurveyNotificationProvider> {/* Added missing closing tag */}
-                          <QuestionProvider>
-                            <SurveySessionProvider>
-                              <SurveyAnswerProvider>
-                                <BrowserRouter>
-                                  <App />
-                                </BrowserRouter>
-                              </SurveyAnswerProvider>
-                            </SurveySessionProvider>
-                          </QuestionProvider>
-                        </SurveyNotificationProvider> {/* Correctly closed the provider */}
-                      </SurveyProvider>
-                    </NotificationProvider>
-                  </LeaderboardProvider>
-                </AnswerProvider>
+                <ReportProvider>  {/* Added ReportProvider here */}
+                  <AnswerProvider>
+                    <LeaderboardProvider>
+                      <NotificationProvider>
+                        <SurveyProvider>
+                          <SurveyNotificationProvider>
+                            <QuestionProvider>
+                              <SurveySessionProvider>
+                                <SurveyAnswerProvider>
+                                  <BrowserRouter>
+                                    <App />
+                                  </BrowserRouter>
+                                </SurveyAnswerProvider>
+                              </SurveySessionProvider>
+                            </QuestionProvider>
+                          </SurveyNotificationProvider>
+                        </SurveyProvider>
+                      </NotificationProvider>
+                    </LeaderboardProvider>
+                  </AnswerProvider>
+                </ReportProvider>
               </SessionProvider>
             </QuizProvider>
           </CategoryProvider>
