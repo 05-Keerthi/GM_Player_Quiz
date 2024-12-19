@@ -5,6 +5,7 @@ import io from "socket.io-client";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
 import SurveyResults from "./SurveyResults";
+import AdminSurveyAnswerCounts from "../../../components/Session/AdminSurveyAnswerCounts";
 
 const AdminSurveyStart = () => {
   const [searchParams] = useSearchParams();
@@ -246,16 +247,23 @@ const AdminSurveyStart = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : (
-            <SurveyContentDisplay
-              item={currentItem}
-              isAdmin={true}
-              onNext={handleNext}
-              timeLeft={timeLeft}
-              isLastItem={isLastItem}
-              onEndSurvey={handleEndSurvey}
-              isSurveyEnded={isSurveyEnded}
-              submittedAnswers={submittedAnswers}
-            />
+            <>
+              <AdminSurveyAnswerCounts
+                sessionId={sessionId}
+                currentItem={currentItem}
+                socket={socket}
+              />
+              <SurveyContentDisplay
+                item={currentItem}
+                isAdmin={true}
+                onNext={handleNext}
+                timeLeft={timeLeft}
+                isLastItem={isLastItem}
+                onEndSurvey={handleEndSurvey}
+                isSurveyEnded={isSurveyEnded}
+                submittedAnswers={submittedAnswers}
+              />
+            </>
           )}
         </div>
       </div>
