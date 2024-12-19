@@ -1,13 +1,4 @@
 import React, { useState, useEffect } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
   const [optionCounts, setOptionCounts] = useState({});
@@ -36,10 +27,8 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
           if (currentItem.type === "open_ended") {
             setOpenEndedCount((prev) => prev + 1);
           } else if (currentItem.type === "multiple_select") {
-            // For multiple select, answer will be an array of selected options
             setOptionCounts((prev) => {
               const newCounts = { ...prev };
-              // Parse the answer string back into an array if it's not already
               const selectedAnswers = Array.isArray(answerDetails.answer)
                 ? answerDetails.answer
                 : JSON.parse(answerDetails.answer);
@@ -56,7 +45,6 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
             });
             setTotalVotes((prev) => prev + 1);
           } else {
-            // For single select questions (multiple choice, true/false, poll)
             setOptionCounts((prev) => {
               const newCounts = { ...prev };
               const optionIndex = currentItem.options.findIndex(
@@ -92,17 +80,6 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     "bg-orange-200",
   ];
 
-  const barColors = [
-    "#EF4444",
-    "#10B981",
-    "#F59E0B",
-    "#3B82F6",
-    "#8B5CF6",
-    "#EC4899",
-    "#6366F1",
-    "#F97316",
-  ];
-
   // For open-ended questions, show a single response count
   if (currentItem.type === "open_ended") {
     return (
@@ -114,76 +91,62 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For poll questions, show both counts and bar chart
-  if (currentItem.type === "poll") {
-    const chartData = currentItem.options.map((option, index) => ({
-      name: option.text,
-      votes: optionCounts[index] || 0,
-      percentage: totalVotes
-        ? (((optionCounts[index] || 0) / totalVotes) * 100).toFixed(1)
-        : 0,
-    }));
+  // Calculate percentages for each option
+  const getPercentage = (count) => {
+    if (totalVotes === 0) return 0;
+    return Math.round((count / totalVotes) * 100);
+  };
 
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-          {currentItem.options.map((_, index) => (
-            <div
-              key={index}
-              className={`${
-                bgColors[index % bgColors.length]
-              } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-            >
-              {optionCounts[index] || 0}
-            </div>
-          ))}
-        </div>
+  return (
+    <div className="space-y-4">
+      {/* Count circles at the top */}
+      <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
+        {currentItem.options.map((_, index) => (
+          <div
+            key={`count-${index}`}
+            className={`${
+              bgColors[index % bgColors.length]
+            } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+          >
+            {optionCounts[index] || 0}
+          </div>
+        ))}
+      </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-md">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis
-                  domain={[0, 100]}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip
-                  formatter={(value, name, props) => [
-                    `${props.payload.votes} votes (${value}%)`,
-                    "Responses",
-                  ]}
-                />
-                <Bar
-                  dataKey="percentage"
-                  fill="#3B82F6"
-                  radius={[4, 4, 0, 0]}
-                ></Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-center mt-2 text-gray-600">
-            Total Votes: {totalVotes}
-          </div>
+      {/* Center container for progress bars */}
+      <div className="flex justify-center">
+        {/* Progress bars */}
+        <div className="w-1/2 bg-white rounded-lg p-6 shadow-md space-y-3">
+          {currentItem.options.map((option, index) => {
+            const count = optionCounts[index] || 0;
+            const percentage = getPercentage(count);
+
+            return (
+              <div key={`progress-${index}`} className="relative">
+                {/* Progress bar background */}
+                <div className="h-12 w-full bg-gray-100 rounded-full relative">
+                  {/* Progress bar fill */}
+                  <div
+                    className={`h-full ${
+                      bgColors[index % bgColors.length]
+                    } transition-all duration-500 rounded-full absolute top-0 left-0`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                  {/* Text overlay - always visible */}
+                  <div className="absolute inset-0 px-4 flex items-center justify-between">
+                    <span className="text-gray-800 font-medium z-10">
+                      {option.text}
+                    </span>
+                    <span className="text-gray-800 font-medium z-10">
+                      {percentage}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-    );
-  }
-
-  // For other multiple choice questions, show count for each option
-  return (
-    <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-      {currentItem.options.map((_, index) => (
-        <div
-          key={index}
-          className={`${
-            bgColors[index % bgColors.length]
-          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-        >
-          {optionCounts[index] || 0}
-        </div>
-      ))}
     </div>
   );
 };
