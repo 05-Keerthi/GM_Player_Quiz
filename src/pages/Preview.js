@@ -1,90 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { X, Presentation, ListChecks, Play } from 'lucide-react';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import axios from "axios";
+import { useParams } from "react-router-dom";
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 const PreviewPage = () => {
-  const [slides, setSlides] = useState([]);
-  const [questions, setQuestions] = useState([]);
-  const [activeTab, setActiveTab] = useState('slides');
+  const [orderedItems, setOrderedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [presentationMode, setPresentationMode] = useState(false);
-  const [currentPresentationIndex, setCurrentPresentationIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [showBoxAnimation, setShowBoxAnimation] = useState(false);
+  const [slideDirection, setSlideDirection] = useState(0);
   const { quizId } = useParams();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
 
-  const fetchSlides = async () => {
+  const fetchQuizData = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/quizzes/${quizId}/slides`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setSlides(response.data);
-    } catch (error) {
-      console.error('Error fetching slides:', error);
-    }
-  };
+      const response = await axios.get(
+        `http://localhost:5000/api/quizzes/${quizId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-  const fetchQuestions = async () => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/quizzes/${quizId}/questions`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setQuestions(response.data);
+      const quizData = response.data;
+      if (quizData.order && Array.isArray(quizData.order)) {
+        const orderedContent = quizData.order
+          .map((item) => {
+            if (item.type === "slide") {
+              const slideData = quizData.slides.find((s) => s._id === item.id);
+              return slideData ? { ...item, data: slideData } : null;
+            } else {
+              const questionData = quizData.questions.find(
+                (q) => q._id === item.id
+              );
+              return questionData ? { ...item, data: questionData } : null;
+            }
+          })
+          .filter(Boolean);
+        setOrderedItems(orderedContent);
+      } else {
+        const defaultOrder = [
+          ...(quizData.slides || []).map((slide) => ({
+            id: slide._id,
+            type: "slide",
+            data: slide,
+          })),
+          ...(quizData.questions || []).map((question) => ({
+            id: question._id,
+            type: "question",
+            data: question,
+          })),
+        ];
+        setOrderedItems(defaultOrder);
+      }
+      setLoading(false);
     } catch (error) {
-      console.error('Error fetching questions:', error);
+      console.error("Error fetching quiz data:", error);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      await Promise.all([fetchSlides(), fetchQuestions()]);
-      setLoading(false);
-    };
-    fetchData();
+    fetchQuizData();
   }, [quizId]);
 
   useEffect(() => {
-    // Add keyboard navigation for presentation mode
     const handleKeyDown = (e) => {
-      if (!presentationMode) return;
-
-      switch (e.key) {
-        case 'ArrowRight':
-        case 'Right':
-          navigatePresentation('next');
-          break;
-        case 'ArrowLeft':
-        case 'Left':
-          navigatePresentation('prev');
-          break;
-        case 'Escape':
-          exitPresentation();
-          break;
+      if (presentationMode) {
+        switch (e.key) {
+          case "ArrowRight":
+          case "Right":
+            navigatePresentation("next");
+            break;
+          case "ArrowLeft":
+          case "Left":
+            navigatePresentation("prev");
+            break;
+          case "Escape":
+            exitPresentation();
+            break;
+          default:
+            break;
+        }
       }
     };
 
-    // Add event listener
-    window.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup event listener
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [presentationMode, currentPresentationIndex, slides, questions]);
-
-  const allPresentationContent = [...slides, ...questions];
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [presentationMode, currentIndex]);
 
   const startPresentation = () => {
     setPresentationMode(true);
-    setCurrentPresentationIndex(0);
     setShowBoxAnimation(true);
-
-    // Remove box animation after a short delay
     setTimeout(() => {
       setShowBoxAnimation(false);
     }, 1000);
@@ -92,149 +103,260 @@ const PreviewPage = () => {
 
   const exitPresentation = () => {
     setPresentationMode(false);
-    setCurrentPresentationIndex(0);
   };
 
-  const navigatePresentation = (direction) => {
-    if (direction === 'next' && currentPresentationIndex < allPresentationContent.length - 1) {
-      setCurrentPresentationIndex(prev => prev + 1);
-    } else if (direction === 'prev' && currentPresentationIndex > 0) {
-      setCurrentPresentationIndex(prev => prev - 1);
-    }
-  };
+// Update navigation functions
+const navigatePresentation = (direction) => {
+  const newIndex = direction === 'next' 
+    ? currentIndex + 1 
+    : currentIndex - 1;
+    
+  if (newIndex >= 0 && newIndex < orderedItems.length) {
+    setSlideDirection(direction === 'next' ? 1 : -1);
+    setCurrentIndex(newIndex);
+  }
+};
 
-  const renderBoxAnimation = () => {
-    if (!showBoxAnimation) return null;
+  const renderContent = (item) => {
+    if (!item?.data) return null;
+    const content = item.data;
 
     return (
-      <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
-        <div 
-          className="w-0 h-0 border-[24px] mt-1 border-blue-500 opacity-75 animate-[box-expand_1s_ease-out]"
-          style={{
-            transformOrigin: 'center',
-          }}
-        />
+      <div className="h-full flex flex-col">
+        <div className="p-6 flex-grow overflow-auto">
+          {content.title && (
+            <h2 className="text-2xl font-bold mb-4">{content.title}</h2>
+          )}
+
+          {content.imageUrl && (
+            <div className="mb-4 flex justify-center">
+              <img
+                src={content.imageUrl}
+                alt={content.title || "Content"}
+                className="max-w-full max-h-[40vh] object-contain rounded-lg shadow-md"
+              />
+            </div>
+          )}
+
+          {content.content && (
+            <div className="mb-4">
+              <p className="text-lg text-gray-700">{content.content}</p>
+            </div>
+          )}
+
+          {item.type === "question" &&
+            content.type === "multiple_choice" &&
+            content.options && (
+              <div className="space-y-3">
+                {content.options.map((option, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border ${
+                      option.isCorrect
+                        ? "bg-green-50 border-green-200"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="options"
+                        className="mr-3"
+                        disabled
+                      />
+                      <span>{option.text}</span>
+                      {option.isCorrect && (
+                        <span className="ml-2 text-green-600 text-sm">
+                          (Correct)
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
       </div>
     );
   };
 
-  const renderPresentationContent = () => {
-    const item = allPresentationContent[currentPresentationIndex];
-    if (!item) return null;
-
-    return (
-      <div className="fixed inset-0 bg-white z-50 flex flex-col">
-        <div className="p-4 flex justify-between items-center border-b">
-          <button 
-            onClick={exitPresentation} 
-            className="text-gray-600 hover:text-gray-800"
+  // Update the renderPresentationMode function
+  const renderPresentationMode = () => (
+    <div className="fixed inset-0 bg-[#262626] z-50">
+      {/* Top Bar */}
+      <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
+        <span className="text-gray-300 font-medium">
+          {orderedItems[currentIndex]?.type === "question"
+            ? "Question"
+            : "Slide"}{" "}
+          {currentIndex + 1}
+        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-400 text-sm">
+            {currentIndex + 1} / {orderedItems.length}
+          </span>
+          <button
+            onClick={exitPresentation}
+            className="text-gray-400 hover:text-white transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
-          <div className="text-center text-lg font-semibold">
-            Presentation Mode
-          </div>
-          <div className="text-gray-500">
-            {currentPresentationIndex + 1} / {allPresentationContent.length}
-          </div>
         </div>
+      </div>
 
-        <div className="flex-grow flex items-center justify-center p-8 overflow-auto relative">
-          <div className="max-w-3xl w-full text-center border-4 border-black-500 p-8 rounded-lg shadow-2xl">
-            {/* Title for both slides and questions */}
-            {item.title && (
-              <h2 className="text-2xl font-bold mb-4">{item.title}</h2>
-            )}
+      {/* Content Area */}
+      <div className="h-full flex flex-col pt-16">
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center p-8 relative">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-5xl aspect-[16/9] bg-white rounded-lg shadow-2xl overflow-hidden"
+          >
+            {/* Content Wrapper */}
+            <div className="h-full flex flex-col">
+              {/* Title Bar */}
+              {orderedItems[currentIndex]?.data?.title && (
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4">
+                  <h2 className="text-2xl font-semibold text-white">
+                    {orderedItems[currentIndex].data.title}
+                  </h2>
+                </div>
+              )}
 
-            {/* Content for slides */}
-            {item.content && (
-              <p className="text-xl mb-4">{item.content}</p>
-            )}
+              {/* Content */}
+              <div className="flex-1 p-8 overflow-auto">
+                {orderedItems[currentIndex]?.data?.imageUrl && (
+                  <div className="mb-6 flex justify-center">
+                    <img
+                      src={orderedItems[currentIndex].data.imageUrl}
+                      alt="Content"
+                      className="max-h-[50vh] w-auto object-contain rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
 
-            {/* Image for slides and questions */}
-            {item.imageUrl && (
-              <div className="flex justify-center mb-4">
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.title || 'Slide/Question Image'} 
-                  className="max-w-full max-h-[50vh] object-contain rounded-md" 
-                />
-              </div>
-            )}
+                {orderedItems[currentIndex]?.data?.content && (
+                  <div className="text-lg text-gray-700 leading-relaxed mb-6">
+                    {orderedItems[currentIndex].data.content}
+                  </div>
+                )}
 
-            {/* Options for questions */}
-            {item.options && (
-              <div className="mt-4">
-                <h3 className="text-xl font-semibold mb-3">Options:</h3>
-                <ul className="space-y-2">
-                  {item.options.map((option, optIdx) => (
-                    <li 
-                      key={optIdx} 
-                      className={`p-2 rounded ${
-                        option.isCorrect 
-                          ? 'bg-green-100 text-green-800 border-green-300' 
-                          : 'bg-gray-100 text-gray-800 border-gray-300'
-                      } border`}
-                    >
-                      {option.text}
-                      {option.isCorrect && (
-                        <span className="ml-2 text-sm font-bold">(Correct Answer)</span>
+                {orderedItems[currentIndex]?.type === "question" &&
+                  orderedItems[currentIndex]?.data?.type ===
+                    "multiple_choice" && (
+                    <div className="space-y-4">
+                      {orderedItems[currentIndex].data.options?.map(
+                        (option, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className={`
+                        p-4 rounded-lg border-2 transition-all transform hover:scale-[1.01]
+                        ${
+                          option.isCorrect
+                            ? "border-green-200 bg-green-50"
+                            : "border-gray-200 bg-gray-50"
+                        }
+                      `}
+                          >
+                            <label className="flex items-center gap-3">
+                              <div
+                                className={`
+                          w-6 h-6 rounded-full border-2 flex items-center justify-center
+                          ${
+                            option.isCorrect
+                              ? "border-green-500 text-green-500"
+                              : "border-gray-400 text-gray-400"
+                          }
+                        `}
+                              >
+                                {option.isCorrect && "✓"}
+                              </div>
+                              <span className="text-lg">{option.text}</span>
+                              {option.isCorrect && (
+                                <span className="text-sm text-green-600 font-medium ml-2">
+                                  (Correct Answer)
+                                </span>
+                              )}
+                            </label>
+                          </motion.div>
+                        )
                       )}
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
               </div>
-            )}
-          </div>
+            </div>
+          </motion.div>
 
           {/* Navigation Buttons */}
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
-            <button 
-              onClick={() => navigatePresentation('prev')}
-              disabled={currentPresentationIndex === 0}
-              className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          <div className="absolute left-4">
+            <button
+              onClick={() => navigatePresentation("prev")}
+              disabled={currentIndex === 0}
+              className={`
+              p-3 rounded-full transition-all
+              ${
+                currentIndex === 0
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-800 text-white hover:bg-gray-700"
+              }
+            `}
             >
-              Previous
+              <ChevronLeft className="w-6 h-6" />
             </button>
-            <button 
-              onClick={() => navigatePresentation('next')}
-              disabled={currentPresentationIndex === allPresentationContent.length - 1}
-              className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          </div>
+
+          <div className="absolute right-4">
+            <button
+              onClick={() => navigatePresentation("next")}
+              disabled={currentIndex === orderedItems.length - 1}
+              className={`
+              p-3 rounded-full transition-all
+              ${
+                currentIndex === orderedItems.length - 1
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-800 text-white hover:bg-gray-700"
+              }
+            `}
             >
-              Next
+              <ChevronRight className="w-6 h-6" />
             </button>
           </div>
         </div>
+
+        {/* Bottom Progress Bar */}
+        <div className="bg-[#1a1a1a] p-4">
+          <div className="w-full bg-gray-700 rounded-full h-1">
+            <div
+              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+              style={{
+                width: `${((currentIndex + 1) / orderedItems.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto mt-8">
-      <div className="flex justify-between items-center p-4 border-b">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setActiveTab('slides')}
-            className={`pb-1 ${activeTab === 'slides' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
-          >
-            <Presentation className="w-5 h-5 inline-block mr-1" />
-            Slides
-          </button>
-          <button
-            onClick={() => setActiveTab('questions')}
-            className={`pb-1 ${activeTab === 'questions' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
-          >
-            <ListChecks className="w-5 h-5 inline-block mr-1" />
-            Questions
-          </button>
-        </div>
-        <div className="flex items-center space-x-2">
+    <div className="h-screen flex flex-col bg-gray-100">
+      {/* Header */}
+      <div className="bg-white border-b px-6 py-3 flex justify-between items-center">
+        <h1 className="text-xl font-semibold">Preview</h1>
+        <div className="flex items-center gap-3">
           <button
             onClick={startPresentation}
-            className="flex items-center bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600"
-            disabled={loading || allPresentationContent.length === 0}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+            disabled={loading || orderedItems.length === 0}
           >
-            <Play className="w-5 h-5 mr-1" />
+            <Play className="w-5 h-5" />
             Start Presentation
           </button>
           <button
@@ -246,75 +368,58 @@ const PreviewPage = () => {
         </div>
       </div>
 
-      <div className="p-4">
-        {loading ? (
-          <p className="text-center text-gray-500">Loading...</p>
-        ) : (
-          <>
-            {activeTab === 'slides' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Slides</h2>
-                {slides.length === 0 ? (
-                  <p className="text-gray-500">No slides available.</p>
-                ) : (
-                  slides.map((slide, index) => (
-                    <div key={index} className="mb-6 p-4 border rounded-lg">
-                      <h3 className="font-semibold text-lg mb-2">{slide.title}</h3>
-                      <p className="mb-2">{slide.content}</p>
-                      {slide.imageUrl && (
-                        <img 
-                          src={slide.imageUrl} 
-                          alt={slide.title} 
-                          className="max-w-full rounded-md" 
-                        />
-                      )}
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Thumbnails Sidebar */}
+          <div className="w-64 bg-gray-50 border-r overflow-y-auto p-4">
+            <div className="space-y-3">
+              {orderedItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    currentIndex === index
+                      ? "bg-blue-50 border-blue-300"
+                      : "border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <div className="text-sm font-medium">
+                    {item.type === "question"
+                      ? `Question ${index + 1}`
+                      : `Slide ${index + 1}`}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate mt-1">
+                    {item.data.title}
+                  </div>
+                  {item.data.imageUrl && (
+                    <div className="mt-2 h-20 flex items-center justify-center">
+                      <img
+                        src={item.data.imageUrl}
+                        alt=""
+                        className="max-h-full max-w-full object-contain rounded"
+                      />
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {activeTab === 'questions' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Questions</h2>
-                {questions.length === 0 ? (
-                  <p className="text-gray-500">No questions available.</p>
-                ) : (
-                  questions.map((question, index) => (
-                    <div key={index} className="mb-6 p-4 border rounded-lg">
-                      <h3 className="font-semibold text-lg mb-2">{question.title}</h3>
-                      <ul className="list-disc pl-5">
-                        {question.options.map((option, idx) => (
-                          <li 
-                            key={idx} 
-                            className={option.isCorrect ? 'text-green-600 font-semibold' : ''}
-                          >
-                            {option.text}
-                            {option.isCorrect && <span className="ml-2 text-sm">(Correct Answer)</span>}
-                          </li>
-                        ))}
-                      </ul>
-                      {question.imageUrl && (
-                        <img 
-                          src={question.imageUrl} 
-                          alt={question.title} 
-                          className="mt-2 max-w-full rounded-md" 
-                        />
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          {/* Main Preview Area */}
+          <div className="flex-1 bg-white">
+            <div className="h-full border-l">
+              {orderedItems[currentIndex] &&
+                renderContent(orderedItems[currentIndex])}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Presentation Mode */}
-      {presentationMode && renderPresentationContent()}
-      
-      {/* Box Animation */}
-      {renderBoxAnimation()}
+      {presentationMode && renderPresentationMode()}
     </div>
   );
 };

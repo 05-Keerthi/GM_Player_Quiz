@@ -8,7 +8,6 @@ import Navbar from "../components/NavbarComp";
 import SlideTypeModal from "../models/SlideTypeModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import SlideEditor from "../components/SlideEditor";
-import PreviewModal from "../models/previewModal";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import { useQuizContext } from "../context/quizContext";
 
@@ -63,7 +62,7 @@ const QuizCreator = () => {
   const navigate = useNavigate();
 
   const handlePreviewClick = () => {
-    navigate(`/Preview/${quizId}`);
+    navigate(`/preview/${quizId}`);
   };
 
   const showAlert = (message, type = "error") => {
@@ -513,119 +512,117 @@ const QuizCreator = () => {
     );
   };
 
-  
-
   // Use in useEffect
   useEffect(() => {
     // Updated loadQuizData function
-  const loadQuizData = async () => {
-    if (!quizId) {
-      showAlert("Invalid quiz ID");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const quizResponse = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}`
-      );
-
-      if (!quizResponse.ok) {
-        throw new Error(`Failed to fetch quiz: ${quizResponse.statusText}`);
+    const loadQuizData = async () => {
+      if (!quizId) {
+        showAlert("Invalid quiz ID");
+        return;
       }
 
-      const quizData = await quizResponse.json();
+      try {
+        setLoading(true);
+        const quizResponse = await authenticatedFetch(
+          `http://localhost:5000/api/quizzes/${quizId}`
+        );
 
-      // Validate and set basic quiz data
-      setQuiz({
-        title: quizData.title || "",
-        description: quizData.description || "",
-      });
-      setQuizTitle(quizData.title || "");
+        if (!quizResponse.ok) {
+          throw new Error(`Failed to fetch quiz: ${quizResponse.statusText}`);
+        }
 
-      // Validate questions and slides
-      const validQuestions = Array.isArray(quizData.questions)
-        ? quizData.questions.filter(isValidQuestion)
-        : [];
+        const quizData = await quizResponse.json();
 
-      const validSlides = Array.isArray(quizData.slides)
-        ? quizData.slides.filter(isValidSlide)
-        : [];
+        // Validate and set basic quiz data
+        setQuiz({
+          title: quizData.title || "",
+          description: quizData.description || "",
+        });
+        setQuizTitle(quizData.title || "");
 
-      // Set questions and slides state
-      setQuestions(validQuestions);
-      setSlides(validSlides);
+        // Validate questions and slides
+        const validQuestions = Array.isArray(quizData.questions)
+          ? quizData.questions.filter(isValidQuestion)
+          : [];
 
-      // Handle ordered items
-      let finalOrderedItems = [];
+        const validSlides = Array.isArray(quizData.slides)
+          ? quizData.slides.filter(isValidSlide)
+          : [];
 
-      if (
-        quizData.order &&
-        Array.isArray(quizData.order) &&
-        quizData.order.length > 0
-      ) {
-        // Process existing order
-        finalOrderedItems = quizData.order
-          .filter((item) => item && item.id && item.type) // Filter valid order items
-          .map((item) => {
-            if (item.type === "question") {
-              const questionData = validQuestions.find(
-                (q) => q._id === item.id
-              );
-              return questionData
-                ? {
-                    id: questionData._id,
-                    type: "question",
-                    data: questionData,
-                  }
-                : null;
-            } else if (item.type === "slide") {
-              const slideData = validSlides.find((s) => s._id === item.id);
-              return slideData
-                ? {
-                    id: slideData._id,
-                    type: "slide",
-                    data: slideData,
-                  }
-                : null;
-            }
-            return null;
-          })
-          .filter(Boolean); // Remove null entries
+        // Set questions and slides state
+        setQuestions(validQuestions);
+        setSlides(validSlides);
+
+        // Handle ordered items
+        let finalOrderedItems = [];
+
+        if (
+          quizData.order &&
+          Array.isArray(quizData.order) &&
+          quizData.order.length > 0
+        ) {
+          // Process existing order
+          finalOrderedItems = quizData.order
+            .filter((item) => item && item.id && item.type) // Filter valid order items
+            .map((item) => {
+              if (item.type === "question") {
+                const questionData = validQuestions.find(
+                  (q) => q._id === item.id
+                );
+                return questionData
+                  ? {
+                      id: questionData._id,
+                      type: "question",
+                      data: questionData,
+                    }
+                  : null;
+              } else if (item.type === "slide") {
+                const slideData = validSlides.find((s) => s._id === item.id);
+                return slideData
+                  ? {
+                      id: slideData._id,
+                      type: "slide",
+                      data: slideData,
+                    }
+                  : null;
+              }
+              return null;
+            })
+            .filter(Boolean); // Remove null entries
+        }
+
+        // If no valid order exists or order array is empty, create default order
+        if (finalOrderedItems.length === 0) {
+          // Create default order by combining slides and questions
+          finalOrderedItems = [
+            ...validSlides.map((slide) => ({
+              id: slide._id,
+              type: "slide",
+              data: slide,
+            })),
+            ...validQuestions.map((question) => ({
+              id: question._id,
+              type: "question",
+              data: question,
+            })),
+          ];
+        }
+
+        // Set the final ordered items
+        setOrderedItems(finalOrderedItems);
+
+        // Reset current selections
+        setCurrentQuestion(null);
+        setCurrentSlide(null);
+      } catch (err) {
+        console.error("Error loading quiz data:", err);
+        handleApiError(err);
+        navigate("/quizzes");
+      } finally {
+        setLoading(false);
       }
-
-      // If no valid order exists or order array is empty, create default order
-      if (finalOrderedItems.length === 0) {
-        // Create default order by combining slides and questions
-        finalOrderedItems = [
-          ...validSlides.map((slide) => ({
-            id: slide._id,
-            type: "slide",
-            data: slide,
-          })),
-          ...validQuestions.map((question) => ({
-            id: question._id,
-            type: "question",
-            data: question,
-          })),
-        ];
-      }
-
-      // Set the final ordered items
-      setOrderedItems(finalOrderedItems);
-
-      // Reset current selections
-      setCurrentQuestion(null);
-      setCurrentSlide(null);
-    } catch (err) {
-      console.error("Error loading quiz data:", err);
-      handleApiError(err);
-      navigate("/quizzes");
-    } finally {
-      setLoading(false);
-    }
-  };
-  loadQuizData()
+    };
+    loadQuizData();
   }, [quizId, navigate]);
 
   return (
@@ -829,13 +826,6 @@ const QuizCreator = () => {
             description: quiz?.description || "",
           }}
           type="quiz"
-        />
-
-        <PreviewModal
-          isOpen={isPreviewOpen}
-          onClose={() => setIsPreviewOpen(false)}
-          slides={slides}
-          questions={questions}
         />
 
         <ConfirmationModal
