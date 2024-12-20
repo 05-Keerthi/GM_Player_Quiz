@@ -33,6 +33,7 @@ import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
 import Reports from "./pages/Report/Report";
+import UserReport from "./pages/Report/UserReport";  // Import UserReport page
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -104,6 +105,16 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* User Report Route */}
+        <Route
+          path="/UserReport"
+          element={
+            <ProtectedRoute>
+              <UserReport />
             </ProtectedRoute>
           }
         />

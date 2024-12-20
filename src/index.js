@@ -19,6 +19,7 @@ import { NotificationProvider } from "./context/notificationContext";
 import { SurveyAnswerProvider } from "./context/surveyAnswerContext";
 import { SurveyNotificationProvider } from "./context/SurveynotificationContext";
 import { ReportProvider } from "./context/ReportContext";
+// import { UserReportProvider } from "./context/UserReportContext";  // Import UserReportProvider
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -29,27 +30,30 @@ root.render(
           <CategoryProvider>
             <QuizProvider>
               <SessionProvider>
-                <ReportProvider>  {/* Added ReportProvider here */}
-                  <AnswerProvider>
-                    <LeaderboardProvider>
-                      <NotificationProvider>
-                        <SurveyProvider>
-                          <SurveyNotificationProvider>
-                            <QuestionProvider>
-                              <SurveySessionProvider>
-                                <SurveyAnswerProvider>
-                                  <BrowserRouter>
-                                    <App />
-                                  </BrowserRouter>
-                                </SurveyAnswerProvider>
-                              </SurveySessionProvider>
-                            </QuestionProvider>
-                          </SurveyNotificationProvider>
-                        </SurveyProvider>
-                      </NotificationProvider>
-                    </LeaderboardProvider>
-                  </AnswerProvider>
-                </ReportProvider>
+                <AnswerProvider>
+                  <LeaderboardProvider>
+                    <NotificationProvider>
+                      <SurveyProvider>
+                        <SurveyNotificationProvider>
+                          <QuestionProvider>
+                            <SurveySessionProvider>
+                              <SurveyAnswerProvider>
+                                {/* Wrap the context providers with UserReportProvider here */}
+                              
+                                  <ReportProvider>  {/* Wrap ReportProvider inside UserReportProvider */}
+                                    <BrowserRouter>
+                                      <App />
+                                    </BrowserRouter>
+                                  </ReportProvider>
+                                
+                              </SurveyAnswerProvider>
+                            </SurveySessionProvider>
+                          </QuestionProvider>
+                        </SurveyNotificationProvider>
+                      </SurveyProvider>
+                    </NotificationProvider>
+                  </LeaderboardProvider>
+                </AnswerProvider>
               </SessionProvider>
             </QuizProvider>
           </CategoryProvider>

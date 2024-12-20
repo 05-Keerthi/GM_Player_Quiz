@@ -23,16 +23,19 @@ export const ReportContext = createContext();
 
 export const ReportProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reportReducer, initialState);
-  const [reports, setReports] = useState([]); // Local useState for reports
+  const [reports, setReports] = useState([]);
 
   // Context Actions
   const actions = {
-    // Get all reports (admin only)
+    clearError: () => {
+      dispatch({ type: ACTIONS.SET_ERROR, payload: null });
+    },
+
     getAllReports: async () => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
         const { data } = await api.get('/reports');
-        setReports(data.data); // Update useState reports
+        setReports(data.data);
         dispatch({ type: ACTIONS.SET_REPORTS, payload: data.data });
         return data.data;
       } catch (error) {
@@ -48,33 +51,11 @@ export const ReportProvider = ({ children }) => {
       }
     },
 
-    // Get reports for current user
-    getUserReportByQuiz: async (userId) => {  // Added parameters
-      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
-      try {
-        const { data } = await api.get(`/reports/${userId}`);
-        setReports(data.data); // Update useState reports
-        dispatch({ type: ACTIONS.SET_REPORTS, payload: data.data });
-        return data.data;
-      } catch (error) {
-        dispatch({
-          type: ACTIONS.SET_ERROR,
-          payload: {
-            message: error.response?.data?.message || "Failed to fetch user reports",
-          },
-        });
-        throw error;
-      } finally {
-        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
-      }
-    },
-
-    // Get reports for a specific quiz
-    getReportsByQuiz: async (quizId) => {
+    getReportByQuiz: async (quizId) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
         const { data } = await api.get(`/reports/${quizId}`);
-        setReports(data.data); // Update useState reports
+        setReports(data.data);
         dispatch({ type: ACTIONS.SET_REPORTS, payload: data.data });
         return data.data;
       } catch (error) {
@@ -90,12 +71,10 @@ export const ReportProvider = ({ children }) => {
       }
     },
 
-    // Get user's report for a specific quiz
     getUserReportByQuiz: async (quizId, userId) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
         const { data } = await api.get(`/reports/${quizId}/user/${userId}`);
-        setReports((prev) => [...prev, data.data]); // Add to existing reports
         dispatch({ type: ACTIONS.SET_CURRENT_REPORT, payload: data.data });
         return data.data;
       } catch (error) {
@@ -119,43 +98,11 @@ export const ReportProvider = ({ children }) => {
         dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     },
-
-    // Create a new report
-    createReport: async (reportData) => {
-      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
-      try {
-        const { data } = await api.post('/reports', reportData);
-        setReports((prev) => [...prev, data.data]);
-        dispatch({ type: ACTIONS.SET_CURRENT_REPORT, payload: data.data });
-        return data.data;
-      } catch (error) {
-        dispatch({
-          type: ACTIONS.SET_ERROR,
-          payload: {
-            message: error.response?.data?.message || "Failed to create report",
-          },
-        });
-        throw error;
-      } finally {
-        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
-      }
-    },
-
-    // Clear error
-    clearError: () => {
-      dispatch({ type: ACTIONS.SET_ERROR, payload: null });
-    },
-
-    // Clear reports
-    clearReports: () => {
-      setReports([]);
-      dispatch({ type: ACTIONS.CLEAR_REPORTS });
-    },
   };
 
   const contextValue = {
     state,
-    reports, // Expose the useState reports
+    reports,
     currentReport: state.currentReport,
     loading: state.loading,
     error: state.error,
@@ -169,7 +116,6 @@ export const ReportProvider = ({ children }) => {
   );
 };
 
-// Hook for using the context
 export const useReportContext = () => {
   const context = useContext(ReportContext);
   if (!context) {
