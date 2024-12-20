@@ -78,15 +78,25 @@ export const SessionProvider = ({ children }) => {
       const response = await api.post(
         `/sessions/${joinCode}/${sessionId}/start`
       );
+
+      // Ensure we extract and include the order from the session quiz
+      const order = response.data.session.quiz.order || [];
+
       dispatch({
         type: SESSION_ACTIONS.START_SESSION_SUCCESS,
         payload: {
           session: response.data.session,
           questions: response.data.questions,
           slides: response.data.slides,
+          order: order, // Include the order in the dispatch
         },
       });
-      return response.data;
+
+      // Return complete data including the order
+      return {
+        ...response.data,
+        order: order,
+      };
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Failed to start session";
@@ -109,6 +119,7 @@ export const SessionProvider = ({ children }) => {
         payload: {
           type: response.data.type,
           item: response.data.item,
+          isLastItem: response.data.isLastItem || false,
         },
       });
       return response.data;
@@ -129,7 +140,11 @@ export const SessionProvider = ({ children }) => {
       const response = await api.post(`/sessions/${joinCode}/${sessionId}/end`);
       dispatch({
         type: SESSION_ACTIONS.END_SESSION_SUCCESS,
-        payload: response.data,
+        payload: {
+          session: response.data.session,
+          reports: response.data.reports,
+          activityLogs: response.data.activityLogs,
+        },
       });
       return response.data;
     } catch (error) {

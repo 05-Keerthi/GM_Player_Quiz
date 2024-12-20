@@ -108,12 +108,16 @@ const AdminLobby = () => {
       setQuestions(response.questions || []);
       setSlides(response.slides || []);
 
+
+      const order = response.session?.quiz?.order || [];
+
       // Emit socket event for session start
       if (socket) {
         socket.emit("session-started", {
           sessionId: sessionData._id,
           questions: response.questions,
           slides: response.slides,
+          order:order
         });
       }
 

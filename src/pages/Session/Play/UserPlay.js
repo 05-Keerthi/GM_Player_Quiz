@@ -1,3 +1,4 @@
+// UserPlay.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAnswerContext } from "../../../context/answerContext";
@@ -24,26 +25,14 @@ const UserPlay = () => {
 
   const sessionId = searchParams.get("sessionId");
 
-  // Debug logs for initial props and state
-  useEffect(() => {
-    console.log("Initial state:", {
-      sessionId,
-      user,
-      isAuthenticated,
-      showFinalLeaderboard,
-    });
-  }, [sessionId, user, isAuthenticated, showFinalLeaderboard]);
-
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
-      console.log("Redirecting to login - not authenticated");
       navigate("/login");
     }
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
     if (isAuthenticated && user && sessionId) {
-      console.log("Initializing socket connection");
       const newSocket = io("http://localhost:5000");
       setSocket(newSocket);
 
@@ -52,11 +41,9 @@ const UserPlay = () => {
         userId: user.id,
         username: user.username,
       };
-      console.log("Emitting join-session with data:", userData);
       newSocket.emit("join-session", userData);
 
       return () => {
-        console.log("Disconnecting socket");
         newSocket.disconnect();
       };
     }
@@ -64,22 +51,24 @@ const UserPlay = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.on("connect", () => {
-        console.log("Socket connected with ID:", socket.id);
-      });
-
       socket.on("next-item", (data) => {
-        console.log("Received next-item:", data);
+        console.log("Received next-item data:", data);
         const { type, item, isLastItem: lastItem, initialTime } = data;
-        setCurrentItem(item);
-        setTimeLeft(
-          initialTime || (item.type === "bullet_points" ? 0 : item.timer || 30)
-        );
+
+        // Create a complete item object combining both item data and type
+        const completeItem = {
+          ...item,
+          type: type === "slide" ? "classic" : item.type, // Handle slide type
+        };
+
+        setCurrentItem(completeItem);
+        setTimeLeft(initialTime || (type === "slide" ? 0 : item.timer || 30));
         setIsLastItem(lastItem);
-        setTimerActive(item.type !== "bullet_points");
+        setTimerActive(type !== "slide");
         setHasSubmitted(false);
         setIsTimeUp(false);
-        if (item.type !== "bullet_points") {
+
+        if (type !== "slide") {
           setQuestionStartTime(Date.now());
         } else {
           setQuestionStartTime(null);
@@ -87,7 +76,6 @@ const UserPlay = () => {
       });
 
       socket.on("timer-sync", (data) => {
-        console.log("Received timer-sync:", data);
         const { timeLeft: newTime } = data;
         setTimeLeft(newTime);
         setTimerActive(newTime > 0);
@@ -97,41 +85,28 @@ const UserPlay = () => {
       });
 
       socket.on("quiz-completed", () => {
-        console.log("Received quiz-completed event");
         setShowFinalLeaderboard(true);
       });
 
       socket.on("session-ended", () => {
-        console.log("Received session-ended event");
         setTimerActive(false);
         setIsTimeUp(true);
         navigate("/join");
       });
 
-      socket.on("error", (error) => {
-        console.error("Socket error:", error);
-      });
-
-      socket.on("disconnect", (reason) => {
-        console.log("Socket disconnected:", reason);
-      });
-
       return () => {
-        console.log("Cleaning up socket listeners");
         socket.off("next-item");
         socket.off("timer-sync");
         socket.off("session-ended");
         socket.off("quiz-completed");
-        socket.off("error");
-        socket.off("disconnect");
       };
     }
   }, [socket, navigate]);
 
-  // In UserPlay.js, modify the handleSubmitAnswer function:
   const handleSubmitAnswer = async (answer) => {
     if (
-      currentItem.type === "bullet_points" ||
+      !currentItem ||
+      currentItem.type === "classic" ||
       timeLeft <= 0 ||
       isTimeUp ||
       hasSubmitted ||
@@ -145,7 +120,6 @@ const UserPlay = () => {
     try {
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
-      // Handle different answer formats based on question type
       const answerData = {
         answer: currentItem.type === "open_ended" ? answer.answer : answer.text,
         userId: user._id,
@@ -155,7 +129,6 @@ const UserPlay = () => {
       await submitAnswer(sessionId, currentItem._id, answerData);
       setHasSubmitted(true);
 
-      // Emit the answer with questionId
       if (socket) {
         const answerDetails = {
           questionId: currentItem._id,
@@ -177,7 +150,6 @@ const UserPlay = () => {
   };
 
   if (authLoading) {
-    console.log("Auth loading...");
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -189,15 +161,10 @@ const UserPlay = () => {
   }
 
   if (!isAuthenticated) {
-    console.log("Not authenticated, returning null");
     return null;
   }
 
   if (showFinalLeaderboard) {
-    console.log("Showing final leaderboard with:", {
-      sessionId,
-      userId: user?.id,
-    });
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <FinalLeaderboard
@@ -209,7 +176,6 @@ const UserPlay = () => {
     );
   }
 
-  console.log("Rendering main quiz view");
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
@@ -222,6 +188,7 @@ const UserPlay = () => {
             isLastItem={isLastItem}
             isTimeUp={isTimeUp}
             hasSubmitted={hasSubmitted}
+            socket={socket}
           />
         </div>
       </div>
