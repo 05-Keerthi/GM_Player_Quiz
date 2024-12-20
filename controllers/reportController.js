@@ -41,7 +41,7 @@ exports.getUserReportByQuiz = async (req, res) => {
   try {
     const report = await Report.findOne({ quiz: quizId, user: userId }).populate('user');
     if (!report) {
-      return res.status(404).json({ message: 'Report not found' });
+      return res.status(404).json({ message: 'Report not found for this quiz' });
     }
     res.status(200).json({
       message: 'User report fetched successfully',
