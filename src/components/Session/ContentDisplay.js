@@ -1,4 +1,3 @@
-// ContentDisplay.js
 import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
@@ -28,7 +27,7 @@ const ContentDisplay = ({
     setOpenEndedAnswer("");
     setIsTimeUp(false);
     setIsAnswerSubmitted(false);
-
+    
     // Initialize counts for poll questions
     if (item?.type === "poll") {
       if (isAdmin && passedOptionCounts && passedTotalVotes) {
@@ -177,17 +176,33 @@ const ContentDisplay = ({
   );
 
   const renderSlide = () => (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold">{item?.title}</h3>
-      {item?.imageUrl && (
-        <img
-          src={item.imageUrl}
-          alt="Slide"
-          className="w-full max-h-64 object-contain rounded-lg"
-        />
-      )}
-      <div className="prose max-w-none">
-        <p className="text-lg whitespace-pre-wrap">{item?.content}</p>
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white">
+      {/* Title Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 rounded-t-lg">
+        <h3 className="text-2xl font-bold text-white">{item?.title}</h3>
+      </div>
+
+      {/* Content Section */}
+      <div className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
+        {item?.imageUrl && (
+          <div className="flex justify-center">
+            <img
+              src={item.imageUrl}
+              alt="Slide"
+              className="max-h-[40vh] object-contain rounded-lg shadow-md"
+            />
+          </div>
+        )}
+        
+        <div className="prose max-w-none flex-1">
+          {item?.content?.split('\n').map((paragraph, index) => (
+            paragraph.trim() && (
+              <p key={index} className="text-lg mb-4">
+                {paragraph}
+              </p>
+            )
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -299,10 +314,10 @@ const ContentDisplay = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">{isSlide ? "Slide" : "Question"}</h2>
-        {!isSlide && (
+    <div className={`bg-white rounded-lg shadow-lg ${isSlide ? '' : 'p-6'} mb-6`}>
+      {!isSlide && (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">Question</h2>
           <div className="flex items-center gap-2 text-lg">
             <Timer className="w-6 h-6" />
             <span
@@ -311,8 +326,8 @@ const ContentDisplay = ({
               {timeLeft}s
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {isSlide
         ? renderSlide()
