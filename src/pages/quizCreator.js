@@ -38,7 +38,7 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 
 const QuizCreator = () => {
   const { updateQuiz } = useQuizContext();
-
+  const [orderedItems, setOrderedItems] = useState([]);
   const [slides, setSlides] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(null);
   const [isAddSlideOpen, setIsAddSlideOpen] = useState(false);
@@ -58,11 +58,14 @@ const QuizCreator = () => {
     title: "",
     description: "",
   });
+
   const { quizId } = useParams();
   const navigate = useNavigate();
+
   const handlePreviewClick = () => {
     navigate(`/Preview/${quizId}`);
   };
+
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
     setTimeout(() => setAlert({ message: "", type: "error" }), 5000);
@@ -76,11 +79,9 @@ const QuizCreator = () => {
   const authenticatedFetch = async (url, options = {}) => {
     const token = localStorage.getItem("token");
 
-    // Add more detailed logging
-
     if (!token) {
       console.error("No authentication token found");
-      navigate("/login"); // Redirect to login page
+      navigate("/login");
       throw new Error("Authentication token not found");
     }
 
@@ -90,14 +91,13 @@ const QuizCreator = () => {
         headers: {
           ...options.headers,
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Ensure this matches your backend expectation
+          Authorization: `Bearer ${token}`,
         },
       });
 
-      // More detailed error handling
       if (response.status === 401) {
         console.error("Unauthorized access - token may be invalid or expired");
-        localStorage.removeItem("token"); // Clear potentially invalid token
+        localStorage.removeItem("token");
         navigate("/login");
         throw new Error("Session expired. Please log in again.");
       }
@@ -134,12 +134,26 @@ const QuizCreator = () => {
 
     try {
       setLoading(true);
+      // Format order array properly
+      const order = orderedItems
+        .map((item) => ({
+          id: item.id,
+          type: item.type,
+        }))
+        .filter((item) => item.id); // Filter out any items without id
+
+      // Get actual slides and questions arrays
+      const cleanSlides = slides.filter((slide) => slide._id); // Filter out malformed slides
+      const cleanQuestions = questions.filter((question) => question._id); // Filter out malformed questions
+
       await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
         method: "PUT",
         body: JSON.stringify({
           title: quiz.title,
           description: quiz.description,
-          questions,
+          questions: cleanQuestions,
+          slides: cleanSlides,
+          order,
         }),
       });
 
@@ -151,14 +165,11 @@ const QuizCreator = () => {
     }
   };
 
-  // Function to upload the image and get the image ObjectId
   const handleImageUpload = async (file) => {
     const formData = new FormData();
     const token = localStorage.getItem("token");
     formData.append("media", file);
-    // Send the image file
 
-    // Make the request to upload the image
     const response = await fetch("http://localhost:5000/api/media/upload", {
       method: "POST",
       body: formData,
@@ -172,23 +183,7 @@ const QuizCreator = () => {
     }
 
     const data = await response.json();
-    return data.imageId; // Return the image's ObjectId from the response
-  };
-
-  // Define the refreshSlides
-  const refreshSlides = async () => {
-    try {
-      const response = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}/slides`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch slides: ${response.statusText}`);
-      }
-      const updatedSlides = await response.json();
-      setSlides(updatedSlides); // Refresh state with updated slides
-    } catch (err) {
-      console.error("Error refreshing slides:", err);
-    }
+    return data.imageId;
   };
 
   const handleAddSlide = async (slideData) => {
@@ -212,10 +207,22 @@ const QuizCreator = () => {
         throw new Error(`Failed to add slide: ${response.statusText}`);
       }
 
-      const newSlide = await response.json();
-      setSlides((prevSlides) => [...prevSlides, newSlide]);
-      setCurrentSlide(newSlide);
-      await refreshSlides();
+      const { slide } = await response.json(); // Extract slide from response
+
+      // Update slides array with the new slide
+      setSlides((prevSlides) => [...prevSlides, slide]);
+
+      // Add to ordered items with proper structure
+      setOrderedItems((prevItems) => [
+        ...prevItems,
+        {
+          id: slide._id,
+          type: "slide",
+          data: slide,
+        },
+      ]);
+
+      setCurrentSlide(slide);
       setIsAddSlideOpen(false);
       showAlert("Slide added successfully", "success");
     } catch (err) {
@@ -248,15 +255,21 @@ const QuizCreator = () => {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to update slide: ${response.statusText}`);
-      }
-
       const updatedSlide = await response.json();
       setSlides((prevSlides) =>
         prevSlides.map((s) => (s._id === slideId ? updatedSlide : s))
       );
       setCurrentSlide(updatedSlide);
+
+      // Update in ordered items
+      setOrderedItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === slideId && item.type === "slide"
+            ? { ...item, data: updatedSlide }
+            : item
+        )
+      );
+
       showAlert("Slide updated successfully", "success");
     } catch (err) {
       handleApiError(err);
@@ -291,6 +304,14 @@ const QuizCreator = () => {
       if (currentSlide?._id === itemToDelete) {
         setCurrentSlide(null);
       }
+
+      // Remove from ordered items
+      setOrderedItems((prevItems) =>
+        prevItems.filter(
+          (item) => !(item.id === itemToDelete && item.type === "slide")
+        )
+      );
+
       showAlert("Slide deleted successfully", "success");
     } catch (err) {
       handleApiError(err);
@@ -301,16 +322,6 @@ const QuizCreator = () => {
     }
   };
 
-  const handleReorderSlides = (sourceIndex, destinationIndex) => {
-    if (sourceIndex === destinationIndex) return;
-
-    const reorderedSlides = [...slides];
-    const [movedSlide] = reorderedSlides.splice(sourceIndex, 1);
-    reorderedSlides.splice(destinationIndex, 0, movedSlide);
-    setSlides(reorderedSlides);
-  };
-
-  // Question Functions
   const handleAddQuestion = async (questionData) => {
     try {
       setLoading(true);
@@ -332,12 +343,31 @@ const QuizCreator = () => {
         throw new Error(`Failed to add question: ${response.statusText}`);
       }
 
-      const newQuestion = await response.json();
+      const newQuestion = await response.json(); // The response is already the question object
+
+      // Validate the question object before updating state
+      if (!newQuestion || !newQuestion._id) {
+        throw new Error("Invalid question data received from server");
+      }
+
+      // Update questions array with the new question
       setQuestions((prevQuestions) => [...prevQuestions, newQuestion]);
+
+      // Add to ordered items with proper structure
+      setOrderedItems((prevItems) => [
+        ...prevItems,
+        {
+          id: newQuestion._id,
+          type: "question",
+          data: newQuestion,
+        },
+      ]);
+
       setCurrentQuestion(newQuestion);
       setIsAddQuestionOpen(false);
       showAlert("Question added successfully", "success");
     } catch (err) {
+      console.error("Error adding question:", err);
       handleApiError(err);
     } finally {
       setLoading(false);
@@ -372,12 +402,30 @@ const QuizCreator = () => {
       }
 
       const updatedQuestion = await response.json();
+
+      // Validate the updated question object
+      if (!updatedQuestion || !updatedQuestion._id) {
+        throw new Error("Invalid question data received from server");
+      }
+
       setQuestions((prevQuestions) =>
         prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
       );
+
       setCurrentQuestion(updatedQuestion);
+
+      // Update in ordered items
+      setOrderedItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === questionId && item.type === "question"
+            ? { ...item, data: updatedQuestion }
+            : item
+        )
+      );
+
       showAlert("Question updated successfully", "success");
     } catch (err) {
+      console.error("Error updating question:", err);
       handleApiError(err);
     } finally {
       setLoading(false);
@@ -410,6 +458,14 @@ const QuizCreator = () => {
       if (currentQuestion?._id === itemToDelete) {
         setCurrentQuestion(null);
       }
+
+      // Remove from ordered items
+      setOrderedItems((prevItems) =>
+        prevItems.filter(
+          (item) => !(item.id === itemToDelete && item.type === "question")
+        )
+      );
+
       showAlert("Question deleted successfully", "success");
     } catch (err) {
       handleApiError(err);
@@ -420,328 +476,390 @@ const QuizCreator = () => {
     }
   };
 
-  const handleReorderQuestions = (sourceIndex, destinationIndex) => {
+  const handleReorderItems = (sourceIndex, destinationIndex) => {
     if (sourceIndex === destinationIndex) return;
 
-    const reorderedQuestions = [...questions];
-    const [movedQuestion] = reorderedQuestions.splice(sourceIndex, 1);
-    reorderedQuestions.splice(destinationIndex, 0, movedQuestion);
-    setQuestions(reorderedQuestions);
+    const reorderedItems = [...orderedItems];
+    const [movedItem] = reorderedItems.splice(sourceIndex, 1);
+    reorderedItems.splice(destinationIndex, 0, movedItem);
+    setOrderedItems(reorderedItems);
+
+    // Update the individual arrays based on type
+    const newSlides = reorderedItems
+      .filter((item) => item.type === "slide")
+      .map((item) => item.data);
+    const newQuestions = reorderedItems
+      .filter((item) => item.type === "question")
+      .map((item) => item.data);
+
+    setSlides(newSlides);
+    setQuestions(newQuestions);
   };
 
+  // Helper functions for validation
+  const isValidQuestion = (question) => {
+    return (
+      question &&
+      typeof question === "object" &&
+      "_id" in question &&
+      "title" in question &&
+      "type" in question
+    );
+  };
+
+  const isValidSlide = (slide) => {
+    return (
+      slide && typeof slide === "object" && "_id" in slide && "title" in slide
+    );
+  };
+
+  
+
+  // Use in useEffect
   useEffect(() => {
-    const loadQuizData = async () => {
-      if (!quizId) {
-        showAlert("Invalid quiz ID");
-        return;
+    // Updated loadQuizData function
+  const loadQuizData = async () => {
+    if (!quizId) {
+      showAlert("Invalid quiz ID");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const quizResponse = await authenticatedFetch(
+        `http://localhost:5000/api/quizzes/${quizId}`
+      );
+
+      if (!quizResponse.ok) {
+        throw new Error(`Failed to fetch quiz: ${quizResponse.statusText}`);
       }
 
-      try {
-        setLoading(true);
-        const quizResponse = await authenticatedFetch(
-          `http://localhost:5000/api/quizzes/${quizId}`
-        );
-        const quizData = await quizResponse.json();
+      const quizData = await quizResponse.json();
 
-        setQuiz({
-          title: quizData.title || "",
-          description: quizData.description || "",
-        });
-        setQuizTitle(quizData.title || ""); // Add this line
-        setSlides(quizData.slides || []);
-        setQuestions(quizData.questions || []);
-      } catch (err) {
-        handleApiError(err);
-        navigate("/quizzes");
-      } finally {
-        setLoading(false);
+      // Validate and set basic quiz data
+      setQuiz({
+        title: quizData.title || "",
+        description: quizData.description || "",
+      });
+      setQuizTitle(quizData.title || "");
+
+      // Validate questions and slides
+      const validQuestions = Array.isArray(quizData.questions)
+        ? quizData.questions.filter(isValidQuestion)
+        : [];
+
+      const validSlides = Array.isArray(quizData.slides)
+        ? quizData.slides.filter(isValidSlide)
+        : [];
+
+      // Set questions and slides state
+      setQuestions(validQuestions);
+      setSlides(validSlides);
+
+      // Handle ordered items
+      let finalOrderedItems = [];
+
+      if (
+        quizData.order &&
+        Array.isArray(quizData.order) &&
+        quizData.order.length > 0
+      ) {
+        // Process existing order
+        finalOrderedItems = quizData.order
+          .filter((item) => item && item.id && item.type) // Filter valid order items
+          .map((item) => {
+            if (item.type === "question") {
+              const questionData = validQuestions.find(
+                (q) => q._id === item.id
+              );
+              return questionData
+                ? {
+                    id: questionData._id,
+                    type: "question",
+                    data: questionData,
+                  }
+                : null;
+            } else if (item.type === "slide") {
+              const slideData = validSlides.find((s) => s._id === item.id);
+              return slideData
+                ? {
+                    id: slideData._id,
+                    type: "slide",
+                    data: slideData,
+                  }
+                : null;
+            }
+            return null;
+          })
+          .filter(Boolean); // Remove null entries
       }
-    };
 
-    loadQuizData();
+      // If no valid order exists or order array is empty, create default order
+      if (finalOrderedItems.length === 0) {
+        // Create default order by combining slides and questions
+        finalOrderedItems = [
+          ...validSlides.map((slide) => ({
+            id: slide._id,
+            type: "slide",
+            data: slide,
+          })),
+          ...validQuestions.map((question) => ({
+            id: question._id,
+            type: "question",
+            data: question,
+          })),
+        ];
+      }
+
+      // Set the final ordered items
+      setOrderedItems(finalOrderedItems);
+
+      // Reset current selections
+      setCurrentQuestion(null);
+      setCurrentSlide(null);
+    } catch (err) {
+      console.error("Error loading quiz data:", err);
+      handleApiError(err);
+      navigate("/quizzes");
+    } finally {
+      setLoading(false);
+    }
+  };
+  loadQuizData()
   }, [quizId, navigate]);
 
   return (
     <>
-      <>
-        <Navbar />
-      </>
-      <>
-        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-          {/* Custom Alert */}
-          <CustomAlert
-            message={alert.message}
-            type={alert.type}
-            onClose={() => setAlert({ message: "", type: "error" })}
-          />
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+        <CustomAlert
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert({ message: "", type: "error" })}
+        />
 
-          {/* Top Navigation */}
-          <nav className="bg-white border-b shadow-sm">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
-                  GM Play...!
-                </span>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Enter quiz title..."
-                    value={quizTitle}
-                    className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
-                    onClick={() => setIsSettingsOpen(true)}
-                    readOnly
-                  />
-                </div>
-              </div>
-              {/* <button
-  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
-  onClick={() => setIsPreviewOpen(true)}
->
-  Preview
-</button> */}
-              <div className="flex items-center gap-3">
-                <button
-                  className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  onClick={() => navigate("/selectQuizCategory")}
-                >
-                  Exit
-                </button>
-                {/* Preview Button handlePreviewClick*/}
-                <button
-                  onClick={handlePreviewClick}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
-                >
-                  Preview
-                </button>
-
-                <button
-                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
-                    loading
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-blue-700"
-                  }`}
-                  onClick={handleSaveQuiz}
-                  disabled={loading}
-                >
-                  {loading ? "Saving..." : "Save Quiz"}
-                </button>
+        {/* Top Navigation */}
+        <nav className="bg-white border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
+                GM Play...!
+              </span>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Enter quiz title..."
+                  value={quizTitle}
+                  className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
+                  onClick={() => setIsSettingsOpen(true)}
+                  readOnly
+                />
               </div>
             </div>
-          </nav>
+            <div className="flex items-center gap-3">
+              <button
+                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                onClick={() => navigate("/selectQuizCategory")}
+              >
+                Exit
+              </button>
+              <button
+                onClick={handlePreviewClick}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
+              >
+                Preview
+              </button>
+              <button
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
+                  loading
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-blue-700"
+                }`}
+                onClick={handleSaveQuiz}
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save Quiz"}
+              </button>
+            </div>
+          </div>
+        </nav>
 
-          {/* Main Content */}
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Questions List */}
-              <div className="md:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4">
-                  <h2 className="font-medium text-lg mb-4">Questions</h2>
-                  <div className="space-y-2">
-                    {questions.map((question, index) => (
-                      <div
-                        key={question._id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData(
-                            "text/plain",
-                            index.toString()
-                          );
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const sourceIndex = parseInt(
-                            e.dataTransfer.getData("text/plain"),
-                            10
-                          );
-                          handleReorderQuestions(sourceIndex, index);
-                        }}
-                        className={`p-3 rounded-lg cursor-move transition-colors ${
-                          currentQuestion?._id === question._id
-                            ? "bg-blue-50 border-2 border-blue-500"
-                            : "hover:bg-gray-50 border border-gray-200"
-                        }`}
-                        onClick={() => {
-                          setCurrentQuestion(question);
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Questions and Slides List */}
+            <div className="md:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="font-medium text-lg mb-4">Content</h2>
+                <div className="space-y-2">
+                  {orderedItems.map((item, index) => (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", index.toString());
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const sourceIndex = parseInt(
+                          e.dataTransfer.getData("text/plain"),
+                          10
+                        );
+                        handleReorderItems(sourceIndex, index);
+                      }}
+                      className={`p-3 rounded-lg cursor-move transition-colors ${
+                        (item.type === "question" &&
+                          currentQuestion?._id === item.id) ||
+                        (item.type === "slide" && currentSlide?._id === item.id)
+                          ? "bg-blue-50 border-2 border-blue-500"
+                          : "hover:bg-gray-50 border border-gray-200"
+                      }`}
+                      onClick={() => {
+                        if (item.type === "question") {
+                          setCurrentQuestion(item.data);
                           setCurrentSlide(null);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">
-                            Question {index + 1}
-                          </span>
-                          <button
-                            onClick={(e) =>
-                              handleDeleteQuestion(e, question._id)
-                            }
-                            className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          {question.title}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="font-medium text-lg mb-4 mt-4">Slides</h2>
-                    {slides.map((slide, index) => (
-                      <div
-                        key={slide._id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData(
-                            "text/plain",
-                            index.toString()
-                          );
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const sourceIndex = parseInt(
-                            e.dataTransfer.getData("text/plain"),
-                            10
-                          );
-                          handleReorderSlides(sourceIndex, index);
-                        }}
-                        className={`p-3 rounded-lg cursor-move transition-colors ${
-                          currentSlide?._id === slide._id
-                            ? "bg-blue-50 border-2 border-blue-500"
-                            : "hover:bg-gray-50 border border-gray-200"
-                        }`}
-                        onClick={() => {
-                          setCurrentSlide(slide);
+                        } else {
+                          setCurrentSlide(item.data);
                           setCurrentQuestion(null);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Slide {index + 1}</span>
-                          <button
-                            onClick={(e) => handleDeleteSlide(e, slide._id)}
-                            className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          {slide.title}
-                        </p>
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {item.type === "question"
+                            ? `Question ${index + 1}`
+                            : `Slide ${index + 1}`}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.type === "question") {
+                              handleDeleteQuestion(e, item.id);
+                            } else {
+                              handleDeleteSlide(e, item.id);
+                            }
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-sm text-gray-500 truncate">
+                        {item.data.title}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2 mt-4">
                   <button
-                    className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={() => setIsAddQuestionOpen(true)}
                   >
                     Add Question
                   </button>
                   <button
-                    className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={() => setIsAddSlideOpen(true)}
                   >
                     Add Slide
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Question and Slide Editor Container */}
-              <div className="md:col-span-2">
-                <AnimatePresence>
-                  {currentQuestion ? (
-                    // Render the QuestionEditor if there's a current question
-                    <QuestionEditor
-                      question={currentQuestion}
-                      onUpdate={(updatedData) =>
-                        handleUpdateQuestion(
-                          currentQuestion.id || currentQuestion._id,
-                          updatedData
-                        )
-                      }
-                      onClose={() => setCurrentQuestion(null)}
-                    />
-                  ) : currentSlide ? (
-                    // Render the SlideEditor if there's a current slide
-                    <SlideEditor
-                      slide={currentSlide}
-                      onUpdate={(updatedData) =>
-                        handleUpdateSlide(currentSlide._id, updatedData)
-                      }
-                      onClose={() => setCurrentSlide(null)}
-                    />
-                  ) : (
-                    // Show placeholder message when no editor is selected
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500"
-                    >
-                      Select a question or slide to edit or create a new one
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+            {/* Editor Container */}
+            <div className="md:col-span-2">
+              <AnimatePresence>
+                {currentQuestion ? (
+                  <QuestionEditor
+                    question={currentQuestion}
+                    onUpdate={(updatedData) =>
+                      handleUpdateQuestion(
+                        currentQuestion.id || currentQuestion._id,
+                        updatedData
+                      )
+                    }
+                    onClose={() => setCurrentQuestion(null)}
+                  />
+                ) : currentSlide ? (
+                  <SlideEditor
+                    slide={currentSlide}
+                    onUpdate={(updatedData) =>
+                      handleUpdateSlide(currentSlide._id, updatedData)
+                    }
+                    onClose={() => setCurrentSlide(null)}
+                  />
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500"
+                  >
+                    Select a question or slide to edit or create a new one
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
-
-          {/* Add Question Modal */}
-          <QuestionTypeModal
-            isOpen={isAddQuestionOpen}
-            onClose={() => setIsAddQuestionOpen(false)}
-            onAddQuestion={handleAddQuestion}
-          />
-
-          <SlideTypeModal
-            isOpen={isAddSlideOpen}
-            onClose={() => setIsAddSlideOpen(false)}
-            onAddSlide={handleAddSlide}
-          />
-
-          {/* Settings Modal */}
-          <UnifiedSettingsModal
-            isOpen={isSettingsOpen}
-            onClose={() => setIsSettingsOpen(false)}
-            onSave={handleSettingsUpdate}
-            onTitleUpdate={setQuizTitle}
-            initialData={{
-              id: quizId,
-              title: quiz?.title || "",
-              description: quiz?.description || "",
-            }}
-            type="quiz"
-          />
-
-          <PreviewModal
-            isOpen={isPreviewOpen}
-            onClose={() => setIsPreviewOpen(false)}
-            slides={slides}
-            questions={questions}
-          />
-          <ConfirmationModal
-            isOpen={showDeleteQuestionModal}
-            onClose={() => {
-              setShowDeleteQuestionModal(false);
-              setItemToDelete(null);
-            }}
-            onConfirm={handleConfirmDeleteQuestion}
-            title="Delete Question"
-            message="Are you sure you want to delete this question? This action cannot be undone."
-          />
-
-          <ConfirmationModal
-            isOpen={showDeleteSlideModal}
-            onClose={() => {
-              setShowDeleteSlideModal(false);
-              setItemToDelete(null);
-            }}
-            onConfirm={handleConfirmDeleteSlide}
-            title="Delete Slide"
-            message="Are you sure you want to delete this slide? This action cannot be undone."
-          />
         </div>
-      </>
+
+        {/* Modals */}
+        <QuestionTypeModal
+          isOpen={isAddQuestionOpen}
+          onClose={() => setIsAddQuestionOpen(false)}
+          onAddQuestion={handleAddQuestion}
+        />
+
+        <SlideTypeModal
+          isOpen={isAddSlideOpen}
+          onClose={() => setIsAddSlideOpen(false)}
+          onAddSlide={handleAddSlide}
+        />
+
+        <UnifiedSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onSave={handleSettingsUpdate}
+          onTitleUpdate={setQuizTitle}
+          initialData={{
+            id: quizId,
+            title: quiz?.title || "",
+            description: quiz?.description || "",
+          }}
+          type="quiz"
+        />
+
+        <PreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          slides={slides}
+          questions={questions}
+        />
+
+        <ConfirmationModal
+          isOpen={showDeleteQuestionModal}
+          onClose={() => {
+            setShowDeleteQuestionModal(false);
+            setItemToDelete(null);
+          }}
+          onConfirm={handleConfirmDeleteQuestion}
+          title="Delete Question"
+          message="Are you sure you want to delete this question? This action cannot be undone."
+        />
+
+        <ConfirmationModal
+          isOpen={showDeleteSlideModal}
+          onClose={() => {
+            setShowDeleteSlideModal(false);
+            setItemToDelete(null);
+          }}
+          onConfirm={handleConfirmDeleteSlide}
+          title="Delete Slide"
+          message="Are you sure you want to delete this slide? This action cannot be undone."
+        />
+      </div>
     </>
   );
 };
