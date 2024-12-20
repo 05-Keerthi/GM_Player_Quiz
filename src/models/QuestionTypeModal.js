@@ -68,6 +68,12 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion, initialQuestion }) 
       title: 'Open Ended',
       description: 'Free text response question',
     },
+    {
+      id: 'poll',
+      icon: MessageSquare,
+      title: 'Poll',
+      description: 'Poll response question',
+    },
   ];
 
   const handleImageUpload = (e) => {

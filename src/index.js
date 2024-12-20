@@ -19,6 +19,7 @@ import { NotificationProvider } from "./context/notificationContext";
 import { SurveyAnswerProvider } from "./context/surveyAnswerContext";
 import { SurveyNotificationProvider } from "./context/SurveynotificationContext";
 import { ReportProvider } from "./context/ReportContext";
+import { MediaProvider } from "./context/mediaContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -28,29 +29,31 @@ root.render(
         <TenantProvider>
           <CategoryProvider>
             <QuizProvider>
-              <SessionProvider>
-                <ReportProvider>  {/* Added ReportProvider here */}
-                  <AnswerProvider>
-                    <LeaderboardProvider>
-                      <NotificationProvider>
-                        <SurveyProvider>
-                          <SurveyNotificationProvider>
-                            <QuestionProvider>
-                              <SurveySessionProvider>
-                                <SurveyAnswerProvider>
-                                  <BrowserRouter>
-                                    <App />
-                                  </BrowserRouter>
-                                </SurveyAnswerProvider>
-                              </SurveySessionProvider>
-                            </QuestionProvider>
-                          </SurveyNotificationProvider>
-                        </SurveyProvider>
-                      </NotificationProvider>
-                    </LeaderboardProvider>
-                  </AnswerProvider>
-                </ReportProvider>
-              </SessionProvider>
+              <MediaProvider>
+                <SessionProvider>
+                  <ReportProvider>
+                    <AnswerProvider>
+                      <LeaderboardProvider>
+                        <NotificationProvider>
+                          <SurveyProvider>
+                            <SurveyNotificationProvider>
+                              <QuestionProvider>
+                                <SurveySessionProvider>
+                                  <SurveyAnswerProvider>
+                                    <BrowserRouter>
+                                      <App />
+                                    </BrowserRouter>
+                                  </SurveyAnswerProvider>
+                                </SurveySessionProvider>
+                              </QuestionProvider>
+                            </SurveyNotificationProvider>
+                          </SurveyProvider>
+                        </NotificationProvider>
+                      </LeaderboardProvider>
+                    </AnswerProvider>
+                  </ReportProvider>
+                </SessionProvider>
+              </MediaProvider>
             </QuizProvider>
           </CategoryProvider>
         </TenantProvider>
