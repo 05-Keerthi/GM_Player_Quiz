@@ -1,4 +1,3 @@
-// AnswerCountDisplay.js
 import React, { useState, useEffect } from "react";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
@@ -13,10 +12,14 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     if (
       currentItem.type === "poll" ||
       currentItem.type === "multiple_choice" ||
-      currentItem.type === "multiple_select"
+      currentItem.type === "multiple_select" ||
+      currentItem.type === "true_false"
     ) {
       const initialCounts = {};
-      if (currentItem.options) {
+      if (currentItem.type === "true_false") {
+        initialCounts[0] = 0; // False
+        initialCounts[1] = 0; // True
+      } else if (currentItem.options) {
         currentItem.options.forEach((_, index) => {
           initialCounts[index] = 0;
         });
@@ -36,28 +39,13 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
       if (answerDetails.questionId === currentItem._id) {
         if (currentItem.type === "open_ended") {
           setOpenEndedCount((prev) => prev + 1);
-        } else if (
-          currentItem.type === "poll" ||
-          currentItem.type === "multiple_choice"
-        ) {
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            if (currentItem.options) {
-              const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === answerDetails.answer
-              );
-              if (optionIndex !== -1) {
-                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-              }
-            }
-            return newCounts;
-          });
-          setTotalVotes((prev) => prev + 1);
         } else if (currentItem.type === "multiple_select") {
+          // Handle multiple select answers
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
-            let selectedAnswers;
-            
+            let selectedAnswers = [];
+
+            // Parse the answer based on its type
             if (Array.isArray(answerDetails.answer)) {
               selectedAnswers = answerDetails.answer;
             } else if (typeof answerDetails.answer === "string") {
@@ -66,19 +54,37 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
               } catch {
                 selectedAnswers = [answerDetails.answer];
               }
-            } else {
-              selectedAnswers = [];
             }
 
-            if (currentItem.options) {
-              selectedAnswers.forEach((answer) => {
-                const optionIndex = currentItem.options.findIndex(
-                  (opt) => opt.text === answer
-                );
-                if (optionIndex !== -1) {
-                  newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-                }
-              });
+            // Update counts for each selected option
+            selectedAnswers.forEach((answer) => {
+              const optionIndex = currentItem.options.findIndex(
+                (opt) => opt.text === answer
+              );
+              if (optionIndex !== -1) {
+                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+              }
+            });
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
+        } else if (
+          currentItem.type === "poll" ||
+          currentItem.type === "multiple_choice" ||
+          currentItem.type === "true_false"
+        ) {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            if (currentItem.type === "true_false") {
+              const optionIndex = answerDetails.answer === "true" ? 1 : 0;
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            } else if (currentItem.options) {
+              const optionIndex = currentItem.options.findIndex(
+                (opt) => opt.text === answerDetails.answer
+              );
+              if (optionIndex !== -1) {
+                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+              }
             }
             return newCounts;
           });
@@ -118,7 +124,25 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For multiple choice, multiple select or poll questions, show only count circles
+  // For true/false questions, show two count circles
+  if (currentItem.type === "true_false") {
+    return (
+      <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
+        <div
+          className={`${bgColors[0]} p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+        >
+          {optionCounts[0] || 0}
+        </div>
+        <div
+          className={`${bgColors[1]} p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+        >
+          {optionCounts[1] || 0}
+        </div>
+      </div>
+    );
+  }
+
+  // For multiple choice, multiple select or poll questions, show count circles
   if (!currentItem.options) {
     return null;
   }

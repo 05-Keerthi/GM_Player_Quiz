@@ -16,6 +16,7 @@ const ContentDisplay = ({
   totalVotes: passedTotalVotes,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState([]);
   const [openEndedAnswer, setOpenEndedAnswer] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
@@ -24,11 +25,11 @@ const ContentDisplay = ({
 
   useEffect(() => {
     setSelectedOption(null);
+    setSelectedOptions([]);
     setOpenEndedAnswer("");
     setIsTimeUp(false);
     setIsAnswerSubmitted(false);
-    
-    // Initialize counts for poll questions
+
     if (item?.type === "poll") {
       if (isAdmin && passedOptionCounts && passedTotalVotes) {
         setOptionCounts(passedOptionCounts);
@@ -98,6 +99,7 @@ const ContentDisplay = ({
     item?.type === "slide" ||
     item?.type === "classic";
   const isOpenEnded = item?.type === "open_ended";
+  const isMultipleSelect = item?.type === "multiple_select";
 
   const handleOpenEndedSubmit = () => {
     if (!isAdmin && openEndedAnswer.trim() && !isTimeUp && !isAnswerSubmitted) {
@@ -108,6 +110,37 @@ const ContentDisplay = ({
       });
       setIsAnswerSubmitted(true);
     }
+  };
+
+  const handleOptionSelect = (option) => {
+    if (isAdmin || timeLeft === 0 || isTimeUp || isAnswerSubmitted) return;
+
+    if (isMultipleSelect) {
+      setSelectedOptions((prev) => {
+        const isSelected = prev.some((opt) => opt._id === option._id);
+        if (isSelected) {
+          return prev.filter((opt) => opt._id !== option._id);
+        } else {
+          return [...prev, option];
+        }
+      });
+    } else {
+      setSelectedOption(option);
+      onSubmitAnswer?.(option);
+      setIsAnswerSubmitted(true);
+    }
+  };
+
+  const handleMultipleSelectSubmit = () => {
+    if (selectedOptions.length === 0 || isTimeUp || isAnswerSubmitted) return;
+
+    const answers = selectedOptions.map((opt) => opt.text);
+    onSubmitAnswer?.({
+      type: "multiple_select",
+      answer: answers,
+      text: JSON.stringify(answers),
+    });
+    setIsAnswerSubmitted(true);
   };
 
   const getPercentage = (count) => {
@@ -151,16 +184,23 @@ const ContentDisplay = ({
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={4}
             disabled={isTimeUp || isAnswerSubmitted}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                // Prevent default Enter key behavior (new line)
+                e.preventDefault(); // This stops the newline
+                handleOpenEndedSubmit(); // Call the submit function
+              }
+            }}
           />
           <button
             onClick={handleOpenEndedSubmit}
             className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
-              ${
-                isTimeUp || isAnswerSubmitted
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-blue-700"
-              }
-            `}
+      ${
+        isTimeUp || isAnswerSubmitted
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:bg-blue-700"
+      }
+    `}
             disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
           >
             Submit Answer
@@ -193,15 +233,16 @@ const ContentDisplay = ({
             />
           </div>
         )}
-        
+
         <div className="prose max-w-none flex-1">
-          {item?.content?.split('\n').map((paragraph, index) => (
-            paragraph.trim() && (
-              <p key={index} className="text-lg mb-4">
-                {paragraph}
-              </p>
-            )
-          ))}
+          {item?.content?.split("\n").map(
+            (paragraph, index) =>
+              paragraph.trim() && (
+                <p key={index} className="text-lg mb-4">
+                  {paragraph}
+                </p>
+              )
+          )}
         </div>
       </div>
     </div>
@@ -213,6 +254,11 @@ const ContentDisplay = ({
     return (
       <div className="space-y-4">
         <h3 className="text-xl mb-4">{item?.title}</h3>
+        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+          <p className="text-gray-600 mb-4">
+            Select multiple options and click Submit when done
+          </p>
+        )}
         {item?.imageUrl && (
           <img
             src={item.imageUrl}
@@ -224,17 +270,14 @@ const ContentDisplay = ({
           {item?.options?.map((option, index) => (
             <button
               key={option._id}
-              onClick={() => {
-                if (!isAdmin && timeLeft > 0 && !selectedOption && !isTimeUp) {
-                  setSelectedOption(option);
-                  onSubmitAnswer?.(option);
-                  setIsAnswerSubmitted(true);
-                }
-              }}
+              onClick={() => handleOptionSelect(option)}
               className={`p-4 text-lg rounded-lg border transition-all
                 ${bgColors[index % bgColors.length]} 
                 ${
-                  !isAdmin && selectedOption === option
+                  !isAdmin &&
+                  (isMultipleSelect
+                    ? selectedOptions.some((opt) => opt._id === option._id)
+                    : selectedOption === option)
                     ? "border-blue-500 ring-2 ring-blue-500"
                     : "hover:brightness-95"
                 }
@@ -244,17 +287,47 @@ const ContentDisplay = ({
                     : ""
                 }
                 ${
-                  timeLeft === 0 || selectedOption || isTimeUp
+                  (timeLeft === 0 ||
+                    (!isMultipleSelect && selectedOption) ||
+                    isTimeUp ||
+                    isAnswerSubmitted) &&
+                  !isMultipleSelect
                     ? "opacity-60 cursor-not-allowed"
                     : ""
                 }
               `}
-              disabled={timeLeft === 0 || selectedOption || isTimeUp}
+              disabled={
+                isAdmin ||
+                timeLeft === 0 ||
+                (!isMultipleSelect && selectedOption) ||
+                isTimeUp ||
+                isAnswerSubmitted
+              }
             >
               {option.text}
             </button>
           ))}
         </div>
+
+        {/* Submit button for multiple select */}
+        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleMultipleSelectSubmit}
+              disabled={selectedOptions.length === 0 || isTimeUp}
+              className={`px-6 py-2 bg-blue-600 text-white rounded-lg
+                ${
+                  selectedOptions.length === 0 || isTimeUp
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-blue-700"
+                }
+              `}
+            >
+              Submit Selections
+            </button>
+          </div>
+        )}
+
         {!isAdmin && isAnswerSubmitted && (
           <p className="text-green-600 font-medium text-center mt-4">
             Answer submitted successfully!
@@ -314,7 +387,9 @@ const ContentDisplay = ({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg ${isSlide ? '' : 'p-6'} mb-6`}>
+    <div
+      className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}
+    >
       {!isSlide && (
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Question</h2>
