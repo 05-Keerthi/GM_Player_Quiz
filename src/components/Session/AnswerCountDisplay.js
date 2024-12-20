@@ -1,3 +1,4 @@
+// AnswerCountDisplay.js
 import React, { useState, useEffect } from "react";
 
 const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
@@ -7,59 +8,69 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
 
   // Initialize counts when question changes
   useEffect(() => {
+    if (!currentItem) return;
+
     if (
-      currentItem?.type === "poll" ||
-      currentItem?.type === "multiple_choice" ||
-      currentItem?.type === "multiple_select"
+      currentItem.type === "poll" ||
+      currentItem.type === "multiple_choice" ||
+      currentItem.type === "multiple_select"
     ) {
       const initialCounts = {};
-      currentItem.options?.forEach((_, index) => {
-        initialCounts[index] = 0;
-      });
+      if (currentItem.options) {
+        currentItem.options.forEach((_, index) => {
+          initialCounts[index] = 0;
+        });
+      }
       setOptionCounts(initialCounts);
       setTotalVotes(0);
-    } else if (currentItem?.type === "open_ended") {
+    } else if (currentItem.type === "open_ended") {
       setOpenEndedCount(0);
     }
   }, [currentItem]);
 
   // Socket event listener
   useEffect(() => {
-    if (socket && currentItem?._id && currentItem.type !== "slide") {
-      const handleAnswerSubmitted = ({ answerDetails }) => {
-        if (answerDetails.questionId === currentItem._id) {
-          if (currentItem.type === "open_ended") {
-            setOpenEndedCount((prev) => prev + 1);
-          } else if (currentItem.type === "poll") {
-            // For poll questions, handle single answer
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
+    if (!socket || !currentItem?._id || currentItem.type === "slide") return;
+
+    const handleAnswerSubmitted = ({ answerDetails }) => {
+      if (answerDetails.questionId === currentItem._id) {
+        if (currentItem.type === "open_ended") {
+          setOpenEndedCount((prev) => prev + 1);
+        } else if (
+          currentItem.type === "poll" ||
+          currentItem.type === "multiple_choice"
+        ) {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            if (currentItem.options) {
               const optionIndex = currentItem.options.findIndex(
                 (opt) => opt.text === answerDetails.answer
               );
               if (optionIndex !== -1) {
                 newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
               }
-              return newCounts;
-            });
-            setTotalVotes((prev) => prev + 1);
-          } else if (currentItem.type === "multiple_select") {
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
-              let selectedAnswers;
-              if (Array.isArray(answerDetails.answer)) {
-                selectedAnswers = answerDetails.answer;
-              } else if (typeof answerDetails.answer === "string") {
-                try {
-                  selectedAnswers = JSON.parse(answerDetails.answer);
-                } catch {
-                  // If it's not JSON, treat it as a single answer
-                  selectedAnswers = [answerDetails.answer];
-                }
-              } else {
-                selectedAnswers = [];
+            }
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
+        } else if (currentItem.type === "multiple_select") {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            let selectedAnswers;
+            
+            if (Array.isArray(answerDetails.answer)) {
+              selectedAnswers = answerDetails.answer;
+            } else if (typeof answerDetails.answer === "string") {
+              try {
+                selectedAnswers = JSON.parse(answerDetails.answer);
+              } catch {
+                selectedAnswers = [answerDetails.answer];
               }
+            } else {
+              selectedAnswers = [];
+            }
 
+            if (currentItem.options) {
               selectedAnswers.forEach((answer) => {
                 const optionIndex = currentItem.options.findIndex(
                   (opt) => opt.text === answer
@@ -68,28 +79,16 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
                   newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
                 }
               });
-              return newCounts;
-            });
-            setTotalVotes((prev) => prev + 1);
-          } else if (currentItem.type === "multiple_choice") {
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
-              const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === answerDetails.answer
-              );
-              if (optionIndex !== -1) {
-                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-              }
-              return newCounts;
-            });
-            setTotalVotes((prev) => prev + 1);
-          }
+            }
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
         }
-      };
+      }
+    };
 
-      socket.on("answer-submitted", handleAnswerSubmitted);
-      return () => socket.off("answer-submitted", handleAnswerSubmitted);
-    }
+    socket.on("answer-submitted", handleAnswerSubmitted);
+    return () => socket.off("answer-submitted", handleAnswerSubmitted);
   }, [socket, currentItem]);
 
   // Early return if no currentItem or if it's a slide
@@ -119,92 +118,25 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For multiple choice, multiple select or poll questions
-  if (
-    currentItem.type === "multiple_choice" ||
-    currentItem.type === "multiple_select" ||
-    currentItem.type === "poll"
-  ) {
-    // Calculate percentages for each option
-    const getPercentage = (count) => {
-      if (totalVotes === 0) return 0;
-      return Math.round((count / totalVotes) * 100);
-    };
-
-    // Show only count circles for non-poll questions
-    if (currentItem.type !== "poll") {
-      return (
-        <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-          {currentItem.options.map((_, index) => (
-            <div
-              key={`count-${index}`}
-              className={`${
-                bgColors[index % bgColors.length]
-              } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-            >
-              {optionCounts[index] || 0}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    // Show full progress bars for poll questions
-    return (
-      <div className="space-y-4">
-        {/* Count circles at the top */}
-        <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-          {currentItem.options.map((_, index) => (
-            <div
-              key={`count-${index}`}
-              className={`${
-                bgColors[index % bgColors.length]
-              } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-            >
-              {optionCounts[index] || 0}
-            </div>
-          ))}
-        </div>
-
-        {/* Center container for progress bars */}
-        <div className="flex justify-center">
-          {/* Progress bars */}
-          <div className="w-1/2 bg-white rounded-lg p-6 shadow-md space-y-3">
-            {currentItem.options.map((option, index) => {
-              const count = optionCounts[index] || 0;
-              const percentage = getPercentage(count);
-
-              return (
-                <div key={`progress-${index}`} className="relative">
-                  {/* Progress bar background */}
-                  <div className="h-12 w-full bg-gray-100 rounded-full relative">
-                    {/* Progress bar fill */}
-                    <div
-                      className={`h-full ${
-                        bgColors[index % bgColors.length]
-                      } transition-all duration-500 rounded-full absolute top-0 left-0`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                    {/* Text overlay - always visible */}
-                    <div className="absolute inset-0 px-4 flex items-center justify-between">
-                      <span className="text-gray-800 font-medium z-10">
-                        {option.text}
-                      </span>
-                      <span className="text-gray-800 font-medium z-10">
-                        {percentage}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
+  // For multiple choice, multiple select or poll questions, show only count circles
+  if (!currentItem.options) {
+    return null;
   }
 
-  return null;
+  return (
+    <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
+      {currentItem.options.map((_, index) => (
+        <div
+          key={`count-${index}`}
+          className={`${
+            bgColors[index % bgColors.length]
+          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+        >
+          {optionCounts[index] || 0}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 export default AdminAnswerCounts;

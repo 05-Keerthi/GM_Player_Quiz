@@ -13,6 +13,8 @@ const ContentDisplay = ({
   isQuizEnded,
   submittedAnswers = [],
   socket,
+  optionCounts: passedOptionCounts,
+  totalVotes: passedTotalVotes,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [openEndedAnswer, setOpenEndedAnswer] = useState("");
@@ -29,14 +31,19 @@ const ContentDisplay = ({
 
     // Initialize counts for poll questions
     if (item?.type === "poll") {
-      const initialCounts = {};
-      item.options?.forEach((_, index) => {
-        initialCounts[index] = 0;
-      });
-      setOptionCounts(initialCounts);
-      setTotalVotes(0);
+      if (isAdmin && passedOptionCounts && passedTotalVotes) {
+        setOptionCounts(passedOptionCounts);
+        setTotalVotes(passedTotalVotes);
+      } else {
+        const initialCounts = {};
+        item.options?.forEach((_, index) => {
+          initialCounts[index] = 0;
+        });
+        setOptionCounts(initialCounts);
+        setTotalVotes(0);
+      }
     }
-  }, [item]);
+  }, [item, isAdmin, passedOptionCounts, passedTotalVotes]);
 
   useEffect(() => {
     if (timeLeft === 0) {
@@ -44,9 +51,17 @@ const ContentDisplay = ({
     }
   }, [timeLeft]);
 
-  // Socket event listener for poll updates
+  // Update counts when passed props change in admin view
   useEffect(() => {
-    if (socket && item?._id && item?.type === "poll") {
+    if (isAdmin && item?.type === "poll") {
+      setOptionCounts(passedOptionCounts || {});
+      setTotalVotes(passedTotalVotes || 0);
+    }
+  }, [isAdmin, passedOptionCounts, passedTotalVotes, item]);
+
+  // Socket event listener for poll updates (user view only)
+  useEffect(() => {
+    if (socket && item?._id && item?.type === "poll" && !isAdmin) {
       const handleAnswerSubmitted = ({ answerDetails }) => {
         if (answerDetails.questionId === item._id) {
           setOptionCounts((prev) => {
@@ -66,7 +81,7 @@ const ContentDisplay = ({
       socket.on("answer-submitted", handleAnswerSubmitted);
       return () => socket.off("answer-submitted", handleAnswerSubmitted);
     }
-  }, [socket, item]);
+  }, [socket, item, isAdmin]);
 
   const bgColors = [
     "bg-red-300",
@@ -253,7 +268,7 @@ const ContentDisplay = ({
                           {option.text}
                         </span>
                         <span className="text-gray-800 font-medium z-10">
-                          {percentage}%
+                          {percentage}% ({count})
                         </span>
                       </div>
                     </div>

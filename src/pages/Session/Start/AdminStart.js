@@ -1,3 +1,4 @@
+// AdminStart.js
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -20,6 +21,9 @@ const AdminStart = () => {
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
   const [timerInterval, setTimerInterval] = useState(null);
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
+  const [optionCounts, setOptionCounts] = useState({});
+  const [totalVotes, setTotalVotes] = useState(0);
+
   const quizId = searchParams.get("quizId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
@@ -43,6 +47,16 @@ const AdminStart = () => {
             setTimeLeft(initialTime);
             setTimerActive(response.item.type !== "bullet_points");
             setIsLastItem(response.isLastItem || false);
+
+            // Initialize option counts for poll questions
+            if (response.item.type === "poll") {
+              const initialCounts = {};
+              response.item.options?.forEach((_, index) => {
+                initialCounts[index] = 0;
+              });
+              setOptionCounts(initialCounts);
+              setTotalVotes(0);
+            }
 
             // Emit both the item and initial timer value
             newSocket.emit("next-item", {
@@ -72,23 +86,34 @@ const AdminStart = () => {
     };
   }, [sessionId, joinCode]);
 
+  // Socket event listener for answers
   useEffect(() => {
-    if (socket) {
+    if (socket && currentItem) {
       const handleAnswerSubmitted = (data) => {
-        if (currentItem && data.answerDetails.questionId === currentItem._id) {
+        if (data.answerDetails.questionId === currentItem._id) {
           if (currentItem.type === "open_ended") {
             setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
+          } else if (currentItem.type === "poll") {
+            setOptionCounts((prev) => {
+              const newCounts = { ...prev };
+              const optionIndex = currentItem.options.findIndex(
+                (opt) => opt.text === data.answerDetails.answer
+              );
+              if (optionIndex !== -1) {
+                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+              }
+              return newCounts;
+            });
+            setTotalVotes((prev) => prev + 1);
           }
         }
       };
 
       socket.on("answer-submitted", handleAnswerSubmitted);
-
-      return () => {
-        socket.off("answer-submitted", handleAnswerSubmitted);
-      };
+      return () => socket.off("answer-submitted", handleAnswerSubmitted);
     }
   }, [socket, currentItem]);
+
   // Function to start timer
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
@@ -140,6 +165,16 @@ const AdminStart = () => {
         setTimeLeft(newTime);
         setTimerActive(response.item.type !== "bullet_points");
         setIsLastItem(response.isLastItem || false);
+
+        // Reset option counts for new poll questions
+        if (response.item.type === "poll") {
+          const initialCounts = {};
+          response.item.options?.forEach((_, index) => {
+            initialCounts[index] = 0;
+          });
+          setOptionCounts(initialCounts);
+          setTotalVotes(0);
+        }
 
         if (socket) {
           socket.emit("next-item", {
@@ -225,7 +260,7 @@ const AdminStart = () => {
             </div>
           ) : (
             <>
-              {/* Ans count Div */}
+              {/* Answer count display at the top */}
               <div className="mb-2">
                 <AdminAnswerCounts
                   sessionId={sessionId}
@@ -234,6 +269,7 @@ const AdminStart = () => {
                 />
               </div>
 
+              {/* Main content display */}
               <div>
                 <ContentDisplay
                   item={currentItem}
@@ -243,7 +279,10 @@ const AdminStart = () => {
                   isLastItem={isLastItem}
                   onEndQuiz={handleEndQuiz}
                   isQuizEnded={isQuizEnded}
-                  submittedAnswers={submittedAnswers} // Add this prop
+                  submittedAnswers={submittedAnswers}
+                  socket={socket}
+                  optionCounts={optionCounts}
+                  totalVotes={totalVotes}
                 />
               </div>
             </>
