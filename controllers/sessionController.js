@@ -825,14 +825,113 @@ exports.startSession = async (req, res) => {
   }
 };
 
+// exports.nextQuestion = async (req, res) => {
+//   const { joinCode, sessionId } = req.params;
+
+//   try {
+//     const session = await Session.findOne({
+//       joinCode,
+//       _id: sessionId,
+//     })
+//       .populate("quiz")
+//       .populate("players", "username email")
+//       .populate("host", "username email");
+
+//     if (!session) {
+//       return res.status(404).json({ message: "Session not found" });
+//     }
+
+//     if (session.status !== "in_progress") {
+//       return res.status(400).json({ message: "Session is not in progress" });
+//     }
+
+//     const quiz = await Quiz.findById(session.quiz)
+//       .populate("questions")
+//       .populate("slides");
+
+//     if (!quiz) {
+//       return res.status(404).json({ message: "Quiz not found" });
+//     }
+
+//     // Combine questions and slides
+//     const contentItems = [
+//       ...quiz.questions.map((q) => ({ type: "question", item: q })),
+//       ...quiz.slides.map((s) => ({ type: "slide", item: s })),
+//     ];
+
+//     if (contentItems.length === 0) {
+//       return res
+//         .status(400)
+//         .json({ message: "No content available in the quiz" });
+//     }
+
+//     // Get current index
+//     const currentIndex = session.currentQuestion
+//       ? contentItems.findIndex(
+//           ({ item }) =>
+//             item._id.toString() === session.currentQuestion.toString()
+//         )
+//       : -1;
+
+//     // Get next item
+//     const nextIndex = currentIndex + 1;
+//     if (nextIndex >= contentItems.length) {
+//       return res
+//         .status(400)
+//         .json({ message: "No more items left in the session" });
+//     }
+
+//     const nextItemData = contentItems[nextIndex];
+//     const nextItem = nextItemData.item;
+//     const itemType = nextItemData.type;
+
+//     if (!nextItem) {
+//       return res.status(404).json({ message: "Next item not found" });
+//     }
+
+//     // Update session
+//     session.currentQuestion = nextItem._id;
+//     await session.save();
+
+//     // Process image URL if exists
+//     const baseUrl = `${req.protocol}://${req.get("host")}/`;
+//     let fullImageUrl = null;
+
+//     if (nextItem.imageUrl) {
+//       const media = await Media.findById(nextItem.imageUrl);
+//       if (media && media.path) {
+//         const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+//         fullImageUrl = `${baseUrl}${encodedPath}`;
+//       }
+//     }
+
+//     const itemWithImageUrl = {
+//       ...nextItem.toObject(),
+//       imageUrl: fullImageUrl,
+//     };
+
+//     // Emit the next item
+//     const io = req.app.get("socketio");
+//     io.emit("next-item", {type: itemType,item: itemWithImageUrl,});
+
+//     res.status(200).json({
+//       message: 'Next item retrieved successfully',
+//       type: itemType,
+//       item: itemWithImageUrl,
+//     });
+//   } catch (error) {
+//     console.error("Next question error:", error);
+//     res.status(500).json({ message: "Error retrieving the next item", error });
+//   }
+// };
+
+// end the session
+
 exports.nextQuestion = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
-    const session = await Session.findOne({
-      joinCode,
-      _id: sessionId,
-    })
+    const session = await Session.findOne({ joinCode, _id: sessionId })
       .populate("quiz")
       .populate("players", "username email")
       .populate("host", "username email");
@@ -853,40 +952,40 @@ exports.nextQuestion = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // Combine questions and slides
-    const contentItems = [
-      ...quiz.questions.map((q) => ({ type: "question", item: q })),
-      ...quiz.slides.map((s) => ({ type: "slide", item: s })),
+    // Validate `quiz.order`
+    const validIds = [
+      ...quiz.questions.map((q) => q._id.toString()),
+      ...quiz.slides.map((s) => s._id.toString()),
     ];
 
-    if (contentItems.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No content available in the quiz" });
+    const invalidIds = quiz.order.filter((item) => !validIds.includes(item.id.toString()));
+
+    // Remove invalid IDs from the order
+    if (invalidIds.length > 0) {
+      console.warn("Cleaning invalid IDs from quiz.order:", invalidIds);
+      quiz.order = quiz.order.filter((item) =>
+        validIds.includes(item.id.toString())
+      );
+      await quiz.save();
     }
 
-    // Get current index
+    // Get the current index and determine the next item
     const currentIndex = session.currentQuestion
-      ? contentItems.findIndex(
-          ({ item }) =>
-            item._id.toString() === session.currentQuestion.toString()
-        )
+      ? quiz.order.findIndex((item) => item.id.toString() === session.currentQuestion.toString())
       : -1;
 
-    // Get next item
     const nextIndex = currentIndex + 1;
-    if (nextIndex >= contentItems.length) {
-      return res
-        .status(400)
-        .json({ message: "No more items left in the session" });
+    if (nextIndex >= quiz.order.length) {
+      return res.status(400).json({ message: "No more items left in the session" });
     }
 
-    const nextItemData = contentItems[nextIndex];
-    const nextItem = nextItemData.item;
-    const itemType = nextItemData.type;
+    const nextItemId = quiz.order[nextIndex].id;
+    const nextItem =
+      quiz.questions.find((q) => q._id.toString() === nextItemId.toString()) ||
+      quiz.slides.find((s) => s._id.toString() === nextItemId.toString());
 
     if (!nextItem) {
-      return res.status(404).json({ message: "Next item not found" });
+      return res.status(404).json({ message: "Next item not found in the quiz", missingId: nextItemId });
     }
 
     // Update session
@@ -912,11 +1011,14 @@ exports.nextQuestion = async (req, res) => {
 
     // Emit the next item
     const io = req.app.get("socketio");
-    io.emit("next-item", {type: itemType,item: itemWithImageUrl,});
+    io.emit("next-item", {
+      type: quiz.order[nextIndex].type,
+      item: itemWithImageUrl,
+    });
 
     res.status(200).json({
-      message: 'Next item retrieved successfully',
-      type: itemType,
+      message: "Next item retrieved successfully",
+      type: quiz.order[nextIndex].type,
       item: itemWithImageUrl,
     });
   } catch (error) {
@@ -925,7 +1027,6 @@ exports.nextQuestion = async (req, res) => {
   }
 };
 
-// end the session
 exports.endSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
