@@ -18,7 +18,6 @@ import UserLobby from "./pages/Session/UserLobby/UserLobby";
 import AdminStart from "./pages/Session/Start/AdminStart";
 import UserPlay from "./pages/Session/Play/UserPlay";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
-import SurveyPage from "./pages/SurveyPage";
 import HomePage from "./pages/Home";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import SurveyCreator from "./pages/SurveyCreator";
@@ -173,7 +172,6 @@ export default function App() {
             />
           }
         />
-        <Route path="survey" element={<SurveyPage />} />
         <Route path="/Activity-log" element={<ActivityLogPage />} />
 
         {/* 404 Route */}

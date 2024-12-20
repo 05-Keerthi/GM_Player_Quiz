@@ -226,22 +226,26 @@ const AdminStart = () => {
           ) : (
             <>
               {/* Ans count Div */}
-              {/* In AdminStart.js, replace the existing answer count div */}
-              <AdminAnswerCounts
-                sessionId={sessionId}
-                currentItem={currentItem}
-                socket={socket}
-              />
-              <ContentDisplay
-                item={currentItem}
-                isAdmin={true}
-                onNext={handleNext}
-                timeLeft={timeLeft}
-                isLastItem={isLastItem}
-                onEndQuiz={handleEndQuiz}
-                isQuizEnded={isQuizEnded}
-                submittedAnswers={submittedAnswers} // Add this prop
-              />
+              <div className="mb-2">
+                <AdminAnswerCounts
+                  sessionId={sessionId}
+                  currentItem={currentItem}
+                  socket={socket}
+                />
+              </div>
+
+              <div>
+                <ContentDisplay
+                  item={currentItem}
+                  isAdmin={true}
+                  onNext={handleNext}
+                  timeLeft={timeLeft}
+                  isLastItem={isLastItem}
+                  onEndQuiz={handleEndQuiz}
+                  isQuizEnded={isQuizEnded}
+                  submittedAnswers={submittedAnswers} // Add this prop
+                />
+              </div>
             </>
           )}
         </div>

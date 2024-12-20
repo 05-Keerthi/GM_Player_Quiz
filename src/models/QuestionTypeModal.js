@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, CheckSquare, ToggleLeft, MessageSquare, Upload, Trash2 } from 'lucide-react';
+import { X, CheckSquare, ToggleLeft, MessageSquare, BarChart2, Upload, Trash2 } from 'lucide-react';
 import { ImageUploadWithGallery } from '../components/imageUploadHandler';
 
 const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion, initialQuestion }) => {
@@ -67,6 +67,12 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion, initialQuestion }) 
       icon: MessageSquare,
       title: 'Open Ended',
       description: 'Free text response question',
+    },
+    {
+      id: 'poll',
+      icon:  BarChart2,
+      title: 'Poll',
+      description: 'Poll response question',
     },
   ];
 

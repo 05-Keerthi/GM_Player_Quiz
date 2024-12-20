@@ -27,7 +27,17 @@ export const QuizProvider = ({ children }) => {
     createQuiz: async (quizData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: newQuiz } = await api.post("/quizzes", quizData);
+        // Ensure order array is properly structured if provided
+        const processedQuizData = {
+          ...quizData,
+          order:
+            quizData.order?.map((item) => ({
+              id: item.id,
+              type: item.type, // 'question' or 'slide'
+            })) || [],
+        };
+
+        const { data: newQuiz } = await api.post("/quizzes", processedQuizData);
         dispatch({ type: ACTIONS.ADD_QUIZ, payload: newQuiz });
         return newQuiz;
       } catch (error) {
@@ -45,7 +55,20 @@ export const QuizProvider = ({ children }) => {
     updateQuiz: async (id, quizData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: updatedQuiz } = await api.put(`/quizzes/${id}`, quizData);
+        // Process order array if it exists in the update data
+        const processedQuizData = {
+          ...quizData,
+          order:
+            quizData.order?.map((item) => ({
+              id: item.id,
+              type: item.type,
+            })) || quizData.order,
+        };
+
+        const { data: updatedQuiz } = await api.put(
+          `/quizzes/${id}`,
+          processedQuizData
+        );
         dispatch({ type: ACTIONS.UPDATE_QUIZ, payload: updatedQuiz });
         return updatedQuiz;
       } catch (error) {
@@ -169,9 +192,7 @@ export const QuizProvider = ({ children }) => {
   };
 
   return (
-    <QuizContext.Provider value={contextValue}>
-      {children}
-    </QuizContext.Provider>
+    <QuizContext.Provider value={contextValue}>{children}</QuizContext.Provider>
   );
 };
 
