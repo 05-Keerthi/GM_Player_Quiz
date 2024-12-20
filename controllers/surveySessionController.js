@@ -5,6 +5,7 @@ const SurveySession = require("../models/surveysession");
 const User = require("../models/User");
 const SurveyQuestion = require('../models/surveyQuestion'); 
 const SurveyQuiz = require('../models/surveyQuiz');
+const SurveySlide = require("../models/surveySlide");
 const Media = require('../models/Media');
 
 exports.createSurveySession = async (req, res) => {
@@ -126,6 +127,73 @@ exports.joinSurveySession = async (req, res) => {
   }
 };
 
+// exports.startSurveySession = async (req, res) => {
+//   const { joinCode, sessionId } = req.params;
+
+//   try {
+//     // Fetch the session with explicit checks
+//     const session = await SurveySession.findOne({
+//       _id: sessionId,
+//       surveyJoinCode: joinCode,
+//     })
+//       .populate("surveyQuiz")
+//       .populate("surveyPlayers", "username email")
+//       .populate("surveyHost", "username email");
+
+//     console.log("Fetched session:", session); // Log for debugging
+
+//     if (!session) {
+//       return res.status(404).json({ message: "Survey session not found" });
+//     }
+
+//     if (session.surveyStatus !== "waiting") {
+//       return res.status(400).json({ message: `Current status is '${session.surveyStatus}'` });
+//     }
+
+//     const questions = await SurveyQuestion.find({ _id: { $in: session.surveyQuiz.questions } });
+
+//     session.surveyStatus = "in_progress";
+//     session.surveyQuestions = questions.map((q) => q._id);
+//     session.startTime = new Date();
+//     await session.save();
+
+//     const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+//     const questionsWithImageUrls = await Promise.all(
+//       questions.map(async (question) => {
+//         let fullImageUrl = null;
+//         if (question.imageUrl) {
+//           const media = await Media.findById(question.imageUrl);
+//           if (media && media.path) {
+//             const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+//             fullImageUrl = `${baseUrl}${encodedPath}`;
+//           }
+//         }
+//         return {
+//           ...question.toObject(),
+//           imageUrl: fullImageUrl,
+//         };
+//       })
+//     );
+
+//     const io = req.app.get("socketio");
+//     io.emit("survey-session-started", {
+//       session,
+//       questions: questionsWithImageUrls,
+//     });
+
+//     res.status(200).json({
+//       message: "Survey session started successfully",
+//       session,
+//       questions: questionsWithImageUrls,
+//     });
+//   } catch (error) {
+//     console.error("Start survey session error:", error);
+//     res.status(500).json({ message: "Error starting the survey session", error });
+//   }
+// };
+
+
 exports.startSurveySession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
@@ -149,15 +217,20 @@ exports.startSurveySession = async (req, res) => {
       return res.status(400).json({ message: `Current status is '${session.surveyStatus}'` });
     }
 
+    // Fetch questions and slides
     const questions = await SurveyQuestion.find({ _id: { $in: session.surveyQuiz.questions } });
+    const slides = await SurveySlide.find({ _id: { $in: session.surveyQuiz.slides } });
 
     session.surveyStatus = "in_progress";
     session.surveyQuestions = questions.map((q) => q._id);
+    session.surveySlides = slides.map((s) => s._id);
     session.startTime = new Date();
     await session.save();
 
+    // Construct Base URL
     const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
+    // Process questions to include full image URLs
     const questionsWithImageUrls = await Promise.all(
       questions.map(async (question) => {
         let fullImageUrl = null;
@@ -175,16 +248,37 @@ exports.startSurveySession = async (req, res) => {
       })
     );
 
+    // Process slides to include full image URLs
+    const slidesWithImageUrls = await Promise.all(
+      slides.map(async (slide) => {
+        let fullImageUrl = null;
+        if (slide.imageUrl) {
+          const media = await Media.findById(slide.imageUrl);
+          if (media && media.path) {
+            const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+            fullImageUrl = `${baseUrl}${encodedPath}`;
+          }
+        }
+        return {
+          ...slide.toObject(),
+          imageUrl: fullImageUrl,
+        };
+      })
+    );
+
+    // Emit the survey session start event
     const io = req.app.get("socketio");
     io.emit("survey-session-started", {
       session,
       questions: questionsWithImageUrls,
+      slides: slidesWithImageUrls,
     });
 
     res.status(200).json({
       message: "Survey session started successfully",
       session,
       questions: questionsWithImageUrls,
+      slides: slidesWithImageUrls,
     });
   } catch (error) {
     console.error("Start survey session error:", error);
@@ -192,96 +286,196 @@ exports.startSurveySession = async (req, res) => {
   }
 };
 
+// exports.nextSurveyQuestion = async (req, res) => {
+//     const { joinCode, sessionId } = req.params;
+  
+//     try {
+//       // Find the survey session
+//       const session = await SurveySession.findOne({
+//         surveyJoinCode: joinCode,
+//         _id: sessionId,
+//       })
+//         .populate("surveyQuiz")
+//         .populate("surveyPlayers", "username email")
+//         .populate("surveyHost", "username email");
+  
+//       if (!session) {
+//         return res.status(404).json({ message: "Survey session not found" });
+//       }
+  
+//       if (session.surveyStatus !== "in_progress") {
+//         return res.status(400).json({ message: "Survey session is not in progress" });
+//       }
+  
+//       // Retrieve the quiz associated with the session
+//       const quiz = await SurveyQuiz.findById(session.surveyQuiz).populate("questions");
+  
+//       if (!quiz) {
+//         return res.status(404).json({ message: "Survey quiz not found" });
+//       }
+  
+//       // Get all questions
+//       const contentItems = quiz.questions.map((q) => ({ type: "question", item: q }));
+  
+//       if (contentItems.length === 0) {
+//         return res.status(400).json({ message: "No questions available in the quiz" });
+//       }
+  
+//       // Determine the current index
+//       const currentIndex = session.surveyCurrentQuestion
+//         ? contentItems.findIndex(
+//             ({ item }) => item._id.toString() === session.surveyCurrentQuestion.toString()
+//           )
+//         : -1;
+  
+//       // Get the next question
+//       const nextIndex = currentIndex + 1;
+//       if (nextIndex >= contentItems.length) {
+//         return res.status(400).json({ message: "No more questions left in the survey session" });
+//       }
+  
+//       const nextItem = contentItems[nextIndex].item;
+  
+//       if (!nextItem) {
+//         return res.status(404).json({ message: "Next question not found" });
+//       }
+  
+//       // Update session with the current question
+//       session.surveyCurrentQuestion = nextItem._id;
+//       await session.save();
+  
+//       // Process the image URL if applicable
+//       const baseUrl = `${req.protocol}://${req.get("host")}/`;
+//       let fullImageUrl = null;
+  
+//       if (nextItem.imageUrl) {
+//         const media = await Media.findById(nextItem.imageUrl);
+//         if (media && media.path) {
+//           const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+//           fullImageUrl = `${baseUrl}${encodedPath}`;
+//         }
+//       }
+  
+//       const questionWithImageUrl = {
+//         ...nextItem.toObject(),
+//         imageUrl: fullImageUrl,
+//       };
+  
+//       // Emit the next question to the client
+//       const io = req.app.get("socketio");
+//       io.emit("next-question", questionWithImageUrl);
+  
+//       // Send response
+//       res.status(200).json({
+//         message: "Next question retrieved successfully",
+//         question: questionWithImageUrl,
+//       });
+//     } catch (error) {
+//       console.error("Next question error:", error);
+//       res.status(500).json({ message: "Error retrieving the next question", error });
+//     }
+//   };
+  
+
 exports.nextSurveyQuestion = async (req, res) => {
-    const { joinCode, sessionId } = req.params;
-  
-    try {
-      // Find the survey session
-      const session = await SurveySession.findOne({
-        surveyJoinCode: joinCode,
-        _id: sessionId,
-      })
-        .populate("surveyQuiz")
-        .populate("surveyPlayers", "username email")
-        .populate("surveyHost", "username email");
-  
-      if (!session) {
-        return res.status(404).json({ message: "Survey session not found" });
-      }
-  
-      if (session.surveyStatus !== "in_progress") {
-        return res.status(400).json({ message: "Survey session is not in progress" });
-      }
-  
-      // Retrieve the quiz associated with the session
-      const quiz = await SurveyQuiz.findById(session.surveyQuiz).populate("questions");
-  
-      if (!quiz) {
-        return res.status(404).json({ message: "Survey quiz not found" });
-      }
-  
-      // Get all questions
-      const contentItems = quiz.questions.map((q) => ({ type: "question", item: q }));
-  
-      if (contentItems.length === 0) {
-        return res.status(400).json({ message: "No questions available in the quiz" });
-      }
-  
-      // Determine the current index
-      const currentIndex = session.surveyCurrentQuestion
-        ? contentItems.findIndex(
-            ({ item }) => item._id.toString() === session.surveyCurrentQuestion.toString()
-          )
-        : -1;
-  
-      // Get the next question
-      const nextIndex = currentIndex + 1;
-      if (nextIndex >= contentItems.length) {
-        return res.status(400).json({ message: "No more questions left in the survey session" });
-      }
-  
-      const nextItem = contentItems[nextIndex].item;
-  
-      if (!nextItem) {
-        return res.status(404).json({ message: "Next question not found" });
-      }
-  
-      // Update session with the current question
-      session.surveyCurrentQuestion = nextItem._id;
-      await session.save();
-  
-      // Process the image URL if applicable
-      const baseUrl = `${req.protocol}://${req.get("host")}/`;
-      let fullImageUrl = null;
-  
-      if (nextItem.imageUrl) {
-        const media = await Media.findById(nextItem.imageUrl);
-        if (media && media.path) {
-          const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
-          fullImageUrl = `${baseUrl}${encodedPath}`;
-        }
-      }
-  
-      const questionWithImageUrl = {
-        ...nextItem.toObject(),
-        imageUrl: fullImageUrl,
-      };
-  
-      // Emit the next question to the client
-      const io = req.app.get("socketio");
-      io.emit("next-question", questionWithImageUrl);
-  
-      // Send response
-      res.status(200).json({
-        message: "Next question retrieved successfully",
-        question: questionWithImageUrl,
-      });
-    } catch (error) {
-      console.error("Next question error:", error);
-      res.status(500).json({ message: "Error retrieving the next question", error });
+  const { joinCode, sessionId } = req.params;
+
+  try {
+    // Find the survey session
+    const session = await SurveySession.findOne({
+      surveyJoinCode: joinCode,
+      _id: sessionId,
+    })
+      .populate("surveyQuiz")
+      .populate("surveyPlayers", "username email")
+      .populate("surveyHost", "username email");
+
+    if (!session) {
+      return res.status(404).json({ message: "Survey session not found" });
     }
-  };
-  
+
+    if (session.surveyStatus !== "in_progress") {
+      return res.status(400).json({ message: "Survey session is not in progress" });
+    }
+
+    // Retrieve the quiz associated with the session
+    const quiz = await SurveyQuiz.findById(session.surveyQuiz)
+      .populate("questions")
+      .populate("slides");
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Survey quiz not found" });
+    }
+
+    // Combine questions and slides
+    const contentItems = [
+      ...quiz.questions.map((q) => ({ type: "question", item: q })),
+      ...quiz.slides.map((s) => ({ type: "slide", item: s })),
+    ];
+
+    if (contentItems.length === 0) {
+      return res.status(400).json({ message: "No content available in the quiz" });
+    }
+
+    // Determine the current index
+    const currentIndex = session.surveyCurrentQuestion
+      ? contentItems.findIndex(
+          ({ item }) => item._id.toString() === session.surveyCurrentQuestion.toString()
+        )
+      : -1;
+
+    // Get the next content item
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= contentItems.length) {
+      return res.status(400).json({ message: "No more items left in the survey session" });
+    }
+
+    const nextItemData = contentItems[nextIndex];
+    const nextItem = nextItemData.item;
+    const itemType = nextItemData.type;
+
+    if (!nextItem) {
+      return res.status(404).json({ message: "Next item not found" });
+    }
+
+    // Update session with the current content item
+    session.surveyCurrentQuestion = nextItem._id;
+    await session.save();
+
+    // Process the image URL if applicable
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    let fullImageUrl = null;
+
+    if (nextItem.imageUrl) {
+      const media = await Media.findById(nextItem.imageUrl);
+      if (media && media.path) {
+        const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
+        fullImageUrl = `${baseUrl}${encodedPath}`;
+      }
+    }
+
+    const itemWithImageUrl = {
+      ...nextItem.toObject(),
+      imageUrl: fullImageUrl,
+    };
+
+    // Emit the next item to the client
+    const io = req.app.get("socketio");
+    io.emit("next-item", { type: itemType, item: itemWithImageUrl });
+
+    // Send response
+    res.status(200).json({
+      message: "Next item retrieved successfully",
+      type: itemType,
+      item: itemWithImageUrl,
+    });
+  } catch (error) {
+    console.error("Next survey question error:", error);
+    res.status(500).json({ message: "Error retrieving the next item", error });
+  }
+};
+
+
 exports.endSurveySession = async (req, res) => {
     const { joinCode, sessionId } = req.params;
   
