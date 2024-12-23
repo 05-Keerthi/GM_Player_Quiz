@@ -32,7 +32,8 @@ import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
 import Reports from "./pages/Report/Report";
-import UserReport from "./pages/Report/UserReport";  // Import UserReport page
+import UserReport from "./pages/Report/UserReport"; // Import UserReport page
+import UserQuizList from "./pages/Report/UserQuizist";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -107,10 +108,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        
-        {/* User Report Route */}
         <Route
-          path="/UserReport"
+          path="/userreports/:userId"
+          element={
+            <ProtectedRoute>
+              <UserQuizList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/:quizId/user/:userId"
           element={
             <ProtectedRoute>
               <UserReport />

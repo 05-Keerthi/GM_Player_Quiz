@@ -223,7 +223,7 @@ const SurveyCreator = () => {
         await getAllQuestions(surveyId);
       } catch (error) {
         handleApiError(error);
-        navigate("/surveys");
+        navigate("/survey-list");
       }
     };
 

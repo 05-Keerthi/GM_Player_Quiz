@@ -51,6 +51,26 @@ export const ReportProvider = ({ children }) => {
       }
     },
 
+    getUserReports: async (userId) => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const { data } = await api.get(`/reports/user/${userId}`);
+        setReports(data.data);
+        dispatch({ type: ACTIONS.SET_REPORTS, payload: data.data });
+        return data.data;
+      } catch (error) {
+        dispatch({
+          type: ACTIONS.SET_ERROR,
+          payload: {
+            message: error.response?.data?.message || "Failed to fetch user reports",
+          },
+        });
+        throw error;
+      } finally {
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    },
+
     getReportByQuiz: async (quizId) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {

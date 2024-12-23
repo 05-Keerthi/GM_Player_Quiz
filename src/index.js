@@ -19,6 +19,7 @@ import { NotificationProvider } from "./context/notificationContext";
 import { SurveyAnswerProvider } from "./context/surveyAnswerContext";
 import { SurveyNotificationProvider } from "./context/SurveynotificationContext";
 import { ReportProvider } from "./context/ReportContext";
+import { SurveySlideProvider } from "./context/surveySlideContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -29,20 +30,24 @@ root.render(
           <CategoryProvider>
             <QuizProvider>
               <SessionProvider>
-                <ReportProvider>  {/* Added ReportProvider here */}
+                <ReportProvider>
+                  {" "}
+                  {/* Added ReportProvider here */}
                   <AnswerProvider>
                     <LeaderboardProvider>
                       <NotificationProvider>
                         <SurveyProvider>
                           <SurveyNotificationProvider>
                             <QuestionProvider>
-                              <SurveySessionProvider>
-                                <SurveyAnswerProvider>
-                                  <BrowserRouter>
-                                    <App />
-                                  </BrowserRouter>
-                                </SurveyAnswerProvider>
-                              </SurveySessionProvider>
+                              <SurveySlideProvider>
+                                <SurveySessionProvider>
+                                  <SurveyAnswerProvider>
+                                    <BrowserRouter>
+                                      <App />
+                                    </BrowserRouter>
+                                  </SurveyAnswerProvider>
+                                </SurveySessionProvider>
+                              </SurveySlideProvider>
                             </QuestionProvider>
                           </SurveyNotificationProvider>
                         </SurveyProvider>

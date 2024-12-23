@@ -7,7 +7,7 @@ import {
   Rocket,
   Users,
   Building,
-  Activity
+  Activity,
 } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
@@ -145,7 +145,7 @@ export default function HomePage() {
             description: "View reports and your quiz performance",
             buttonText: "View Reports",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
-            path: "/UserReport", // Path to reports page
+            path: `/userreports/${user?.id}`, // Path to reports page
           },
         ];
       default:
@@ -303,7 +303,9 @@ export default function HomePage() {
 
         {renderSecondSection()}
 
-        {isCreateModalOpen && <CreateTenantModal closeModal={() => setIsCreateModalOpen(false)} />}
+        {isCreateModalOpen && (
+          <CreateTenantModal closeModal={() => setIsCreateModalOpen(false)} />
+        )}
       </main>
     </div>
   );
