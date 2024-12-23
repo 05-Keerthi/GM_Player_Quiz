@@ -6,7 +6,7 @@ const Media = require("../models/Media");
 exports.addSurveySlide = async (req, res) => {
   try {
     const { surveyQuizId } = req.params;
-    const { surveyTitle, surveyContent, surveyType, imageUrl, position } = req.body;
+    const { surveyTitle, surveyContent, imageUrl, position } = req.body;
 
     // Check if the survey quiz exists
     const surveyQuiz = await SurveyQuiz.findById(surveyQuizId);
@@ -14,13 +14,13 @@ exports.addSurveySlide = async (req, res) => {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
 
-    // Validate the type
-    const validTypes = ["classic", "big_title", "bullet_points"];
-    if (!validTypes.includes(surveyType)) {
-      return res
-        .status(400)
-        .json({ message: `Invalid type. Valid types are: ${validTypes.join(", ")}` });
-    }
+    // // Validate the type
+    // const validTypes = ["classic", "big_title", "bullet_points"];
+    // if (!validTypes.includes(surveyType)) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: `Invalid type. Valid types are: ${validTypes.join(", ")}` });
+    // }
 
     let fullImageUrl = null;
 
@@ -39,7 +39,6 @@ exports.addSurveySlide = async (req, res) => {
       surveyQuiz: surveyQuizId,
       surveyTitle,
       surveyContent,
-      surveyType,
       imageUrl: imageUrl || null,
       position,
     });
@@ -136,7 +135,7 @@ exports.getSurveySlide = async (req, res) => {
 exports.updateSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
-    const { surveyTitle, surveyContent, surveyType, imageUrl, position } = req.body;
+    const { surveyTitle, surveyContent, imageUrl, position } = req.body;
 
     const slide = await SurveySlide.findById(id).populate("imageUrl", "path");
     if (!slide) {
@@ -164,7 +163,7 @@ exports.updateSurveySlide = async (req, res) => {
 
     if (surveyTitle) slide.surveyTitle = surveyTitle;
     if (surveyContent) slide.surveyContent = surveyContent;
-    if (surveyType) slide.surveyType = surveyType;
+    // if (surveyType) slide.surveyType = surveyType;
     if (position) slide.position = position;
 
     await slide.save();
@@ -172,7 +171,6 @@ exports.updateSurveySlide = async (req, res) => {
     const updatedFields = {
       surveyTitle: slide.surveyTitle,
       surveyContent: slide.surveyContent,
-      surveyType: slide.surveyType,
       imageUrl: fullImageUrl,
       position: slide.position,
       surveyQuizId: slide.surveyQuiz ? slide.surveyQuiz._id : null,
