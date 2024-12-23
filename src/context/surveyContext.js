@@ -27,29 +27,54 @@ export const SurveyContext = createContext();
 export const SurveyProvider = ({ children }) => {
   const [state, dispatch] = useReducer(surveyReducer, initialState);
 
+  // Helper function for image upload
+  const uploadImage = async (imageFile) => {
+    if (!imageFile) return null;
+
+    const formData = new FormData();
+    formData.append("media", imageFile);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/media/upload",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (!response.data || !response.data.media || !response.data.media[0]) {
+        throw new Error("Invalid image upload response");
+      }
+
+      return response.data.media[0]._id;
+    } catch (error) {
+      console.error("Image upload error:", error);
+      throw new Error("Failed to upload image");
+    }
+  };
+
   const actions = {
     createSurvey: async (surveyData) => {
       dispatch({ type: SURVEY_ACTIONS.CREATE_SURVEY_START });
       try {
-        // Validate the order structure if it exists
-        if (surveyData.order) {
-          const isValidOrder = surveyData.order.every(
-            (item) =>
-              item.id &&
-              item.type &&
-              ["slide", "question"].includes(item.type) &&
-              ((item.type === "slide" &&
-                surveyData.slides?.includes(item.id)) ||
-                (item.type === "question" &&
-                  surveyData.questions?.includes(item.id)))
-          );
+        // Process the order array if provided
+        const processedSurveyData = {
+          ...surveyData,
+          order:
+            surveyData.order?.map((item) => ({
+              id: item.id,
+              type: item.type, // 'slide' or 'question'
+            })) || [],
+        };
 
-          if (!isValidOrder) {
-            throw new Error("Invalid order structure");
-          }
-        }
-
-        const { data: newSurvey } = await api.post("/survey-quiz", surveyData);
+        const { data: newSurvey } = await api.post(
+          "/survey-quiz",
+          processedSurveyData
+        );
         dispatch({
           type: SURVEY_ACTIONS.CREATE_SURVEY_SUCCESS,
           payload: newSurvey,
@@ -71,27 +96,19 @@ export const SurveyProvider = ({ children }) => {
     updateSurvey: async (id, surveyData) => {
       dispatch({ type: SURVEY_ACTIONS.UPDATE_SURVEY_START });
       try {
-        // Validate the order structure if it exists
-        if (surveyData.order) {
-          const isValidOrder = surveyData.order.every(
-            (item) =>
-              item.id &&
-              item.type &&
-              ["slide", "question"].includes(item.type) &&
-              ((item.type === "slide" &&
-                surveyData.slides?.includes(item.id)) ||
-                (item.type === "question" &&
-                  surveyData.questions?.includes(item.id)))
-          );
-
-          if (!isValidOrder) {
-            throw new Error("Invalid order structure");
-          }
-        }
+        // Process order array if it exists in the update data
+        const processedSurveyData = {
+          ...surveyData,
+          order:
+            surveyData.order?.map((item) => ({
+              id: item.id,
+              type: item.type,
+            })) || surveyData.order,
+        };
 
         const { data: updatedSurvey } = await api.put(
           `/survey-quiz/${id}`,
-          surveyData
+          processedSurveyData
         );
         dispatch({
           type: SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS,
@@ -111,36 +128,14 @@ export const SurveyProvider = ({ children }) => {
       }
     },
 
-    updateSurveyOrder: async (id, order) => {
-      dispatch({ type: SURVEY_ACTIONS.UPDATE_SURVEY_START });
-      try {
-        const { data: updatedSurvey } = await api.put(`/survey-quiz/${id}`, {
-          order,
-        });
-        dispatch({
-          type: SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS,
-          payload: updatedSurvey,
-        });
-        return updatedSurvey;
-      } catch (error) {
-        const errorPayload = {
-          message:
-            error.response?.data?.message || "Failed to update survey order",
-          errors: error.response?.data?.errors || [],
-        };
-        dispatch({
-          type: SURVEY_ACTIONS.UPDATE_SURVEY_FAILURE,
-          payload: errorPayload,
-        });
-        throw error;
-      }
-    },
-
     deleteSurvey: async (id) => {
       dispatch({ type: SURVEY_ACTIONS.DELETE_SURVEY_START });
       try {
         await api.delete(`/survey-quiz/${id}`);
-        dispatch({ type: SURVEY_ACTIONS.DELETE_SURVEY_SUCCESS, payload: id });
+        dispatch({
+          type: SURVEY_ACTIONS.DELETE_SURVEY_SUCCESS,
+          payload: id,
+        });
       } catch (error) {
         const errorPayload = {
           message: error.response?.data?.message || "Failed to delete survey",
@@ -157,13 +152,21 @@ export const SurveyProvider = ({ children }) => {
     getAllSurveys: async () => {
       dispatch({ type: SURVEY_ACTIONS.FETCH_SURVEYS_START });
       try {
-        const { data: surveys } = await api.get("/survey-quiz");
+        const { data } = await api.get("/survey-quiz");
+        const surveys = data || [];
         dispatch({
           type: SURVEY_ACTIONS.FETCH_SURVEYS_SUCCESS,
           payload: surveys,
         });
         return surveys;
       } catch (error) {
+        if (error.response?.status === 404) {
+          dispatch({
+            type: SURVEY_ACTIONS.FETCH_SURVEYS_SUCCESS,
+            payload: [],
+          });
+          return [];
+        }
         const errorPayload = {
           message: error.response?.data?.message || "Failed to fetch surveys",
           errors: error.response?.data?.errors || [],
@@ -253,6 +256,7 @@ export const SurveyProvider = ({ children }) => {
     currentSurvey: state.currentSurvey,
     loading: state.loading,
     error: state.error,
+    uploadImage,
     ...actions,
   };
 
