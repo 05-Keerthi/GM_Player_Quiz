@@ -31,6 +31,24 @@ export const SurveyProvider = ({ children }) => {
     createSurvey: async (surveyData) => {
       dispatch({ type: SURVEY_ACTIONS.CREATE_SURVEY_START });
       try {
+        // Validate the order structure if it exists
+        if (surveyData.order) {
+          const isValidOrder = surveyData.order.every(
+            (item) =>
+              item.id &&
+              item.type &&
+              ["slide", "question"].includes(item.type) &&
+              ((item.type === "slide" &&
+                surveyData.slides?.includes(item.id)) ||
+                (item.type === "question" &&
+                  surveyData.questions?.includes(item.id)))
+          );
+
+          if (!isValidOrder) {
+            throw new Error("Invalid order structure");
+          }
+        }
+
         const { data: newSurvey } = await api.post("/survey-quiz", surveyData);
         dispatch({
           type: SURVEY_ACTIONS.CREATE_SURVEY_SUCCESS,
@@ -53,6 +71,24 @@ export const SurveyProvider = ({ children }) => {
     updateSurvey: async (id, surveyData) => {
       dispatch({ type: SURVEY_ACTIONS.UPDATE_SURVEY_START });
       try {
+        // Validate the order structure if it exists
+        if (surveyData.order) {
+          const isValidOrder = surveyData.order.every(
+            (item) =>
+              item.id &&
+              item.type &&
+              ["slide", "question"].includes(item.type) &&
+              ((item.type === "slide" &&
+                surveyData.slides?.includes(item.id)) ||
+                (item.type === "question" &&
+                  surveyData.questions?.includes(item.id)))
+          );
+
+          if (!isValidOrder) {
+            throw new Error("Invalid order structure");
+          }
+        }
+
         const { data: updatedSurvey } = await api.put(
           `/survey-quiz/${id}`,
           surveyData
@@ -65,6 +101,31 @@ export const SurveyProvider = ({ children }) => {
       } catch (error) {
         const errorPayload = {
           message: error.response?.data?.message || "Failed to update survey",
+          errors: error.response?.data?.errors || [],
+        };
+        dispatch({
+          type: SURVEY_ACTIONS.UPDATE_SURVEY_FAILURE,
+          payload: errorPayload,
+        });
+        throw error;
+      }
+    },
+
+    updateSurveyOrder: async (id, order) => {
+      dispatch({ type: SURVEY_ACTIONS.UPDATE_SURVEY_START });
+      try {
+        const { data: updatedSurvey } = await api.put(`/survey-quiz/${id}`, {
+          order,
+        });
+        dispatch({
+          type: SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS,
+          payload: updatedSurvey,
+        });
+        return updatedSurvey;
+      } catch (error) {
+        const errorPayload = {
+          message:
+            error.response?.data?.message || "Failed to update survey order",
           errors: error.response?.data?.errors || [],
         };
         dispatch({

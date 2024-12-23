@@ -1,3 +1,4 @@
+// surveyReducer.js
 export const initialState = {
   surveys: [],
   currentSurvey: null,
@@ -50,7 +51,10 @@ export const surveyReducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        surveys: action.payload,
+        surveys: action.payload.map((survey) => ({
+          ...survey,
+          order: survey.order || [],
+        })),
         error: null,
       };
     case SURVEY_ACTIONS.FETCH_SURVEYS_FAILURE:
@@ -71,7 +75,10 @@ export const surveyReducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        currentSurvey: action.payload,
+        currentSurvey: {
+          ...action.payload,
+          order: action.payload.order || [],
+        },
         error: null,
       };
     case SURVEY_ACTIONS.FETCH_SURVEY_FAILURE:
@@ -92,8 +99,17 @@ export const surveyReducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        surveys: [...state.surveys, action.payload],
-        currentSurvey: action.payload,
+        surveys: [
+          ...state.surveys,
+          {
+            ...action.payload,
+            order: action.payload.order || [],
+          },
+        ],
+        currentSurvey: {
+          ...action.payload,
+          order: action.payload.order || [],
+        },
         error: null,
       };
     case SURVEY_ACTIONS.CREATE_SURVEY_FAILURE:
@@ -110,16 +126,21 @@ export const surveyReducer = (state, action) => {
         loading: true,
         error: null,
       };
-    case SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS:
+    case SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS: {
+      const updatedSurvey = {
+        ...action.payload,
+        order: action.payload.order || [],
+      };
       return {
         ...state,
         loading: false,
         surveys: state.surveys.map((survey) =>
-          survey._id === action.payload._id ? action.payload : survey
+          survey._id === updatedSurvey._id ? updatedSurvey : survey
         ),
-        currentSurvey: action.payload,
+        currentSurvey: updatedSurvey,
         error: null,
       };
+    }
     case SURVEY_ACTIONS.UPDATE_SURVEY_FAILURE:
       return {
         ...state,
@@ -158,16 +179,21 @@ export const surveyReducer = (state, action) => {
         loading: true,
         error: null,
       };
-    case SURVEY_ACTIONS.PUBLISH_SURVEY_SUCCESS:
+    case SURVEY_ACTIONS.PUBLISH_SURVEY_SUCCESS: {
+      const publishedSurvey = {
+        ...action.payload,
+        order: action.payload.order || [],
+      };
       return {
         ...state,
         loading: false,
         surveys: state.surveys.map((survey) =>
-          survey._id === action.payload._id ? action.payload : survey
+          survey._id === publishedSurvey._id ? publishedSurvey : survey
         ),
-        currentSurvey: action.payload,
+        currentSurvey: publishedSurvey,
         error: null,
       };
+    }
     case SURVEY_ACTIONS.PUBLISH_SURVEY_FAILURE:
       return {
         ...state,
@@ -182,16 +208,21 @@ export const surveyReducer = (state, action) => {
         loading: true,
         error: null,
       };
-    case SURVEY_ACTIONS.CLOSE_SURVEY_SUCCESS:
+    case SURVEY_ACTIONS.CLOSE_SURVEY_SUCCESS: {
+      const closedSurvey = {
+        ...action.payload,
+        order: action.payload.order || [],
+      };
       return {
         ...state,
         loading: false,
         surveys: state.surveys.map((survey) =>
-          survey._id === action.payload._id ? action.payload : survey
+          survey._id === closedSurvey._id ? closedSurvey : survey
         ),
-        currentSurvey: action.payload,
+        currentSurvey: closedSurvey,
         error: null,
       };
+    }
     case SURVEY_ACTIONS.CLOSE_SURVEY_FAILURE:
       return {
         ...state,
