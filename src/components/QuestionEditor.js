@@ -1,3 +1,4 @@
+// QuestionEditor.js
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -8,47 +9,49 @@ import {
   BarChart2,
   Upload,
   Trash2,
-  Image as ImageIcon,
 } from "lucide-react";
 
-// Utility function for robust object parsing
 function parseQuestionData(question) {
   return {
-    id: question?.id || question?._id || '',
-    title: question?.title || '',
-    type: question?.type || 'multiple_choice',
-    options: question?.options?.length ? question.options : [
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false }
-    ],
+    id: question?.id || question?._id || "",
+    title: question?.title || "",
+    type: question?.type || "multiple_choice",
+    options: question?.options?.length
+      ? question.options
+      : [
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+        ],
     points: question?.points ?? 1,
     timer: question?.timer ?? 30,
     imageUrl: question?.imageUrl || null,
-    imageFile: null,
   };
 }
 
 const QuestionEditor = ({ question, onUpdate, onClose }) => {
-  const [localImageFile, setLocalImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [uploadError, setUploadError] = useState(null);
-  
-  // Use the new parsing method
-  const [parsedQuestion, setParsedQuestion] = useState(() => 
+  const [parsedQuestion, setParsedQuestion] = useState(() =>
     parseQuestionData(question)
   );
 
-  // Sync question changes when question prop changes
+  const API_BASE_URL = 'http://localhost:5000'; // You might want to move this to an environment variable
+
   useEffect(() => {
     setParsedQuestion(parseQuestionData(question));
-    setLocalImageFile(null);
-    setImagePreview(question?.imageUrl || null);
-    setIsUploading(false);
-    setUploadError(null);
+    if (question?.imageUrl) {
+      // If imageUrl is already a full path, use it directly
+      if (question.imageUrl.startsWith('/uploads/')) {
+        setImagePreview(`${API_BASE_URL}${question.imageUrl}`);
+      } else {
+        setImagePreview(question.imageUrl);
+      }
+    } else {
+      setImagePreview(null);
+    }
   }, [question]);
 
-  // If no question is provided, return null
   if (!question) return null;
 
   const getQuestionTypeIcon = (type) => {
@@ -63,33 +66,32 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
   };
 
   const handleInputChange = (field, value) => {
-    const updatedQuestion = {
-      ...parsedQuestion,
-      [field]: value
-    };
-    setParsedQuestion(updatedQuestion);
+    setParsedQuestion((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleOptionChange = (index, value) => {
-    const updatedOptions = parsedQuestion.options.map((opt, i) => 
+    const updatedOptions = parsedQuestion.options.map((opt, i) =>
       i === index ? { ...opt, text: value } : opt
     );
 
-    setParsedQuestion(prev => ({
+    setParsedQuestion((prev) => ({
       ...prev,
-      options: updatedOptions
+      options: updatedOptions,
     }));
   };
 
   const handleAddOption = () => {
-    setParsedQuestion(prev => ({
+    setParsedQuestion((prev) => ({
       ...prev,
-      options: [...(prev.options || []), { text: '', isCorrect: false }]
+      options: [...(prev.options || []), { text: "", isCorrect: false }],
     }));
   };
 
   const handleRemoveOption = (index) => {
-    setParsedQuestion(prev => {
+    setParsedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       updatedOptions.splice(index, 1);
       return { ...prev, options: updatedOptions };
@@ -99,66 +101,126 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
   const handleCorrectAnswerChange = (index) => {
     const updatedOptions = parsedQuestion.options.map((opt, i) => ({
       ...opt,
-      isCorrect: 
-        parsedQuestion.type === 'multiple_choice' 
-          ? i === index 
-          : i === index 
-            ? !opt.isCorrect 
-            : opt.isCorrect
+      isCorrect:
+        parsedQuestion.type === "multiple_choice"
+          ? i === index
+          : i === index
+          ? !opt.isCorrect
+          : opt.isCorrect,
     }));
 
-    setParsedQuestion(prev => ({
+    setParsedQuestion((prev) => ({
       ...prev,
-      options: updatedOptions
+      options: updatedOptions,
     }));
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files?.[0];
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setLocalImageFile(file);
       setIsUploading(true);
       setUploadError(null);
 
-      // Create image preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-        setParsedQuestion(prev => ({
+      try {
+        const formData = new FormData();
+        formData.append("media", file);
+
+        const token = localStorage.getItem("token");
+        const uploadResponse = await fetch(
+          `${API_BASE_URL}/api/media/upload`,
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const uploadData = await uploadResponse.json();
+        const mediaData = uploadData.media[0];
+        
+        // Use the URL directly from the response
+        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+        
+        setParsedQuestion((prev) => ({
           ...prev,
-          imageFile: file,
-          imageUrl: reader.result
+          imageUrl: mediaData._id, // Store the media ID
         }));
+      } catch (error) {
+        console.error("Image upload error:", error);
+        setUploadError("Failed to upload image");
+      } finally {
         setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setUploadError('Error reading file');
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleImageRemove = () => {
-    setLocalImageFile(null);
-    setImagePreview(null);
-    setUploadError(null);
-    setParsedQuestion(prev => ({
-      ...prev,
-      imageFile: null,
-      imageUrl: null
-    }));
-  };
-
-  const handleSave = () => {
-    if (onUpdate) {
-      onUpdate(parsedQuestion);
-    }
-    onClose();
-  };
-
-
+// Utility function for both editors
+const getMediaIdentifier = (imageUrl) => {
+  if (!imageUrl) return null;
   
+  if (typeof imageUrl === 'string' && imageUrl.includes('/uploads/')) {
+    return imageUrl.split('/uploads/')[1];
+  }
+  
+  return imageUrl;
+};
+
+// Update handleImageRemove in QuestionEditor.js
+const handleImageRemove = async () => {
+  if (parsedQuestion.imageUrl) {
+    try {
+      const mediaIdentifier = getMediaIdentifier(parsedQuestion.imageUrl);
+      if (!mediaIdentifier) {
+        throw new Error('Invalid image URL');
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/media/byFilename/${encodeURIComponent(mediaIdentifier)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete image");
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      setUploadError("Failed to delete image");
+      return;
+    }
+  }
+
+  setImagePreview(null);
+  setParsedQuestion((prev) => ({
+    ...prev,
+    imageUrl: null,
+  }));
+};
+
+// Update handleSave in QuestionEditor.js to handle image deletion
+const handleSave = () => {
+  if (onUpdate) {
+    // If the image was removed, indicate this in the update data
+    const updateData = {
+      ...parsedQuestion,
+      deleteImage: !parsedQuestion.imageUrl && question.imageUrl
+    };
+    onUpdate(updateData);
+  }
+  onClose();
+};
+
   return (
     <motion.div
       initial={{ x: "100%", opacity: 0 }}
@@ -194,7 +256,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           />
         </div>
 
-        {/* Image upload */}
+        {/* Image Upload Section */}
         <div className="space-y-4">
           <label className="block text-sm font-semibold text-gray-700">
             Question Image
@@ -209,18 +271,18 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
             />
             <label
               htmlFor="image-upload"
-              // className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
             >
-              {/* <Upload className="w-5 h-5" />
-              Upload Image */}
+              <Upload className="w-5 h-5" />
+              Upload Image
             </label>
             {imagePreview && (
               <button
                 onClick={handleImageRemove}
-                // className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
               >
-                {/* <Trash2 className="w-5 h-5" />
-                Remove */}
+                <Trash2 className="w-5 h-5" />
+                Remove
               </button>
             )}
           </div>
@@ -277,7 +339,11 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
                 className="flex items-center gap-3 bg-white p-3 rounded-lg border"
               >
                 <input
-                  type={parsedQuestion.type === "multiple_select" ? "checkbox" : "radio"}
+                  type={
+                    parsedQuestion.type === "multiple_select"
+                      ? "checkbox"
+                      : "radio"
+                  }
                   checked={option.isCorrect || false}
                   onChange={() => handleCorrectAnswerChange(index)}
                   className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -362,4 +428,3 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
 };
 
 export default QuestionEditor;
-
