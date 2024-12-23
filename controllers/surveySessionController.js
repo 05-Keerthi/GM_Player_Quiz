@@ -407,35 +407,44 @@ exports.nextSurveyQuestion = async (req, res) => {
       return res.status(404).json({ message: "Survey quiz not found" });
     }
 
-    // Combine questions and slides
-    const contentItems = [
-      ...quiz.questions.map((q) => ({ type: "question", item: q })),
-      ...quiz.slides.map((s) => ({ type: "slide", item: s })),
+    // Validate quiz.order
+    const validIds = [
+      ...quiz.questions.map((q) => q._id.toString()),
+      ...quiz.slides.map((s) => s._id.toString()),
     ];
 
-    if (contentItems.length === 0) {
+    const invalidIds = quiz.order.filter((item) => !validIds.includes(item.id.toString()));
+
+    // Remove invalid IDs from the order
+    if (invalidIds.length > 0) {
+      console.warn("Cleaning invalid IDs from quiz.order:", invalidIds);
+      quiz.order = quiz.order.filter((item) =>
+        validIds.includes(item.id.toString())
+      );
+      await quiz.save();
+    }
+
+    if (quiz.order.length === 0) {
       return res.status(400).json({ message: "No content available in the quiz" });
     }
 
-    // Determine the current index
+    // Get the current index and determine the next item
     const currentIndex = session.surveyCurrentQuestion
-      ? contentItems.findIndex(
-          ({ item }) => item._id.toString() === session.surveyCurrentQuestion.toString()
-        )
+      ? quiz.order.findIndex((item) => item.id.toString() === session.surveyCurrentQuestion.toString())
       : -1;
 
-    // Get the next content item
     const nextIndex = currentIndex + 1;
-    if (nextIndex >= contentItems.length) {
+    if (nextIndex >= quiz.order.length) {
       return res.status(400).json({ message: "No more items left in the survey session" });
     }
 
-    const nextItemData = contentItems[nextIndex];
-    const nextItem = nextItemData.item;
-    const itemType = nextItemData.type;
+    const nextItemId = quiz.order[nextIndex].id;
+    const nextItem =
+      quiz.questions.find((q) => q._id.toString() === nextItemId.toString()) ||
+      quiz.slides.find((s) => s._id.toString() === nextItemId.toString());
 
     if (!nextItem) {
-      return res.status(404).json({ message: "Next item not found" });
+      return res.status(404).json({ message: "Next item not found in the quiz", missingId: nextItemId });
     }
 
     // Update session with the current content item
@@ -461,12 +470,15 @@ exports.nextSurveyQuestion = async (req, res) => {
 
     // Emit the next item to the client
     const io = req.app.get("socketio");
-    io.emit("next-item", { type: itemType, item: itemWithImageUrl });
+    io.emit("next-item", {
+      type: quiz.order[nextIndex].type,
+      item: itemWithImageUrl,
+    });
 
     // Send response
     res.status(200).json({
       message: "Next item retrieved successfully",
-      type: itemType,
+      type: quiz.order[nextIndex].type,
       item: itemWithImageUrl,
     });
   } catch (error) {
