@@ -7,27 +7,112 @@ const Media = require('../models/Media');
 
 // const ActivityLog = require('../models/ActivityLog'); 
 
-// Create a new SurveyQuiz
+// // Create a new SurveyQuiz
+// exports.createSurveyQuiz = async (req, res) => {
+//   try {
+//     const { title, description, categoryId, slides, questions, isPublic } = req.body;
+
+//     if (!categoryId) {
+//       return res.status(400).json({ message: 'Category ID is required' });
+//     }
+
+//         // Validate categories, slides, and questions are valid ObjectIds
+//     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
+//     const slideIds = await SurveySlide.find({ '_id': { $in: slides } });
+//     const questionIds = await SurveyQuestion.find({ '_id': { $in: questions } });
+
+//     // Create the SurveyQuiz document
+//     const surveyQuiz = new SurveyQuiz({
+//       title,
+//       description,
+//       categories: categoryId,
+//       slides,
+//       questions,
+//       createdBy: req.user._id, // Assuming you have a user in the request
+//       status: 'draft', // Default status as draft
+//       isPublic,
+//     });
+
+//     // Save to database
+//     await surveyQuiz.save();
+
+//     // const activityLog = new ActivityLog({
+//     //   user: req.user._id,
+//     //   activityType: 'survey_create',
+//     //   details: {
+//     //     username: req.user.username,
+//     //     surveyTitle: title,
+//     //     surveyDescription: description,
+//     //     tenantId: req.user.tenantId || 'defaultTenantId', 
+//     //     duration: req.body.duration || 'N/A',           
+//     //   },
+//     //   createdAt: new Date(),
+//     // });
+    
+//     // await activityLog.save();
+
+//         // Fetch the saved surveyQuiz with populated fields
+//     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
+//       .populate('categories')
+//       .populate('slides')
+//       .populate('questions'); 
+
+//     res.status(201).json({ message: 'SurveyQuiz created successfully', surveyQuiz: populatedSurveyQuiz  });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error', error: error.message });
+//   }
+// };
+
+
 exports.createSurveyQuiz = async (req, res) => {
   try {
-    const { title, description, categoryId, slides, questions, isPublic } = req.body;
+    const { title, description, categoryId, slides, questions, isPublic, order } = req.body;
 
-    if (!categoryId) {
-      return res.status(400).json({ message: 'Category ID is required' });
+    if (!categoryId || !Array.isArray(categoryId) || categoryId.length === 0) {
+      return res.status(400).json({ message: 'At least one Category ID is required.' });
     }
 
-        // Validate categories, slides, and questions are valid ObjectIds
+    // Validate categories
     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
-    const slideIds = await SurveySlide.find({ '_id': { $in: slides } });
-    const questionIds = await SurveyQuestion.find({ '_id': { $in: questions } });
+    if (categoryIds.length !== categoryId.length) {
+      return res.status(400).json({ message: 'Some categories are invalid.' });
+    }
 
-    // Create the SurveyQuiz document
+    // Validate slides
+    const slideIds = await SurveySlide.find({ '_id': { $in: slides || [] } });
+    if (slides && slideIds.length !== slides.length) {
+      return res.status(400).json({ message: 'Some slides are invalid.' });
+    }
+
+    // Validate questions
+    const questionIds = await SurveyQuestion.find({ '_id': { $in: questions || [] } });
+    if (questions && questionIds.length !== questions.length) {
+      return res.status(400).json({ message: 'Some questions are invalid.' });
+    }
+
+    // Build the order array
+    const mixedOrder = [];
+    if (order && Array.isArray(order)) {
+      for (const item of order) {
+        const { id, type } = item;
+        if (type === 'slide' && slides.includes(id)) {
+          mixedOrder.push({ id, type });
+        } else if (type === 'question' && questions.includes(id)) {
+          mixedOrder.push({ id, type });
+        } else {
+          return res.status(400).json({ message: `Invalid order entry: ${JSON.stringify(item)}` });
+        }
+      }
+    }
+
+    // Create the SurveyQuiz document with the order field
     const surveyQuiz = new SurveyQuiz({
       title,
       description,
       categories: categoryId,
       slides,
       questions,
+      order: mixedOrder,
       createdBy: req.user._id, // Assuming you have a user in the request
       status: 'draft', // Default status as draft
       isPublic,
@@ -36,32 +121,18 @@ exports.createSurveyQuiz = async (req, res) => {
     // Save to database
     await surveyQuiz.save();
 
-    // const activityLog = new ActivityLog({
-    //   user: req.user._id,
-    //   activityType: 'survey_create',
-    //   details: {
-    //     username: req.user.username,
-    //     surveyTitle: title,
-    //     surveyDescription: description,
-    //     tenantId: req.user.tenantId || 'defaultTenantId', 
-    //     duration: req.body.duration || 'N/A',           
-    //   },
-    //   createdAt: new Date(),
-    // });
-    
-    // await activityLog.save();
-
-        // Fetch the saved surveyQuiz with populated fields
+    // Fetch the saved surveyQuiz with populated fields
     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
       .populate('categories')
       .populate('slides')
-      .populate('questions'); 
+      .populate('questions');
 
-    res.status(201).json({ message: 'SurveyQuiz created successfully', surveyQuiz: populatedSurveyQuiz  });
+    res.status(201).json({ message: 'SurveyQuiz created successfully', surveyQuiz: populatedSurveyQuiz });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Get all SurveyQuizzes
 exports.getAllSurveyQuizzes = async (req, res) => {
@@ -197,7 +268,7 @@ exports.getSurveyQuizById = async (req, res) => {
 exports.updateSurveyQuiz = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, slides, questions, isPublic, status } = req.body;
+    const { title, description, slides, questions, order, isPublic, status } = req.body;
 
     // Fetch the survey quiz by ID
     const surveyQuiz = await SurveyQuiz.findById(id);
@@ -230,6 +301,7 @@ exports.updateSurveyQuiz = async (req, res) => {
     if (description) surveyQuiz.description = description;
     if (isPublic !== undefined) surveyQuiz.isPublic = isPublic;
     if (status) surveyQuiz.status = status;
+    if (order) surveyQuiz.order = order; // Update the order
 
     // Save the updated survey quiz
     const updatedSurveyQuiz = await surveyQuiz.save();
