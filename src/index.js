@@ -19,7 +19,7 @@ import { NotificationProvider } from "./context/notificationContext";
 import { SurveyAnswerProvider } from "./context/surveyAnswerContext";
 import { SurveyNotificationProvider } from "./context/SurveynotificationContext";
 import { ReportProvider } from "./context/ReportContext";
-import { SurveySlideProvider } from "./context/surveySlideContext";
+import { SurveySlideProvider } from "./context/SurveySlideContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
