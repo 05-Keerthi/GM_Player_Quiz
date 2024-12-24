@@ -13,15 +13,14 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
   const { quizId } = useParams();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [slide, setSlide] = useState({
     title: "",
     type: "",
     content: "",
-    points: [""],
     imageUrl: null,
+    points: [""],
     quizId: quizId,
   });
   const [error, setError] = useState(null);
@@ -30,9 +29,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     if (isOpen) {
       setSelectedType(null);
       setStep(1);
-      setImageFile(null);
       setImagePreview(null);
-      setIsUploading(false);
       setSlide({
         title: "",
         type: "",
@@ -65,40 +62,78 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     },
   ];
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const API_BASE_URL = "http://localhost:5000"; // Consider moving to env variable
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       setIsUploading(true);
       setError(null);
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      try {
+        const formData = new FormData();
+        formData.append("media", file);
+
+        const token = localStorage.getItem("token");
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const uploadData = await uploadResponse.json();
+        const mediaData = uploadData.media[0];
+
+        // Set the preview URL using the path from the response
+        const fullUrl = `${API_BASE_URL}/uploads/${mediaData.filename}`;
+        setImagePreview(fullUrl);
+
+        // Store the media ID for backend reference
         setSlide((prev) => ({
           ...prev,
-          imageFile: file,
-          imageUrl: reader.result,
+          imageUrl: mediaData._id,
         }));
+      } catch (error) {
+        console.error("Image upload error:", error);
+        setError("Failed to upload image");
+      } finally {
         setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setError("Failed to read file");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleImageRemove = () => {
-    setImageFile(null);
+  const handleImageRemove = async () => {
+    if (slide.imageUrl) {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${API_BASE_URL}/api/media/${slide.imageUrl}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to delete image");
+        }
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        setError("Failed to delete image");
+        return;
+      }
+    }
+
     setImagePreview(null);
     setSlide((prev) => ({
       ...prev,
-      imageFile: null,
       imageUrl: null,
     }));
-    setError(null);
   };
 
   const handleTypeSelect = (type) => {
@@ -118,14 +153,14 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     }));
   };
 
-  const handleAddPoint = () => {
+  const addPoint = () => {
     setSlide((prev) => ({
       ...prev,
       points: [...prev.points, ""],
     }));
   };
 
-  const handleRemovePoint = (index) => {
+  const removePoint = (index) => {
     setSlide((prev) => ({
       ...prev,
       points: prev.points.filter((_, i) => i !== index),
@@ -134,27 +169,26 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
 
   const handleSubmit = async () => {
     try {
-      if (!slide.title) {
-        throw new Error("Slide title is required");
-      }
-
       const finalSlide = {
         ...slide,
         content:
           slide.type === "bullet_points"
             ? slide.points.join("\n")
             : slide.content,
-        imageUrl: imageFile ? imageFile : slide.imageUrl,
       };
+
+      if (!finalSlide.title) {
+        throw new Error("Slide title is required");
+      }
 
       await onAddSlide(finalSlide);
       setSelectedType(null);
       setStep(1);
-      setImageFile(null);
       setImagePreview(null);
       onClose();
     } catch (error) {
       setError(error.message);
+      console.error("Slide submission error:", error);
     }
   };
 
@@ -224,36 +258,41 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
               <label className="block text-sm font-medium text-gray-700">
                 Slide Image (Optional)
               </label>
-              {!imagePreview ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  <label className="flex flex-col items-center justify-center cursor-pointer">
-                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-500">
-                      Click to upload image
-                    </span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className="relative">
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  className="hidden"
+                  id="image-upload"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Image
+                </label>
+                {imagePreview && (
+                  <button
+                    onClick={handleImageRemove}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              {imagePreview && (
+                <div className="relative mt-4 group">
                   <img
                     src={imagePreview}
                     alt="Slide"
                     className="w-full h-48 object-cover rounded-lg"
                   />
-                  <button
-                    onClick={handleImageRemove}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                   {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
                     </div>
                   )}
@@ -261,23 +300,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
               )}
             </div>
 
-            {selectedType === "classic" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Content
-                </label>
-                <textarea
-                  value={slide.content}
-                  onChange={(e) =>
-                    setSlide({ ...slide, content: e.target.value })
-                  }
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[150px]"
-                  placeholder="Enter slide content..."
-                />
-              </div>
-            )}
-
-            {selectedType === "bullet_points" && (
+            {selectedType === "bullet_points" ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="block text-sm font-medium text-gray-700">
@@ -285,7 +308,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                   </label>
                   {slide.points.length < 6 && (
                     <button
-                      onClick={handleAddPoint}
+                      onClick={addPoint}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       Add Point
@@ -294,7 +317,6 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                 </div>
                 {slide.points.map((point, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <span className="text-gray-500 font-bold">•</span>
                     <input
                       type="text"
                       value={point}
@@ -304,7 +326,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                     />
                     {slide.points.length > 1 && (
                       <button
-                        onClick={() => handleRemovePoint(index)}
+                        onClick={() => removePoint(index)}
                         className="p-1 text-gray-400 hover:text-red-500"
                       >
                         <X className="w-4 h-4" />
@@ -312,6 +334,21 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                     )}
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Content
+                </label>
+                <textarea
+                  value={slide.content}
+                  onChange={(e) =>
+                    setSlide({ ...slide, content: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter slide content..."
+                  rows={4}
+                />
               </div>
             )}
 

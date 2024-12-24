@@ -164,27 +164,6 @@ const QuizCreator = () => {
     }
   };
 
-  const handleImageUpload = async (file) => {
-    const formData = new FormData();
-    const token = localStorage.getItem("token");
-    formData.append("media", file);
-
-    const response = await fetch("http://localhost:5000/api/media/upload", {
-      method: "POST",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Image upload failed");
-    }
-
-    const data = await response.json();
-    return data.imageId;
-  };
-
   const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
@@ -251,22 +230,28 @@ const QuizCreator = () => {
   const handleUpdateSlide = async (slideId, updatedData) => {
     try {
       setLoading(true);
-      let imageId = null;
-  
-      // Handle image upload if there's a new image file
-      if (updatedData.imageFile) {
-        imageId = await handleImageUpload(updatedData.imageFile);
+
+      // Handle image deletion if needed
+      if (updatedData.deleteImage) {
+        const currentSlide = slides.find((s) => s._id === slideId);
+        if (currentSlide?.imageUrl) {
+          await handleDeleteImage(currentSlide.imageUrl);
+        }
+        updatedData.imageUrl = null;
       }
-  
-      // Prepare the update payload
+      // Rest of the update logic remains the same
+      else if (updatedData.imageFile) {
+        const imageId = await handleImageUpload(updatedData.imageFile);
+        updatedData.imageUrl = imageId;
+      }
+
       const updatePayload = {
         title: updatedData.title,
+        content: updatedData.content || "",
         type: updatedData.type,
-        content: updatedData.content,
-        imageUrl: imageId || updatedData.imageUrl,
+        imageUrl: updatedData.imageUrl,
       };
-  
-      // Make API request to update the slide
+
       const response = await authenticatedFetch(
         `http://localhost:5000/api/slides/${slideId}`,
         {
@@ -275,27 +260,18 @@ const QuizCreator = () => {
           body: JSON.stringify(updatePayload),
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to update slide");
       }
-  
+
       const { slide: updatedSlide } = await response.json();
-  
-      if (!updatedSlide || !updatedSlide._id) {
-        throw new Error("Invalid slide data received from server");
-      }
-  
-      // Update slides in state
+
       setSlides((prevSlides) =>
         prevSlides.map((s) => (s._id === slideId ? updatedSlide : s))
       );
-  
-      // Update current slide
       setCurrentSlide(updatedSlide);
-  
-      // Update in ordered items
       setOrderedItems((prevItems) =>
         prevItems.map((item) =>
           item.id === slideId && item.type === "slide"
@@ -303,7 +279,7 @@ const QuizCreator = () => {
             : item
         )
       );
-  
+
       showAlert("Slide updated successfully", "success");
     } catch (err) {
       console.error("Error updating slide:", err);
@@ -312,7 +288,6 @@ const QuizCreator = () => {
       setLoading(false);
     }
   };
-
 
   const handleDeleteSlide = async (e, slideId) => {
     e.stopPropagation();
@@ -431,7 +406,16 @@ const QuizCreator = () => {
       setLoading(true);
       console.log("Updating question with data:", updatedData); // Debug log
 
-      if (updatedData.imageFile) {
+      // Handle image deletion if needed
+      if (updatedData.deleteImage) {
+        const currentQuestion = questions.find((q) => q._id === questionId);
+        if (currentQuestion?.imageUrl) {
+          await handleDeleteImage(currentQuestion.imageUrl);
+        }
+        updatedData.imageUrl = null;
+      }
+      // Handle new image upload
+      else if (updatedData.imageFile) {
         const imageId = await handleImageUpload(updatedData.imageFile);
         updatedData.imageUrl = imageId;
       }
@@ -491,6 +475,109 @@ const QuizCreator = () => {
       handleApiError(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function for image upload
+  const handleImageUpload = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("media", file);
+
+      const response = await fetch("http://localhost:5000/api/media/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Image upload failed");
+      }
+
+      const data = await response.json();
+      const imageId = data.media[0]._id;
+      return imageId;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
+
+  // Utility function to handle URL encodings correctly
+  const getMediaIdentifier = (imageUrl) => {
+    if (!imageUrl) return null;
+
+    try {
+      // If it's already a Media ID (no slashes), return it
+      if (typeof imageUrl === "string" && !imageUrl.includes("/")) {
+        return imageUrl;
+      }
+
+      // Extract just the filename from the URL
+      if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
+        // Split by /uploads/ and take the last part
+        const parts = imageUrl.split("/uploads/");
+        if (parts.length !== 2) return null;
+
+        // The filename might be encoded multiple times, so decode it
+        let filename = parts[1];
+        while (filename.includes("%")) {
+          try {
+            const decoded = decodeURIComponent(filename);
+            if (decoded === filename) break;
+            filename = decoded;
+          } catch (e) {
+            break;
+          }
+        }
+        return filename;
+      }
+    } catch (error) {
+      console.error("Error processing image URL:", error);
+    }
+    return null;
+  };
+
+  // Updated handleDeleteImage function
+  const handleDeleteImage = async (imageUrl) => {
+    try {
+      if (!imageUrl) {
+        console.log("No image URL provided");
+        return false;
+      }
+
+      const filename = getMediaIdentifier(imageUrl);
+      if (!filename) {
+        console.error("Could not extract filename from:", imageUrl);
+        return false;
+      }
+
+      console.log("Attempting to delete image:", filename);
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:5000/api/media/byFilename/${encodeURIComponent(
+          filename
+        )}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete image");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      return false;
     }
   };
 
@@ -581,6 +668,7 @@ const QuizCreator = () => {
       handleApiError(err);
     }
   };
+
   // Helper functions for validation
   const isValidQuestion = (question) => {
     return (
@@ -726,7 +814,7 @@ const QuizCreator = () => {
           <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
-                GM Play...!
+                Quiz Creator
               </span>
               <div className="relative">
                 <input

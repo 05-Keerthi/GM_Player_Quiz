@@ -1,3 +1,4 @@
+// SlideEditor.js
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -13,42 +14,13 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [points, setPoints] = useState([""]);
-  const [image, setImage] = useState(null);
-  const [error, setError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [error, setError] = useState(null);
 
-  const fetchImageUrl = async (imageId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/media/${imageId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to fetch image");
-      }
-  
-      const data = await response.json();
-      return data.media.url; // This will return the full URL for the image
-    } catch (error) {
-      console.error("Error fetching image:", error);
-      return null;
-    }
-  };
-
+  const API_BASE_URL = "http://localhost:5000"; // You might want to move this to an environment variable
 
   useEffect(() => {
-    const loadImageUrl = async () => {
-      if (slide?.imageUrl) {
-        const imageUrl = await fetchImageUrl(slide.imageUrl);
-        setImage({ preview: imageUrl });
-      } else {
-        setImage(null);
-      }
-    };
-  
     if (slide) {
       setTitle(slide.title || "");
       if (slide.type === "bullet_points") {
@@ -56,45 +28,19 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       } else {
         setContent(slide.content || "");
       }
-      loadImageUrl();
+
+      if (slide.imageUrl) {
+        // If imageUrl is already a full path, use it directly
+        if (slide.imageUrl.startsWith("/uploads/")) {
+          setImagePreview(`${API_BASE_URL}${slide.imageUrl}`);
+        } else {
+          setImagePreview(slide.imageUrl);
+        }
+      } else {
+        setImagePreview(null);
+      }
     }
   }, [slide]);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setIsUploading(true);
-      setError(null);
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage({ file, preview: reader.result });
-        setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setError("Error reading image file");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageRemove = () => {
-    setImage(null);
-    setError(null);
-  };
-
-  const handlePointChange = (index, value) => {
-    setPoints((prev) => prev.map((point, i) => (i === index ? value : point)));
-  };
-
-  const handleAddPoint = () => {
-    setPoints((prev) => [...prev, ""]);
-  };
-
-  const handleRemovePoint = (index) => {
-    setPoints((prev) => prev.filter((_, i) => i !== index));
-  };
 
   const getSlideTypeIcon = (type) => {
     const typeIcons = {
@@ -105,48 +51,124 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     return typeIcons[type] || null;
   };
 
-  const handleSubmit = async () => {
-    try {
-      // Prepare the base update data
-      let updatedData = {
-        ...slide,
-        title,
-        content: slide.type === "bullet_points" ? points.join("\n") : content
-      };
-  
-      // Handle image upload if there's a new file
-      if (image?.file) {
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      setError(null);
+
+      try {
         const formData = new FormData();
-        formData.append("media", image.file);
-  
+        formData.append("media", file);
+
         const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:5000/api/media/upload", {
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
           method: "POST",
           body: formData,
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-  
-        if (!response.ok) {
-          throw new Error("Failed to upload image");
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed");
         }
-  
-        const data = await response.json();
-        updatedData.imageUrl = data.media[0]._id; // Store the media ID
-      } else if (image?.preview && !image?.file) {
-        // Keep existing image
-        updatedData.imageUrl = slide.imageUrl;
-      } else {
-        // No image case
-        updatedData.imageUrl = null;
+
+        const uploadData = await uploadResponse.json();
+        const mediaData = uploadData.media[0];
+
+        // Use the URL directly from the response
+        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+
+        // Store the media ID in the slide object
+        slide.imageUrl = mediaData._id;
+      } catch (error) {
+        console.error("Image upload error:", error);
+        setError("Failed to upload image");
+      } finally {
+        setIsUploading(false);
       }
-  
+    }
+  };
+
+  const getMediaIdentifier = (imageUrl) => {
+    if (!imageUrl) return null;
+
+    if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
+      return imageUrl.split("/uploads/")[1];
+    }
+
+    return imageUrl;
+  };
+
+  // Update handleImageRemove in SlideEditor.js
+  const handleImageRemove = async () => {
+    if (slide.imageUrl) {
+      try {
+        const mediaIdentifier = getMediaIdentifier(slide.imageUrl);
+        if (!mediaIdentifier) {
+          throw new Error("Invalid image URL");
+        }
+
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${API_BASE_URL}/api/media/byFilename/${encodeURIComponent(
+            mediaIdentifier
+          )}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to delete image");
+        }
+
+        setImagePreview(null);
+        slide.imageUrl = null;
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        setError("Failed to delete image");
+        return;
+      }
+    }
+  };
+
+  // Update handleSave in SlideEditor.js to handle image deletion
+  const handleSave = async () => {
+    try {
+      const updatedData = {
+        title,
+        type: slide.type,
+        content: slide.type === "bullet_points" ? points.join("\n") : content,
+        imageUrl: slide.imageUrl,
+        // Add deleteImage flag if the image was removed
+        deleteImage: !slide.imageUrl && imagePreview !== null,
+      };
+
       await onUpdate(updatedData);
       onClose();
     } catch (error) {
       setError(error.message);
     }
+  };
+
+  const handlePointChange = (index, value) => {
+    const newPoints = [...points];
+    newPoints[index] = value;
+    setPoints(newPoints);
+  };
+
+  const addPoint = () => {
+    setPoints([...points, ""]);
+  };
+
+  const removePoint = (index) => {
+    const newPoints = points.filter((_, i) => i !== index);
+    setPoints(newPoints);
   };
 
   if (!slide) return null;
@@ -193,39 +215,44 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Slide Image (Optional)
+          <label className="block text-sm font-semibold text-gray-700">
+            Slide Image
           </label>
-          {!image?.preview ? (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <label className="flex flex-col items-center justify-center cursor-pointer">
-                <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                <span className="text-sm text-gray-500">
-                  Click to upload image
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-              </label>
-            </div>
-          ) : (
-            <div className="relative">
-              <img
-                src={image.preview}
-                alt="Slide"
-                className="w-full h-48 object-cover rounded-lg"
-              />
+          <div className="flex items-center gap-4">
+            <input
+              type="file"
+              className="hidden"
+              id="image-upload"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+            <label
+              htmlFor="image-upload"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+            >
+              <Upload className="w-5 h-5" />
+              Upload Image
+            </label>
+            {imagePreview && (
               <button
                 onClick={handleImageRemove}
-                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-5 h-5" />
+                Remove
               </button>
+            )}
+          </div>
+
+          {imagePreview && (
+            <div className="relative mt-4 group">
+              <img
+                src={imagePreview}
+                alt="Slide"
+                className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
+              />
               {isUploading && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
                 </div>
               )}
@@ -233,7 +260,44 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           )}
         </div>
 
-        {slide.type === "classic" && (
+        {slide.type === "bullet_points" ? (
+          <div className="space-y-4">
+            <label className="block text-sm font-semibold text-gray-700">
+              Bullet Points
+            </label>
+            <div className="space-y-3">
+              {points.map((point, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+                >
+                  <span className="text-gray-500 font-bold">•</span>
+                  <input
+                    type="text"
+                    value={point}
+                    onChange={(e) => handlePointChange(index, e.target.value)}
+                    className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
+                    placeholder={`Point ${index + 1}`}
+                  />
+                  {points.length > 1 && (
+                    <button
+                      onClick={() => removePoint(index)}
+                      className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addPoint}
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+              >
+                Add Bullet Point
+              </button>
+            </div>
+          </div>
+        ) : (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Content
@@ -247,50 +311,9 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           </div>
         )}
 
-        {slide.type === "bullet_points" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="block text-sm font-semibold text-gray-700">
-                Bullet Points
-              </label>
-              {points.length < 6 && (
-                <button
-                  onClick={handleAddPoint}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  Add Point
-                </button>
-              )}
-            </div>
-            {points.map((point, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-3 bg-white p-3 rounded-lg border"
-              >
-                <span className="text-gray-500 font-bold">•</span>
-                <input
-                  type="text"
-                  value={point}
-                  onChange={(e) => handlePointChange(index, e.target.value)}
-                  className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
-                  placeholder={`Point ${index + 1}`}
-                />
-                {points.length > 1 && (
-                  <button
-                    onClick={() => handleRemovePoint(index)}
-                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
         <div className="flex justify-end gap-4 mt-6">
           <button
-            onClick={handleSubmit}
+            onClick={handleSave}
             className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
           >
             Save

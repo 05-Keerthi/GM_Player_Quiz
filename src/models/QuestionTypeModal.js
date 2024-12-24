@@ -14,9 +14,8 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const { quizId } = useParams();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [question, setQuestion] = useState({
     title: "",
     type: "",
@@ -33,9 +32,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     if (isOpen) {
       setSelectedType(null);
       setStep(1);
-      setImageFile(null);
       setImagePreview(null);
-      setIsUploading(false);
       setQuestion({
         title: "",
         type: "",
@@ -82,40 +79,78 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     },
   ];
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const API_BASE_URL = "http://localhost:5000"; // Consider moving to env variable
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       setIsUploading(true);
       setError(null);
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      try {
+        const formData = new FormData();
+        formData.append("media", file);
+
+        const token = localStorage.getItem("token");
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const uploadData = await uploadResponse.json();
+        const mediaData = uploadData.media[0];
+
+        // Set the preview URL using the path from the response
+        const fullUrl = `${API_BASE_URL}/uploads/${mediaData.filename}`;
+        setImagePreview(fullUrl);
+
+        // Store the media ID for backend reference
         setQuestion((prev) => ({
           ...prev,
-          imageFile: file,
-          imageUrl: reader.result,
+          imageUrl: mediaData._id,
         }));
+      } catch (error) {
+        console.error("Image upload error:", error);
+        setError("Failed to upload image");
+      } finally {
         setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setError("Failed to read file");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleRemoveImage = () => {
-    setImageFile(null);
+  const handleImageRemove = async () => {
+    if (question.imageUrl) {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${API_BASE_URL}/api/media/${question.imageUrl}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to delete image");
+        }
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        setError("Failed to delete image");
+        return;
+      }
+    }
+
     setImagePreview(null);
     setQuestion((prev) => ({
       ...prev,
-      imageFile: null,
       imageUrl: null,
     }));
-    setError(null);
   };
 
   const handleTypeSelect = (type) => {
@@ -146,12 +181,14 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const handleCorrectAnswerChange = (index) => {
     setQuestion((prev) => {
       if (prev.type === "multiple_choice" || prev.type === "true_false") {
+        // Single correct answer
         const newOptions = prev.options.map((opt, i) => ({
           ...opt,
           isCorrect: i === index,
         }));
         return { ...prev, options: newOptions };
       } else {
+        // Multiple correct answers
         const newOptions = prev.options.map((opt, i) =>
           i === index ? { ...opt, isCorrect: !opt.isCorrect } : opt
         );
@@ -160,14 +197,14 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     });
   };
 
-  const handleAddOption = () => {
+  const addOption = () => {
     setQuestion((prev) => ({
       ...prev,
       options: [...prev.options, { text: "", isCorrect: false }],
     }));
   };
 
-  const handleRemoveOption = (index) => {
+  const removeOption = (index) => {
     setQuestion((prev) => ({
       ...prev,
       options: prev.options.filter((_, i) => i !== index),
@@ -180,19 +217,14 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         throw new Error("Question title is required");
       }
 
-      const finalQuestion = {
-        ...question,
-        imageUrl: imageFile ? imageFile : question.imageUrl,
-      };
-
-      await onAddQuestion(finalQuestion);
+      await onAddQuestion(question);
       setSelectedType(null);
       setStep(1);
-      setImageFile(null);
       setImagePreview(null);
       onClose();
     } catch (error) {
       setError(error.message);
+      console.error("Question submission error:", error);
     }
   };
 
@@ -260,40 +292,46 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
               />
             </div>
 
+            {/* Image Upload Section */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 Question Image (Optional)
               </label>
-              {!imagePreview ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  <label className="flex flex-col items-center justify-center cursor-pointer">
-                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-500">
-                      Click to upload image
-                    </span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className="relative">
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  className="hidden"
+                  id="image-upload"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Image
+                </label>
+                {imagePreview && (
+                  <button
+                    onClick={handleImageRemove}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              {imagePreview && (
+                <div className="relative mt-4 group">
                   <img
                     src={imagePreview}
                     alt="Question"
                     className="w-full h-48 object-cover rounded-lg"
                   />
-                  <button
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                   {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
                     </div>
                   )}
@@ -309,7 +347,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                   </label>
                   {!["true_false"].includes(selectedType) && (
                     <button
-                      onClick={handleAddOption}
+                      onClick={addOption}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       Add Option
@@ -340,7 +378,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                     {!["true_false"].includes(selectedType) &&
                       question.options.length > 1 && (
                         <button
-                          onClick={() => handleRemoveOption(index)}
+                          onClick={() => removeOption(index)}
                           className="p-1 text-gray-400 hover:text-red-500"
                         >
                           <X className="w-4 h-4" />

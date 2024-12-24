@@ -1,3 +1,4 @@
+// QuestionEditor.js
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -24,34 +25,31 @@ function parseQuestionData(question) {
     points: question?.points ?? 1,
     timer: question?.timer ?? 30,
     imageUrl: question?.imageUrl || null,
-    imageFile: null,
   };
 }
 
 const QuestionEditor = ({ question, onUpdate, onClose }) => {
-  const [localImageFile, setLocalImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const [parsedQuestion, setParsedQuestion] = useState(() =>
     parseQuestionData(question)
   );
 
+  const API_BASE_URL = "http://localhost:5000"; // You might want to move this to an environment variable
+
   useEffect(() => {
-    const loadImageUrl = async () => {
-      if (question?.imageUrl) {
-        const imageUrl = await fetchImageUrl(question.imageUrl);
-        setImagePreview(imageUrl);
-      } else {
-        setImagePreview(null);
-      }
-    };
-  
     setParsedQuestion(parseQuestionData(question));
-    setLocalImageFile(null);
-    loadImageUrl();
-    setIsUploading(false);
-    setUploadError(null);
+    if (question?.imageUrl) {
+      // If imageUrl is already a full path, use it directly
+      if (question.imageUrl.startsWith("/uploads/")) {
+        setImagePreview(`${API_BASE_URL}${question.imageUrl}`);
+      } else {
+        setImagePreview(question.imageUrl);
+      }
+    } else {
+      setImagePreview(null);
+    }
   }, [question]);
 
   if (!question) return null;
@@ -67,29 +65,6 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
     return typeIcons[type] || null;
   };
 
-
-
-  const fetchImageUrl = async (imageId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/media/${imageId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to fetch image");
-      }
-  
-      const data = await response.json();
-      return data.media.url; // This will return the full URL for the image
-    } catch (error) {
-      console.error("Error fetching image:", error);
-      return null;
-    }
-  };
-
   const handleInputChange = (field, value) => {
     setParsedQuestion((prev) => ({
       ...prev,
@@ -98,81 +73,150 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
   };
 
   const handleOptionChange = (index, value) => {
+    const updatedOptions = parsedQuestion.options.map((opt, i) =>
+      i === index ? { ...opt, text: value } : opt
+    );
+
     setParsedQuestion((prev) => ({
       ...prev,
-      options: prev.options.map((opt, i) =>
-        i === index ? { ...opt, text: value } : opt
-      ),
+      options: updatedOptions,
     }));
-  };
-
-  const handleCorrectAnswerChange = (index) => {
-    setParsedQuestion((prev) => {
-      const newOptions = prev.options.map((opt, i) => ({
-        ...opt,
-        isCorrect:
-          prev.type === "multiple_choice"
-            ? i === index
-            : i === index
-            ? !opt.isCorrect
-            : opt.isCorrect,
-      }));
-      return { ...prev, options: newOptions };
-    });
   };
 
   const handleAddOption = () => {
     setParsedQuestion((prev) => ({
       ...prev,
-      options: [...prev.options, { text: "", isCorrect: false }],
+      options: [...(prev.options || []), { text: "", isCorrect: false }],
     }));
   };
 
   const handleRemoveOption = (index) => {
+    setParsedQuestion((prev) => {
+      const updatedOptions = [...(prev.options || [])];
+      updatedOptions.splice(index, 1);
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  const handleCorrectAnswerChange = (index) => {
+    const updatedOptions = parsedQuestion.options.map((opt, i) => ({
+      ...opt,
+      isCorrect:
+        parsedQuestion.type === "multiple_choice"
+          ? i === index
+          : i === index
+          ? !opt.isCorrect
+          : opt.isCorrect,
+    }));
+
     setParsedQuestion((prev) => ({
       ...prev,
-      options: prev.options.filter((_, i) => i !== index),
+      options: updatedOptions,
     }));
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setLocalImageFile(file);
       setIsUploading(true);
       setUploadError(null);
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      try {
+        const formData = new FormData();
+        formData.append("media", file);
+
+        const token = localStorage.getItem("token");
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const uploadData = await uploadResponse.json();
+        const mediaData = uploadData.media[0];
+
+        // Use the URL directly from the response
+        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+
         setParsedQuestion((prev) => ({
           ...prev,
-          imageFile: file,
-          imageUrl: reader.result,
+          imageUrl: mediaData._id, // Store the media ID
         }));
+      } catch (error) {
+        console.error("Image upload error:", error);
+        setUploadError("Failed to upload image");
+      } finally {
         setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setUploadError("Error reading file");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleImageRemove = () => {
-    setLocalImageFile(null);
+  // Utility function for both editors
+  const getMediaIdentifier = (imageUrl) => {
+    if (!imageUrl) return null;
+
+    if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
+      return imageUrl.split("/uploads/")[1];
+    }
+
+    return imageUrl;
+  };
+
+  // Update handleImageRemove in QuestionEditor.js
+  const handleImageRemove = async () => {
+    if (parsedQuestion.imageUrl) {
+      try {
+        const mediaIdentifier = getMediaIdentifier(parsedQuestion.imageUrl);
+        if (!mediaIdentifier) {
+          throw new Error("Invalid image URL");
+        }
+
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${API_BASE_URL}/api/media/byFilename/${encodeURIComponent(
+            mediaIdentifier
+          )}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to delete image");
+        }
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        setUploadError("Failed to delete image");
+        return;
+      }
+    }
+
     setImagePreview(null);
     setParsedQuestion((prev) => ({
       ...prev,
-      imageFile: null,
       imageUrl: null,
     }));
-    setUploadError(null);
   };
 
+  // Update handleSave in QuestionEditor.js to handle image deletion
   const handleSave = () => {
-    onUpdate(parsedQuestion);
+    if (onUpdate) {
+      // If the image was removed, indicate this in the update data
+      const updateData = {
+        ...parsedQuestion,
+        deleteImage: !parsedQuestion.imageUrl && question.imageUrl,
+      };
+      onUpdate(updateData);
+    }
     onClose();
   };
 
@@ -211,38 +255,50 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Question Image (Optional)
+        {/* Image Upload Section */}
+        <div className="space-y-4">
+          <label className="block text-sm font-semibold text-gray-700">
+            Question Image
           </label>
-          {!imagePreview ? (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <label className="flex flex-col items-center justify-center cursor-pointer">
-                <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                <span className="text-sm text-gray-500">
-                  Click to upload image
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-              </label>
+          <div className="flex items-center gap-4">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              id="image-upload"
+            />
+            <label
+              htmlFor="image-upload"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+            >
+              <Upload className="w-5 h-5" />
+              Upload Image
+            </label>
+            {imagePreview && (
+              <button
+                onClick={handleImageRemove}
+                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+              >
+                <Trash2 className="w-5 h-5" />
+                Remove
+              </button>
+            )}
+          </div>
+
+          {uploadError && (
+            <div className="text-red-500 bg-red-50 p-2 rounded-lg">
+              {uploadError}
             </div>
-          ) : (
-            <div className="relative">
+          )}
+
+          {imagePreview && (
+            <div className="relative mt-4 group">
               <img
                 src={imagePreview}
                 alt="Question"
-                className="w-full h-48 object-cover rounded-lg"
+                className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
               />
-              <button
-                onClick={handleImageRemove}
-                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
               {isUploading && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
@@ -250,13 +306,9 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
               )}
             </div>
           )}
-          {uploadError && (
-            <div className="text-red-500 bg-red-50 p-2 rounded">
-              {uploadError}
-            </div>
-          )}
         </div>
 
+        {/* Question Type Dropdown */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Question Type
@@ -274,21 +326,12 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           </select>
         </div>
 
+        {/* Answer Options */}
         {parsedQuestion.type !== "open_ended" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="block text-sm font-semibold text-gray-700">
-                Answer Options
-              </label>
-              {parsedQuestion.type !== "true_false" && (
-                <button
-                  onClick={handleAddOption}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  Add Option
-                </button>
-              )}
-            </div>
+            <label className="block text-sm font-semibold text-gray-700">
+              Answer Options
+            </label>
             {parsedQuestion.options.map((option, index) => (
               <div
                 key={index}
@@ -300,28 +343,35 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
                       ? "checkbox"
                       : "radio"
                   }
-                  checked={option.isCorrect}
+                  checked={option.isCorrect || false}
                   onChange={() => handleCorrectAnswerChange(index)}
-                  className="w-5 h-5 text-blue-600"
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
                 <input
                   type="text"
-                  value={option.text}
+                  value={option.text || ""}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
                   className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
                   placeholder={`Option ${index + 1}`}
                 />
-                {parsedQuestion.type !== "true_false" &&
-                  parsedQuestion.options.length > 2 && (
-                    <button
-                      onClick={() => handleRemoveOption(index)}
-                      className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
+                {parsedQuestion.options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveOption(index)}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
               </div>
             ))}
+            <button
+              type="button"
+              onClick={handleAddOption}
+              className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+            >
+              Add Option
+            </button>
           </div>
         )}
 
@@ -356,6 +406,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           </div>
         </div>
 
+        {/* Save and Cancel Buttons */}
         <div className="flex justify-end gap-4 mt-6">
           <button
             onClick={handleSave}
