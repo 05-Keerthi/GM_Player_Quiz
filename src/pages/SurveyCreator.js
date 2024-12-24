@@ -102,7 +102,7 @@ const SurveyCreator = () => {
   };
 
   const handlePreviewClick = () => {
-    navigate(`/preview/${surveyId}`);
+    navigate(`/SurveyPreview/${surveyId}`);
   };
 
   const handleImageUpload = async (file) => {
@@ -334,7 +334,7 @@ const SurveyCreator = () => {
 
       try {
         const survey = await getSurveyById(surveyId);
-        setSurveyTitle(survey.surveyTitle || "");
+        setSurveyTitle(survey.Title || "");
         
         const [surveyQuestions, surveySlides] = await Promise.all([
           getAllQuestions(surveyId),
@@ -352,14 +352,14 @@ const SurveyCreator = () => {
                 return questionData ? {
                   id: questionData._id,
                   type: 'question',
-                  data: questionData
+                  data: { title: questions.title, ...questions }
                 } : null;
               } else if (item.type === 'slide') {
                 const slideData = surveySlides.find(s => s._id === item.id);
                 return slideData ? {
                   id: slideData._id,
                   type: 'slide',
-                  data: slideData
+                  data: { title: slides.surveyTitle, ...slides }
                 } : null;
               }
               return null;
@@ -388,7 +388,7 @@ const SurveyCreator = () => {
     };
 
     loadSurveyData();
-  }, [surveyId]);
+  }, [surveyId,navigate]);
 
   return (
     <>
@@ -503,7 +503,7 @@ const SurveyCreator = () => {
                         </button>
                       </div>
                       <p className="text-sm text-gray-500 truncate">
-                        {item.data.title}
+                        {item.data.title || item.data.surveyTitle} 
                       </p>
                     </div>
                   ))}

@@ -11,6 +11,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import SelectCategoryPage from "./pages/SelectCategoryPage";
 import PreviewPage from "./pages/Preview";
+import SurveyPreviewPage from "./pages/SurveyPreview";
 import QuizCreator from "./pages/quizCreator";
 import Lobby from "./pages/Session/Lobby/AdminLobby";
 import JoinQuiz from "./pages/Session/UserJoin/JoinQuiz";
@@ -32,7 +33,7 @@ import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
 import Reports from "./pages/Report/Report";
-import UserReport from "./pages/Report/UserReport"; // Import UserReport page
+import UserReport from "./pages/Report/UserReport";
 import UserQuizList from "./pages/Report/UserQuizist";
 
 // Protected Route Component
@@ -86,10 +87,7 @@ export default function App() {
           }
         />
         <Route path="/selectQuizCategory" element={<SelectCategoryPage />} />
-        <Route
-          path="/selectSurveyCategory"
-          element={<SelectSurveyCategory />}
-        />
+        <Route path="/selectSurveyCategory" element={<SelectSurveyCategory />} />
         <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
         <Route path="/createSurvey/:surveyId" element={<SurveyCreator />} />
         <Route path="/quiz-list" element={<UnifiedList contentType="quiz" />} />
@@ -153,6 +151,7 @@ export default function App() {
 
         {/* Preview and Session Routes */}
         <Route path="/preview/:quizId" element={<PreviewPage />} />
+        <Route path="/surveyPreview/:surveyId" element={<SurveyPreviewPage />} />
         <Route path="/lobby" element={<Lobby />} />
         <Route path="/survey-lobby" element={<SurveyLobby />} />
         <Route path="/join" element={<JoinQuiz />} />
