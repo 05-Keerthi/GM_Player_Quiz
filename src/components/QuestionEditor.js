@@ -209,10 +209,10 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
             />
             <label
               htmlFor="image-upload"
-              // className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
             >
-              {/* <Upload className="w-5 h-5" />
-              Upload Image */}
+              <Upload className="w-5 h-5" />
+              Upload Image
             </label>
             {imagePreview && (
               <button
