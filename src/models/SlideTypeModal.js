@@ -15,7 +15,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
   const [step, setStep] = useState(1);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState("idle");
+  const [isUploading, setIsUploading] = useState(false);
   const [slide, setSlide] = useState({
     title: "",
     type: "",
@@ -32,6 +32,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
       setStep(1);
       setImageFile(null);
       setImagePreview(null);
+      setIsUploading(false);
       setSlide({
         title: "",
         type: "",
@@ -68,51 +69,36 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
+      setIsUploading(true);
+      setError(null);
 
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+        setSlide((prev) => ({
+          ...prev,
+          imageFile: file,
+          imageUrl: reader.result,
+        }));
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setError("Failed to read file");
+        setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const removeImage = () => {
+  const handleImageRemove = () => {
     setImageFile(null);
     setImagePreview(null);
     setSlide((prev) => ({
       ...prev,
+      imageFile: null,
       imageUrl: null,
     }));
-  };
-
-  const uploadImage = async () => {
-    if (!imageFile) return null;
-
-    const formData = new FormData();
-    formData.append("media", imageFile);
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/media/upload", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Image upload failed");
-      }
-
-      const data = await response.json();
-      return data.media[0]._id;
-    } catch (error) {
-      console.error("Image upload error:", error);
-      setError("Failed to upload image");
-      return null;
-    }
+    setError(null);
   };
 
   const handleTypeSelect = (type) => {
@@ -132,14 +118,14 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     }));
   };
 
-  const addPoint = () => {
+  const handleAddPoint = () => {
     setSlide((prev) => ({
       ...prev,
       points: [...prev.points, ""],
     }));
   };
 
-  const removePoint = (index) => {
+  const handleRemovePoint = (index) => {
     setSlide((prev) => ({
       ...prev,
       points: prev.points.filter((_, i) => i !== index),
@@ -148,23 +134,20 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
 
   const handleSubmit = async () => {
     try {
-      const imageId = imageFile ? await uploadImage() : slide.imageUrl;
+      if (!slide.title) {
+        throw new Error("Slide title is required");
+      }
 
       const finalSlide = {
         ...slide,
-        imageUrl: imageId,
         content:
           slide.type === "bullet_points"
             ? slide.points.join("\n")
             : slide.content,
+        imageUrl: imageFile ? imageFile : slide.imageUrl,
       };
 
-      if (!finalSlide.title) {
-        throw new Error("Slide title is required");
-      }
-
       await onAddSlide(finalSlide);
-
       setSelectedType(null);
       setStep(1);
       setImageFile(null);
@@ -172,7 +155,6 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
       onClose();
     } catch (error) {
       setError(error.message);
-      console.error("Slide submission error:", error);
     }
   };
 
@@ -265,51 +247,21 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                     className="w-full h-48 object-cover rounded-lg"
                   />
                   <button
-                    onClick={removeImage}
+                    onClick={handleImageRemove}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {selectedType === "bullet_points" ? (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Points
-                  </label>
-                  {slide.points.length < 6 && (
-                    <button
-                      onClick={addPoint}
-                      className="text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      Add Point
-                    </button>
-                  )}
-                </div>
-                {slide.points.map((point, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={point}
-                      onChange={(e) => handlePointChange(index, e.target.value)}
-                      className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder={`Point ${index + 1}`}
-                    />
-                    {slide.points.length > 1 && (
-                      <button
-                        onClick={() => removePoint(index)}
-                        className="p-1 text-gray-400 hover:text-red-500"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
+            {selectedType === "classic" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content
@@ -319,10 +271,47 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                   onChange={(e) =>
                     setSlide({ ...slide, content: e.target.value })
                   }
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[150px]"
                   placeholder="Enter slide content..."
-                  rows={4}
                 />
+              </div>
+            )}
+
+            {selectedType === "bullet_points" && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Points
+                  </label>
+                  {slide.points.length < 6 && (
+                    <button
+                      onClick={handleAddPoint}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Add Point
+                    </button>
+                  )}
+                </div>
+                {slide.points.map((point, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <span className="text-gray-500 font-bold">•</span>
+                    <input
+                      type="text"
+                      value={point}
+                      onChange={(e) => handlePointChange(index, e.target.value)}
+                      className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={`Point ${index + 1}`}
+                    />
+                    {slide.points.length > 1 && (
+                      <button
+                        onClick={() => handleRemovePoint(index)}
+                        className="p-1 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 

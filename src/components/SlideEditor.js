@@ -9,67 +9,46 @@ import {
   Trash2,
 } from "lucide-react";
 
-const ImageUploadArea = ({ image, setImage, currentImageUrl }) => {
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage({ file, preview: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <input
-          type="file"
-          className="hidden"
-          id="image-upload"
-          accept="image/*"
-          onChange={handleImageUpload}
-        />
-        <label
-          htmlFor="image-upload"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
-        >
-          <Upload className="w-5 h-5" />
-          Upload Image
-        </label>
-        {(image?.preview || currentImageUrl) && (
-          <button
-            onClick={() => setImage(null)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-          >
-            <Trash2 className="w-5 h-5" />
-            Remove
-          </button>
-        )}
-      </div>
-
-      {(image?.preview || currentImageUrl) && (
-        <div className="relative mt-4 group">
-          <img
-            src={image?.preview || currentImageUrl}
-            alt="Slide"
-            className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
 const SlideEditor = ({ slide, onUpdate, onClose }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [points, setPoints] = useState([""]);
   const [image, setImage] = useState(null);
   const [error, setError] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fetchImageUrl = async (imageId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/media/${imageId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to fetch image");
+      }
+  
+      const data = await response.json();
+      return data.media.url; // This will return the full URL for the image
+    } catch (error) {
+      console.error("Error fetching image:", error);
+      return null;
+    }
+  };
+
 
   useEffect(() => {
+    const loadImageUrl = async () => {
+      if (slide?.imageUrl) {
+        const imageUrl = await fetchImageUrl(slide.imageUrl);
+        setImage({ preview: imageUrl });
+      } else {
+        setImage(null);
+      }
+    };
+  
     if (slide) {
       setTitle(slide.title || "");
       if (slide.type === "bullet_points") {
@@ -77,30 +56,45 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       } else {
         setContent(slide.content || "");
       }
-      setImage(null);
+      loadImageUrl();
     }
   }, [slide]);
 
-  const handleSave = async () => {
-    try {
-      let updatedData = {
-        title,
-        type: slide.type,
-        content: slide.type === "bullet_points" ? points.join("\n") : content,
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setIsUploading(true);
+      setError(null);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage({ file, preview: reader.result });
+        setIsUploading(false);
       };
-
-      if (image?.file) {
-        updatedData.imageFile = image.file;
-      }
-
-      await onUpdate(updatedData);
-      onClose();
-    } catch (error) {
-      setError(error.message);
+      reader.onerror = () => {
+        setError("Error reading image file");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  if (!slide) return null;
+  const handleImageRemove = () => {
+    setImage(null);
+    setError(null);
+  };
+
+  const handlePointChange = (index, value) => {
+    setPoints((prev) => prev.map((point, i) => (i === index ? value : point)));
+  };
+
+  const handleAddPoint = () => {
+    setPoints((prev) => [...prev, ""]);
+  };
+
+  const handleRemovePoint = (index) => {
+    setPoints((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const getSlideTypeIcon = (type) => {
     const typeIcons = {
@@ -110,6 +104,52 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     };
     return typeIcons[type] || null;
   };
+
+  const handleSubmit = async () => {
+    try {
+      // Prepare the base update data
+      let updatedData = {
+        ...slide,
+        title,
+        content: slide.type === "bullet_points" ? points.join("\n") : content
+      };
+  
+      // Handle image upload if there's a new file
+      if (image?.file) {
+        const formData = new FormData();
+        formData.append("media", image.file);
+  
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/media/upload", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error("Failed to upload image");
+        }
+  
+        const data = await response.json();
+        updatedData.imageUrl = data.media[0]._id; // Store the media ID
+      } else if (image?.preview && !image?.file) {
+        // Keep existing image
+        updatedData.imageUrl = slide.imageUrl;
+      } else {
+        // No image case
+        updatedData.imageUrl = null;
+      }
+  
+      await onUpdate(updatedData);
+      onClose();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  if (!slide) return null;
 
   return (
     <motion.div
@@ -152,15 +192,45 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Slide Image
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Slide Image (Optional)
           </label>
-          <ImageUploadArea
-            image={image}
-            setImage={setImage}
-            currentImageUrl={slide.imageUrl}
-          />
+          {!image?.preview ? (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <label className="flex flex-col items-center justify-center cursor-pointer">
+                <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-500">
+                  Click to upload image
+                </span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+              </label>
+            </div>
+          ) : (
+            <div className="relative">
+              <img
+                src={image.preview}
+                alt="Slide"
+                className="w-full h-48 object-cover rounded-lg"
+              />
+              <button
+                onClick={handleImageRemove}
+                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              {isUploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {slide.type === "classic" && (
@@ -179,53 +249,48 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
 
         {slide.type === "bullet_points" && (
           <div className="space-y-4">
-            <label className="block text-sm font-semibold text-gray-700">
-              Bullet Points
-            </label>
-            <div className="space-y-3">
-              {points.map((point, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+            <div className="flex justify-between items-center">
+              <label className="block text-sm font-semibold text-gray-700">
+                Bullet Points
+              </label>
+              {points.length < 6 && (
+                <button
+                  onClick={handleAddPoint}
+                  className="text-sm text-blue-600 hover:text-blue-700"
                 >
-                  <span className="text-gray-500 font-bold">•</span>
-                  <input
-                    type="text"
-                    value={point}
-                    onChange={(e) => {
-                      const newPoints = [...points];
-                      newPoints[index] = e.target.value;
-                      setPoints(newPoints);
-                    }}
-                    className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
-                    placeholder={`Point ${index + 1}`}
-                  />
-                  {points.length > 1 && (
-                    <button
-                      onClick={() => {
-                        const newPoints = points.filter((_, i) => i !== index);
-                        setPoints(newPoints);
-                      }}
-                      className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                onClick={() => setPoints([...points, ""])}
-                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-              >
-                Add Bullet Point
-              </button>
+                  Add Point
+                </button>
+              )}
             </div>
+            {points.map((point, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+              >
+                <span className="text-gray-500 font-bold">•</span>
+                <input
+                  type="text"
+                  value={point}
+                  onChange={(e) => handlePointChange(index, e.target.value)}
+                  className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
+                  placeholder={`Point ${index + 1}`}
+                />
+                {points.length > 1 && (
+                  <button
+                    onClick={() => handleRemovePoint(index)}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
         <div className="flex justify-end gap-4 mt-6">
           <button
-            onClick={handleSave}
+            onClick={handleSubmit}
             className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
           >
             Save

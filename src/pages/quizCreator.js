@@ -206,20 +206,37 @@ const QuizCreator = () => {
         throw new Error(`Failed to add slide: ${response.statusText}`);
       }
 
-      const { slide } = await response.json(); // Extract slide from response
+      const { slide } = await response.json();
 
-      // Update slides array with the new slide
-      setSlides((prevSlides) => [...prevSlides, slide]);
+      // Update slides array
+      const updatedSlides = [...slides, slide];
+      setSlides(updatedSlides);
 
-      // Add to ordered items with proper structure
-      setOrderedItems((prevItems) => [
-        ...prevItems,
-        {
-          id: slide._id,
-          type: "slide",
-          data: slide,
-        },
-      ]);
+      // Create new ordered item
+      const newOrderedItem = {
+        id: slide._id,
+        type: "slide",
+        data: slide,
+      };
+
+      // Update ordered items
+      const updatedOrderedItems = [...orderedItems, newOrderedItem];
+      setOrderedItems(updatedOrderedItems);
+
+      // Save the updated quiz state to backend
+      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: quiz.title,
+          description: quiz.description,
+          questions: questions,
+          slides: updatedSlides,
+          order: updatedOrderedItems.map((item) => ({
+            id: item.id,
+            type: item.type,
+          })),
+        }),
+      });
 
       setCurrentSlide(slide);
       setIsAddSlideOpen(false);
@@ -235,16 +252,21 @@ const QuizCreator = () => {
     try {
       setLoading(true);
       let imageId = null;
-
+  
+      // Handle image upload if there's a new image file
       if (updatedData.imageFile) {
         imageId = await handleImageUpload(updatedData.imageFile);
       }
-
+  
+      // Prepare the update payload
       const updatePayload = {
-        ...updatedData,
+        title: updatedData.title,
+        type: updatedData.type,
+        content: updatedData.content,
         imageUrl: imageId || updatedData.imageUrl,
       };
-
+  
+      // Make API request to update the slide
       const response = await authenticatedFetch(
         `http://localhost:5000/api/slides/${slideId}`,
         {
@@ -253,13 +275,26 @@ const QuizCreator = () => {
           body: JSON.stringify(updatePayload),
         }
       );
-
-      const updatedSlide = await response.json();
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update slide");
+      }
+  
+      const { slide: updatedSlide } = await response.json();
+  
+      if (!updatedSlide || !updatedSlide._id) {
+        throw new Error("Invalid slide data received from server");
+      }
+  
+      // Update slides in state
       setSlides((prevSlides) =>
         prevSlides.map((s) => (s._id === slideId ? updatedSlide : s))
       );
+  
+      // Update current slide
       setCurrentSlide(updatedSlide);
-
+  
       // Update in ordered items
       setOrderedItems((prevItems) =>
         prevItems.map((item) =>
@@ -268,14 +303,16 @@ const QuizCreator = () => {
             : item
         )
       );
-
+  
       showAlert("Slide updated successfully", "success");
     } catch (err) {
+      console.error("Error updating slide:", err);
       handleApiError(err);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleDeleteSlide = async (e, slideId) => {
     e.stopPropagation();
@@ -342,25 +379,41 @@ const QuizCreator = () => {
         throw new Error(`Failed to add question: ${response.statusText}`);
       }
 
-      const newQuestion = await response.json(); // The response is already the question object
+      const newQuestion = await response.json();
 
-      // Validate the question object before updating state
       if (!newQuestion || !newQuestion._id) {
         throw new Error("Invalid question data received from server");
       }
 
-      // Update questions array with the new question
-      setQuestions((prevQuestions) => [...prevQuestions, newQuestion]);
+      // Update questions array
+      const updatedQuestions = [...questions, newQuestion];
+      setQuestions(updatedQuestions);
 
-      // Add to ordered items with proper structure
-      setOrderedItems((prevItems) => [
-        ...prevItems,
-        {
-          id: newQuestion._id,
-          type: "question",
-          data: newQuestion,
-        },
-      ]);
+      // Create new ordered item
+      const newOrderedItem = {
+        id: newQuestion._id,
+        type: "question",
+        data: newQuestion,
+      };
+
+      // Update ordered items
+      const updatedOrderedItems = [...orderedItems, newOrderedItem];
+      setOrderedItems(updatedOrderedItems);
+
+      // Save the updated quiz state to backend
+      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: quiz.title,
+          description: quiz.description,
+          questions: updatedQuestions,
+          slides: slides,
+          order: updatedOrderedItems.map((item) => ({
+            id: item.id,
+            type: item.type,
+          })),
+        }),
+      });
 
       setCurrentQuestion(newQuestion);
       setIsAddQuestionOpen(false);
@@ -376,16 +429,24 @@ const QuizCreator = () => {
   const handleUpdateQuestion = async (questionId, updatedData) => {
     try {
       setLoading(true);
-      let imageId = null;
+      console.log("Updating question with data:", updatedData); // Debug log
 
       if (updatedData.imageFile) {
-        imageId = await handleImageUpload(updatedData.imageFile);
+        const imageId = await handleImageUpload(updatedData.imageFile);
+        updatedData.imageUrl = imageId;
       }
 
       const updatePayload = {
-        ...updatedData,
-        imageUrl: imageId || updatedData.imageUrl,
+        title: updatedData.title,
+        type: updatedData.type,
+        imageUrl: updatedData.imageUrl,
+        options: updatedData.options || [],
+        correctAnswer: updatedData.correctAnswer,
+        points: updatedData.points || 0,
+        timer: updatedData.timer || 0,
       };
+
+      console.log("Question update payload:", updatePayload); // Debug log
 
       const response = await authenticatedFetch(
         `http://localhost:5000/api/questions/${questionId}`,
@@ -397,20 +458,22 @@ const QuizCreator = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update question: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update question");
       }
 
-      const updatedQuestion = await response.json();
+      const { question: updatedQuestion } = await response.json();
 
-      // Validate the updated question object
       if (!updatedQuestion || !updatedQuestion._id) {
         throw new Error("Invalid question data received from server");
       }
 
+      // Update questions state
       setQuestions((prevQuestions) =>
         prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
       );
 
+      // Update current question
       setCurrentQuestion(updatedQuestion);
 
       // Update in ordered items
@@ -475,26 +538,49 @@ const QuizCreator = () => {
     }
   };
 
-  const handleReorderItems = (sourceIndex, destinationIndex) => {
+  const handleReorderItems = async (sourceIndex, destinationIndex) => {
     if (sourceIndex === destinationIndex) return;
 
-    const reorderedItems = [...orderedItems];
-    const [movedItem] = reorderedItems.splice(sourceIndex, 1);
-    reorderedItems.splice(destinationIndex, 0, movedItem);
-    setOrderedItems(reorderedItems);
+    try {
+      // Update local state
+      const reorderedItems = [...orderedItems];
+      const [movedItem] = reorderedItems.splice(sourceIndex, 1);
+      reorderedItems.splice(destinationIndex, 0, movedItem);
+      setOrderedItems(reorderedItems);
 
-    // Update the individual arrays based on type
-    const newSlides = reorderedItems
-      .filter((item) => item.type === "slide")
-      .map((item) => item.data);
-    const newQuestions = reorderedItems
-      .filter((item) => item.type === "question")
-      .map((item) => item.data);
+      // Update the individual arrays based on type
+      const newSlides = reorderedItems
+        .filter((item) => item.type === "slide")
+        .map((item) => item.data);
+      const newQuestions = reorderedItems
+        .filter((item) => item.type === "question")
+        .map((item) => item.data);
 
-    setSlides(newSlides);
-    setQuestions(newQuestions);
+      setSlides(newSlides);
+      setQuestions(newQuestions);
+
+      // Automatically save the new order to backend
+      const order = reorderedItems.map((item) => ({
+        id: item.id,
+        type: item.type,
+      }));
+
+      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: quiz.title,
+          description: quiz.description,
+          questions: newQuestions,
+          slides: newSlides,
+          order,
+        }),
+      });
+
+      showAlert("Order updated successfully", "success");
+    } catch (err) {
+      handleApiError(err);
+    }
   };
-
   // Helper functions for validation
   const isValidQuestion = (question) => {
     return (

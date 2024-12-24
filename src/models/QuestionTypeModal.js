@@ -1,5 +1,5 @@
-import React, { useState, useContext, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   X,
   CheckSquare,
@@ -10,18 +10,13 @@ import {
   Trash2,
 } from "lucide-react";
 
-const QuestionTypeModal = ({
-  isOpen,
-  onClose,
-  onAddQuestion,
-  initialQuestion,
-}) => {
+const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const { quizId } = useParams();
-  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [question, setQuestion] = useState({
     title: "",
     type: "",
@@ -32,7 +27,6 @@ const QuestionTypeModal = ({
     imageUrl: null,
     quizId: quizId,
   });
-  const [uploadStatus, setUploadStatus] = useState("idle");
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -41,6 +35,7 @@ const QuestionTypeModal = ({
       setStep(1);
       setImageFile(null);
       setImagePreview(null);
+      setIsUploading(false);
       setQuestion({
         title: "",
         type: "",
@@ -91,52 +86,36 @@ const QuestionTypeModal = ({
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
+      setIsUploading(true);
+      setError(null);
 
-      // Create image preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+        setQuestion((prev) => ({
+          ...prev,
+          imageFile: file,
+          imageUrl: reader.result,
+        }));
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setError("Failed to read file");
+        setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const removeImage = () => {
+  const handleRemoveImage = () => {
     setImageFile(null);
     setImagePreview(null);
     setQuestion((prev) => ({
       ...prev,
+      imageFile: null,
       imageUrl: null,
     }));
-  };
-
-  const uploadImage = async () => {
-    if (!imageFile) return null;
-
-    const formData = new FormData();
-    formData.append("media", imageFile);
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/media/upload", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Image upload failed");
-      }
-
-      const data = await response.json();
-      return data.media[0]._id;
-    } catch (error) {
-      console.error("Image upload error:", error);
-      setError("Failed to upload image");
-      return null;
-    }
+    setError(null);
   };
 
   const handleTypeSelect = (type) => {
@@ -181,14 +160,14 @@ const QuestionTypeModal = ({
     });
   };
 
-  const addOption = () => {
+  const handleAddOption = () => {
     setQuestion((prev) => ({
       ...prev,
       options: [...prev.options, { text: "", isCorrect: false }],
     }));
   };
 
-  const removeOption = (index) => {
+  const handleRemoveOption = (index) => {
     setQuestion((prev) => ({
       ...prev,
       options: prev.options.filter((_, i) => i !== index),
@@ -197,19 +176,16 @@ const QuestionTypeModal = ({
 
   const handleSubmit = async () => {
     try {
-      const imageId = imageFile ? await uploadImage() : question.imageUrl;
-
-      const finalQuestion = {
-        ...question,
-        imageUrl: imageId,
-      };
-
-      if (!finalQuestion.title) {
+      if (!question.title) {
         throw new Error("Question title is required");
       }
 
-      await onAddQuestion(finalQuestion);
+      const finalQuestion = {
+        ...question,
+        imageUrl: imageFile ? imageFile : question.imageUrl,
+      };
 
+      await onAddQuestion(finalQuestion);
       setSelectedType(null);
       setStep(1);
       setImageFile(null);
@@ -217,7 +193,6 @@ const QuestionTypeModal = ({
       onClose();
     } catch (error) {
       setError(error.message);
-      console.error("Question submission error:", error);
     }
   };
 
@@ -312,11 +287,16 @@ const QuestionTypeModal = ({
                     className="w-full h-48 object-cover rounded-lg"
                   />
                   <button
-                    onClick={removeImage}
+                    onClick={handleRemoveImage}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -329,7 +309,7 @@ const QuestionTypeModal = ({
                   </label>
                   {!["true_false"].includes(selectedType) && (
                     <button
-                      onClick={addOption}
+                      onClick={handleAddOption}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       Add Option
@@ -360,7 +340,7 @@ const QuestionTypeModal = ({
                     {!["true_false"].includes(selectedType) &&
                       question.options.length > 1 && (
                         <button
-                          onClick={() => removeOption(index)}
+                          onClick={() => handleRemoveOption(index)}
                           className="p-1 text-gray-400 hover:text-red-500"
                         >
                           <X className="w-4 h-4" />
