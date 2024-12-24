@@ -137,17 +137,51 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     }
   };
 
-  // Update handleSave in SlideEditor.js to handle image deletion
   const handleSave = async () => {
     try {
       const updatedData = {
         title,
         type: slide.type,
         content: slide.type === "bullet_points" ? points.join("\n") : content,
-        imageUrl: slide.imageUrl,
-        // Add deleteImage flag if the image was removed
-        deleteImage: !slide.imageUrl && imagePreview !== null,
       };
+
+      // Only include imageUrl in the update if it exists or has changed
+      if (slide.imageUrl) {
+        // If the imageUrl is a full URL, extract the media ID
+        if (
+          typeof slide.imageUrl === "string" &&
+          slide.imageUrl.includes("/uploads/")
+        ) {
+          // Extract mediaId from the URL path
+          const pathMatch = slide.imageUrl.match(/\/uploads\/(.*)/);
+          if (pathMatch) {
+            const imagePath = "uploads/" + pathMatch[1];
+            // Find the media document by path
+            const mediaResponse = await fetch(
+              `${API_BASE_URL}/api/media/byPath`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({ path: imagePath }),
+              }
+            );
+
+            if (mediaResponse.ok) {
+              const mediaData = await mediaResponse.json();
+              updatedData.imageUrl = mediaData._id;
+            }
+          }
+        } else {
+          // If it's already a media ID, use it directly
+          updatedData.imageUrl = slide.imageUrl;
+        }
+      } else {
+        // If imageUrl is null, include it to explicitly remove the image
+        updatedData.imageUrl = null;
+      }
 
       await onUpdate(updatedData);
       onClose();

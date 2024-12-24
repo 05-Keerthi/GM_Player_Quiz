@@ -112,12 +112,15 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     if (slide.imageUrl) {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`${API_BASE_URL}/api/media/${slide.imageUrl}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/media/${slide.imageUrl}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to delete image");
