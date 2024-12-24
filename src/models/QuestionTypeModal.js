@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useContext, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   X,
   CheckSquare,
@@ -10,11 +10,17 @@ import {
   Trash2,
 } from "lucide-react";
 
-const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
+const QuestionTypeModal = ({
+  isOpen,
+  onClose,
+  onAddQuestion,
+  initialQuestion,
+}) => {
   const { quizId } = useParams();
+  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
-  const [isUploading, setIsUploading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [question, setQuestion] = useState({
     title: "",
@@ -26,12 +32,14 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     imageUrl: null,
     quizId: quizId,
   });
+  const [uploadStatus, setUploadStatus] = useState("idle");
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedType(null);
       setStep(1);
+      setImageFile(null);
       setImagePreview(null);
       setQuestion({
         title: "",
@@ -79,78 +87,56 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     },
   ];
 
-  const API_BASE_URL = "http://localhost:5000"; // Consider moving to env variable
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
     if (file) {
-      setIsUploading(true);
-      setError(null);
+      setImageFile(file);
 
-      try {
-        const formData = new FormData();
-        formData.append("media", file);
-
-        const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Image upload failed");
-        }
-
-        const uploadData = await uploadResponse.json();
-        const mediaData = uploadData.media[0];
-
-        // Use the URL directly from the response
-        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
-        setQuestion((prev) => ({
-          ...prev,
-          imageUrl: mediaData._id, // Store the media ID
-        }));
-      } catch (error) {
-        console.error("Image upload error:", error);
-        setError("Failed to upload image");
-      } finally {
-        setIsUploading(false);
-      }
+      // Create image preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleImageRemove = async () => {
-    if (question.imageUrl) {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${API_BASE_URL}/api/media/${question.imageUrl}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setError("Failed to delete image");
-        return;
-      }
-    }
-
+  const removeImage = () => {
+    setImageFile(null);
     setImagePreview(null);
     setQuestion((prev) => ({
       ...prev,
       imageUrl: null,
     }));
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile) return null;
+
+    const formData = new FormData();
+    formData.append("media", imageFile);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/media/upload", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Image upload failed");
+      }
+
+      const data = await response.json();
+      return data.media[0]._id;
+    } catch (error) {
+      console.error("Image upload error:", error);
+      setError("Failed to upload image");
+      return null;
+    }
   };
 
   const handleTypeSelect = (type) => {
@@ -181,14 +167,12 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const handleCorrectAnswerChange = (index) => {
     setQuestion((prev) => {
       if (prev.type === "multiple_choice" || prev.type === "true_false") {
-        // Single correct answer
         const newOptions = prev.options.map((opt, i) => ({
           ...opt,
           isCorrect: i === index,
         }));
         return { ...prev, options: newOptions };
       } else {
-        // Multiple correct answers
         const newOptions = prev.options.map((opt, i) =>
           i === index ? { ...opt, isCorrect: !opt.isCorrect } : opt
         );
@@ -213,13 +197,22 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
 
   const handleSubmit = async () => {
     try {
-      if (!question.title) {
+      const imageId = imageFile ? await uploadImage() : question.imageUrl;
+
+      const finalQuestion = {
+        ...question,
+        imageUrl: imageId,
+      };
+
+      if (!finalQuestion.title) {
         throw new Error("Question title is required");
       }
 
-      await onAddQuestion(question);
+      await onAddQuestion(finalQuestion);
+
       setSelectedType(null);
       setStep(1);
+      setImageFile(null);
       setImagePreview(null);
       onClose();
     } catch (error) {
@@ -292,49 +285,38 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
               />
             </div>
 
-            {/* Image Upload Section */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 Question Image (Optional)
               </label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  className="hidden"
-                  id="image-upload"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
-                >
-                  <Upload className="w-5 h-5" />
-                  Upload Image
-                </label>
-                {imagePreview && (
-                  <button
-                    onClick={handleImageRemove}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    Remove
-                  </button>
-                )}
-              </div>
-
-              {imagePreview && (
-                <div className="relative mt-4 group">
+              {!imagePreview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  <label className="flex flex-col items-center justify-center cursor-pointer">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500">
+                      Click to upload image
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="relative">
                   <img
                     src={imagePreview}
                     alt="Question"
                     className="w-full h-48 object-cover rounded-lg"
                   />
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
-                    </div>
-                  )}
+                  <button
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>

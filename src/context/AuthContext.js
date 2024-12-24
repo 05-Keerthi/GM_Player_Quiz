@@ -23,6 +23,9 @@ export const AuthProvider = ({ children }) => {
 
   const handleSessionExpiry = async () => {
     debugLog("Session expired, logging out user");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
     dispatch({ type: ACTIONS.SESSION_EXPIRED });
     await logout();
   };

@@ -13,14 +13,15 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
   const { quizId } = useParams();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
-  const [isUploading, setIsUploading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState("idle");
   const [slide, setSlide] = useState({
     title: "",
     type: "",
     content: "",
-    imageUrl: null,
     points: [""],
+    imageUrl: null,
     quizId: quizId,
   });
   const [error, setError] = useState(null);
@@ -29,6 +30,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     if (isOpen) {
       setSelectedType(null);
       setStep(1);
+      setImageFile(null);
       setImagePreview(null);
       setSlide({
         title: "",
@@ -62,78 +64,55 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     },
   ];
 
-  const API_BASE_URL = 'http://localhost:5000'; // Consider moving to env variable
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
     if (file) {
-      setIsUploading(true);
-      setError(null);
+      setImageFile(file);
 
-      try {
-        const formData = new FormData();
-        formData.append("media", file);
-
-        const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Image upload failed");
-        }
-
-        const uploadData = await uploadResponse.json();
-        const mediaData = uploadData.media[0];
-
-        // Use the URL directly from the response
-        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
-        setSlide((prev) => ({
-          ...prev,
-          imageUrl: mediaData._id, // Store the media ID
-        }));
-      } catch (error) {
-        console.error("Image upload error:", error);
-        setError("Failed to upload image");
-      } finally {
-        setIsUploading(false);
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleImageRemove = async () => {
-    if (slide.imageUrl) {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${API_BASE_URL}/api/media/${slide.imageUrl}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setError("Failed to delete image");
-        return;
-      }
-    }
-
+  const removeImage = () => {
+    setImageFile(null);
     setImagePreview(null);
     setSlide((prev) => ({
       ...prev,
       imageUrl: null,
     }));
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile) return null;
+
+    const formData = new FormData();
+    formData.append("media", imageFile);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/media/upload", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Image upload failed");
+      }
+
+      const data = await response.json();
+      return data.media[0]._id;
+    } catch (error) {
+      console.error("Image upload error:", error);
+      setError("Failed to upload image");
+      return null;
+    }
   };
 
   const handleTypeSelect = (type) => {
@@ -169,8 +148,11 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
 
   const handleSubmit = async () => {
     try {
+      const imageId = imageFile ? await uploadImage() : slide.imageUrl;
+
       const finalSlide = {
         ...slide,
+        imageUrl: imageId,
         content:
           slide.type === "bullet_points"
             ? slide.points.join("\n")
@@ -182,8 +164,10 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
       }
 
       await onAddSlide(finalSlide);
+
       setSelectedType(null);
       setStep(1);
+      setImageFile(null);
       setImagePreview(null);
       onClose();
     } catch (error) {
@@ -258,44 +242,34 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
               <label className="block text-sm font-medium text-gray-700">
                 Slide Image (Optional)
               </label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  className="hidden"
-                  id="image-upload"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
-                >
-                  <Upload className="w-5 h-5" />
-                  Upload Image
-                </label>
-                {imagePreview && (
-                  <button
-                    onClick={handleImageRemove}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    Remove
-                  </button>
-                )}
-              </div>
-
-              {imagePreview && (
-                <div className="relative mt-4 group">
+              {!imagePreview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  <label className="flex flex-col items-center justify-center cursor-pointer">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500">
+                      Click to upload image
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="relative">
                   <img
                     src={imagePreview}
                     alt="Slide"
                     className="w-full h-48 object-cover rounded-lg"
                   />
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
-                    </div>
-                  )}
+                  <button
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
