@@ -1076,6 +1076,7 @@ exports.endSession = async (req, res) => {
       const report = await Report.create({
         quiz: session.quiz,
         user: userId,
+        sessionId,
         totalQuestions,
         correctAnswers,
         incorrectAnswers,
