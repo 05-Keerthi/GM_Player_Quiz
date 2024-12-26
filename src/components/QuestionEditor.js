@@ -112,63 +112,71 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
     }));
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setIsUploading(true);
-      setUploadError(null);
+// Update these functions in QuestionEditor.js
 
-      try {
-        const formData = new FormData();
-        formData.append("media", file);
+const handleImageUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    setIsUploading(true);
+    setUploadError(null);
 
-        const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+    try {
+      const formData = new FormData();
+      formData.append("media", file);
 
-        if (!uploadResponse.ok) {
-          throw new Error("Image upload failed");
-        }
+      const token = localStorage.getItem("token");
+      const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const uploadData = await uploadResponse.json();
-        const mediaData = uploadData.media[0];
-
-        // Set the preview URL
-        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
-
-        // Update question state with the new image ID
-        setParsedQuestion((prev) => ({
-          ...prev,
-          imageUrl: mediaData._id,
-        }));
-      } catch (error) {
-        console.error("Image upload error:", error);
-        setUploadError("Failed to upload image");
-      } finally {
-        setIsUploading(false);
+      if (!uploadResponse.ok) {
+        throw new Error("Image upload failed");
       }
-    }
-  };
 
-  const handleImageRemove = () => {
-    setImagePreview(null);
-    setParsedQuestion((prev) => ({
-      ...prev,
-      imageUrl: null,
-    }));
-  };
+      const uploadData = await uploadResponse.json();
+      const mediaData = uploadData.media[0];
 
-  const handleSave = () => {
-    if (onUpdate) {
-      onUpdate(parsedQuestion);
+      // Set the preview URL
+      setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+
+      // Update question state with the new image URL
+      setParsedQuestion(prev => ({
+        ...prev,
+        imageUrl: mediaData._id
+      }));
+    } catch (error) {
+      console.error("Image upload error:", error);
+      setUploadError("Failed to upload image");
+    } finally {
+      setIsUploading(false);
     }
-    onClose();
+  }
+};
+
+const handleImageRemove = () => {
+  setImagePreview(null);
+  setParsedQuestion(prev => ({
+    ...prev,
+    imageUrl: null
+  }));
+};
+
+const handleSave = () => {
+  // Create a clean copy of the question data to send to parent
+  const updatedQuestion = {
+    ...parsedQuestion,
+    imageUrl: parsedQuestion.imageUrl // This will be null if image was removed
   };
+  
+  if (onUpdate) {
+    onUpdate(updatedQuestion);
+  }
+  onClose();
+};
 
   if (!question) return null;
 
