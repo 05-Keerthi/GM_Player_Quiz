@@ -3,28 +3,24 @@ const Quiz = require("../models/quiz"); // Quiz model
 const Media = require("../models/Media");
 
 // add slide
+// In slideController.js, update the addSlide function to match question pattern:
+
 exports.addSlide = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { title, content, type, imageUrl, position } = req.body; // Include type in the request body
+    const { title, content, type, imageUrl, position } = req.body;
 
     // Check if quiz exists
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
       return res.status(404).json({ message: 'Quiz not found' });
     }
-
-    // Validate the type
-    const validTypes = ['classic', 'big_title', 'bullet_points'];
-    if (!validTypes.includes(type)) {
-      return res.status(400).json({ message: `Invalid type. Valid types are: ${validTypes.join(', ')}` });
-    }
-
+    
     let fullImageUrl = null;
 
     if (imageUrl) {
       // Fetch the image document by ID (using Media model)
-      const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
+      const image = await Media.findById(imageUrl); // Use the media ID directly
       if (!image) {
         return res.status(404).json({ message: 'Image not found' });
       }
@@ -32,8 +28,9 @@ exports.addSlide = async (req, res) => {
       // Base URL for constructing the full image path
       const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
 
-      // Construct the full image URL (from the Media path)
-      fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split('\\').pop())}`;
+      // Construct the full image URL and encode it
+      const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
+      fullImageUrl = `${baseUrl}${encodedImagePath}`;
     }
 
     // Create new slide
@@ -42,8 +39,8 @@ exports.addSlide = async (req, res) => {
       title,
       content,
       type,
-      imageUrl: imageUrl || null, // Save the image ID if provided, otherwise null
-      position,
+      imageUrl: imageUrl ? imageUrl : null, // Store the media ID directly
+      position: position || 0
     });
 
     await newSlide.save();
@@ -55,19 +52,15 @@ exports.addSlide = async (req, res) => {
     // Prepare the response slide object
     const responseSlide = {
       ...newSlide.toObject(),
-      imageUrl: fullImageUrl, // Replace image ID with the full URL if it exists, else null
+      imageUrl: fullImageUrl // Use the full URL in the response
     };
 
-    return res.status(201).json({
-      message: 'Slide added successfully',
-      slide: responseSlide,
-    });
+    res.status(201).json(responseSlide);
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error in addSlide:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 // Get details of all specific slide
 
@@ -87,24 +80,24 @@ exports.getSlides = async (req, res) => {
     // Find slides related to the quiz and populate the imageUrl field
     const slides = await Slide.find({ quiz: quizId })
       .sort({ position: 1 })
-      .populate("imageUrl", "path"); // Populate the imageUrl field to fetch the path field from the Media collection
+      .populate("imageUrl"); // Populate the full image document
 
     if (slides.length === 0) {
       return res.status(404).json({ message: "No slides found for this quiz" });
     }
 
-    // Map through slides and append the full image URL with encoding
+    // Map through slides and append the full image URL
     const slidesWithFullImageUrl = slides.map((slide) => {
       const slideObj = slide.toObject();
       if (slideObj.imageUrl && slideObj.imageUrl.path) {
-        slideObj.imageUrl = `${baseUrl}${encodeURIComponent(
+        const encodedImagePath = encodeURIComponent(
           slideObj.imageUrl.path.split("\\").pop()
-        )}`;
+        );
+        slideObj.imageUrl = `${baseUrl}${encodedImagePath}`;
       }
       return slideObj;
     });
 
-    // Return the slides with the full image URL
     res.status(200).json(slidesWithFullImageUrl);
   } catch (error) {
     console.error(error);
@@ -151,23 +144,23 @@ exports.getSlide = async (req, res) => {
 const getMediaIdFromPath = async (imageUrl) => {
   try {
     if (!imageUrl) return null;
-    
+
     // If it's already an ObjectId, return it
-    if (typeof imageUrl === 'string' && !imageUrl.includes('/')) {
+    if (typeof imageUrl === "string" && !imageUrl.includes("/")) {
       return imageUrl;
     }
 
     // Extract the path from the URL
     const pathMatch = imageUrl.match(/\/uploads\/(.*)/);
     if (!pathMatch) return null;
-    
-    const imagePath = 'uploads/' + pathMatch[1];
-    
+
+    const imagePath = "uploads/" + pathMatch[1];
+
     // Find the media document by path
     const media = await Media.findOne({ path: imagePath });
     return media ? media._id : null;
   } catch (error) {
-    console.error('Error getting media ID:', error);
+    console.error("Error getting media ID:", error);
     return null;
   }
 };
@@ -183,8 +176,22 @@ exports.updateSlide = async (req, res) => {
       return res.status(404).json({ message: "Slide not found" });
     }
 
-    // Handle imageUrl - convert URL to Media ID if needed
-    const mediaId = await getMediaIdFromPath(imageUrl);
+    let fullImageUrl = null;
+    let imageId = null;
+
+    if (imageUrl) {
+      // If imageUrl is already a Media ID
+      const image = await Media.findById(imageUrl);
+      if (image) {
+        // Base URL for constructing the full image path
+        const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+        const encodedImagePath = encodeURIComponent(
+          image.path.split("\\").pop()
+        );
+        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        imageId = image._id;
+      }
+    }
 
     // Update slide fields
     if (title) slide.title = title;
@@ -192,34 +199,24 @@ exports.updateSlide = async (req, res) => {
     if (type) slide.type = type;
     if (position) slide.position = position;
     if (imageUrl !== undefined) {
-      slide.imageUrl = mediaId;
+      slide.imageUrl = imageId; // Store the ID in the database
     }
 
     await slide.save();
 
-    // Fetch the updated slide with populated imageUrl
-    const updatedSlide = await Slide.findById(id).populate("imageUrl");
-
-    // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
-
-    // Construct full URL if imageUrl exists
-    let fullImageUrl = null;
-    if (updatedSlide.imageUrl && updatedSlide.imageUrl.path) {
-      const encodedImagePath = encodeURIComponent(updatedSlide.imageUrl.path.split("\\").pop());
-      fullImageUrl = `${baseUrl}${encodedImagePath}`;
-    }
-
+    // Return the response with the full URL
     return res.status(200).json({
       message: "Slide updated successfully",
       slide: {
-        ...updatedSlide.toObject(),
-        imageUrl: fullImageUrl,
+        ...slide.toObject(),
+        imageUrl: fullImageUrl, // Send the full URL in the response
       },
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -227,15 +224,15 @@ exports.updateSlide = async (req, res) => {
 exports.deleteSlide = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const slide = await Slide.findById(id);
     if (!slide) {
       return res.status(404).json({ message: "Slide not found" });
     }
-    
+
     // Correct way to delete the slide
     await Slide.deleteOne({ _id: id });
-    
+
     return res.status(200).json({
       message: "Slide deleted successfully",
     });
