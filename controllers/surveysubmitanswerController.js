@@ -98,7 +98,7 @@ exports.submitSurveyAnswer = async (req, res) => {
             return res.status(404).json({ message: "No answers found for this session" });
         }
   
-        const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+        const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
         const questionsMap = {};
         const userAnswers = {};
         const groupedAnswersByQuestion = {};
@@ -189,7 +189,7 @@ exports.submitSurveyAnswer = async (req, res) => {
       }
   
       // Base URL for constructing the full image path
-      const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
       let fullImageUrl = null;
   
       // If the question has an image URL, fetch the image details from Media model

@@ -143,7 +143,7 @@ exports.getAllSurveyQuizzes = async (req, res) => {
       .populate('slides')
       .populate('questions');
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process each survey quiz to handle full image URLs for slides and questions
     const surveyQuizzesWithImageUrls = await Promise.all(
@@ -215,7 +215,7 @@ exports.getSurveyQuizById = async (req, res) => {
       return res.status(404).json({ message: 'SurveyQuiz not found' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process slides to handle full image URLs
     const slidesWithImageUrls = await Promise.all(

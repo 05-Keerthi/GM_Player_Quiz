@@ -182,7 +182,7 @@ exports.getQuizzes = async (req, res) => {
       .populate('slides')
       .populate('questions');
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process each quiz to handle full image URLs for slides and questions
     const quizzesWithImageUrls = await Promise.all(
@@ -253,7 +253,7 @@ exports.getQuizById = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process the slides to include full image URLs
     const slidesWithImageUrls = await Promise.all(

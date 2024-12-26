@@ -30,7 +30,7 @@ exports.addSlide = async (req, res) => {
       }
 
       // Base URL for constructing the full image path
-      const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
       // Construct the full image URL (from the Media path)
       fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split('\\').pop())}`;
@@ -82,7 +82,7 @@ exports.getSlides = async (req, res) => {
     }
 
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Find slides related to the quiz and populate the imageUrl field
     const slides = await Slide.find({ quiz: quizId })
@@ -118,7 +118,7 @@ exports.getSlide = async (req, res) => {
     const { id } = req.params;
 
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     const slide = await Slide.findById(id).populate("imageUrl", "path"); // Populate the imageUrl field to fetch the path
 
@@ -201,7 +201,7 @@ exports.updateSlide = async (req, res) => {
     const updatedSlide = await Slide.findById(id).populate("imageUrl");
 
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Construct full URL if imageUrl exists
     let fullImageUrl = null;

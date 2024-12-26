@@ -30,7 +30,7 @@ exports.addSurveySlide = async (req, res) => {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
       fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split("\\").pop())}`;
     }
 
@@ -75,7 +75,7 @@ exports.getSurveySlides = async (req, res) => {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     const slides = await SurveySlide.find({ surveyQuiz: surveyQuizId })
       .sort({ position: 1 })
@@ -107,7 +107,7 @@ exports.getSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     const slide = await SurveySlide.findById(id).populate("imageUrl", "path");
     if (!slide) {
@@ -142,7 +142,7 @@ exports.updateSurveySlide = async (req, res) => {
       return res.status(404).json({ message: "Survey Slide not found" });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
     let fullImageUrl = null;
 
     if (imageUrl) {

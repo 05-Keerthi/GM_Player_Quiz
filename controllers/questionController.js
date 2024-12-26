@@ -23,7 +23,7 @@ exports.addQuestion = async (req, res) => {
       }
 
       // Base URL for constructing the full image path
-      const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
       // Construct the full image URL (from the Media path) and encode it for spaces
       const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
@@ -50,7 +50,8 @@ exports.addQuestion = async (req, res) => {
     // Include the full image URL in the response if available
     const responseQuestion = {
       ...newQuestion.toObject(),
-      imageUrl: fullImageUrl // Replace image ID with the full URL in the response if it exists
+      imageUrl: fullImageUrl, // Replace image ID with the full URL in the response if it exists
+      imageId: imageUrl
     };
 
     res.status(201).json(responseQuestion);
@@ -131,7 +132,7 @@ exports.getQuestions = async (req, res) => {
 
   try {
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Find questions related to the quiz and populate the imageUrl field
     const questions = await Question.find({ quiz: quizId })
@@ -165,7 +166,7 @@ exports.getQuestionById = async (req, res) => {
 
   try {
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Find the question by ID and populate the imageUrl field
     const question = await Question.findById(id).populate('imageUrl', 'path'); // Populate imageUrl with the path field
@@ -242,7 +243,7 @@ exports.updateQuestion = async (req, res) => {
     const updatedQuestion = await Question.findById(id).populate("imageUrl");
 
     // Base URL for constructing the full image path
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Construct full URL if imageUrl exists
     let fullImageUrl = null;

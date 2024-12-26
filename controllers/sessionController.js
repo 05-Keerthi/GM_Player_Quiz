@@ -767,7 +767,7 @@ exports.startSession = async (req, res) => {
     await session.save();
 
     // Construct Base URL
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process questions to include full image URLs and correct answers
     const questionsWithImageUrls = await Promise.all(
@@ -993,7 +993,7 @@ exports.nextQuestion = async (req, res) => {
     await session.save();
 
     // Process image URL if exists
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
     let fullImageUrl = null;
 
     if (nextItem.imageUrl) {

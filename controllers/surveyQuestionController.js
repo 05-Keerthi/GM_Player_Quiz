@@ -28,7 +28,7 @@ exports.createSurveyQuestion = async (req, res) => {
             }
 
             // Base URL for constructing the full image path
-            const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+            const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
             // Construct the full image URL
             const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
@@ -97,7 +97,7 @@ exports.getSurveyQuestions = async (req, res) => {
         }
 
         // Base URL for constructing the full image path
-        const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+        const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
         // Loop through all survey questions and include the full image URL if an image exists
         const responseQuestions = await Promise.all(
@@ -152,7 +152,7 @@ exports.getSurveyQuestionById = async (req, res) => {
         }
 
         // Base URL for constructing the full image path
-        const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+        const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
         let fullImageUrl = null;
 
@@ -327,7 +327,7 @@ exports.updateSurveyQuestionById = async (req, res) => {
       // Prepare the response with full URL
       let fullImageUrl = null;
       if (updatedQuestion.imageUrl) {
-        const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+        const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
         const encodedImagePath = encodeURIComponent(
           updatedQuestion.imageUrl.path.split("\\").pop()
         );

@@ -228,7 +228,7 @@ exports.startSurveySession = async (req, res) => {
     await session.save();
 
     // Construct Base URL
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
     // Process questions to include full image URLs
     const questionsWithImageUrls = await Promise.all(
@@ -452,7 +452,7 @@ exports.nextSurveyQuestion = async (req, res) => {
     await session.save();
 
     // Process the image URL if applicable
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
     let fullImageUrl = null;
 
     if (nextItem.imageUrl) {
