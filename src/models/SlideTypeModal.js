@@ -97,8 +97,10 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         // Store the media ID for backend reference
         setSlide((prev) => ({
           ...prev,
-          imageUrl: mediaData._id,
+          imageUrl: mediaData._id, // Store the media ID
         }));
+
+        console.log("Image uploaded, mediaId:", mediaData._id); // Debug log
       } catch (error) {
         console.error("Image upload error:", error);
         setError("Failed to upload image");
@@ -106,37 +108,6 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         setIsUploading(false);
       }
     }
-  };
-
-  const handleImageRemove = async () => {
-    if (slide.imageUrl) {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${API_BASE_URL}/api/media/${slide.imageUrl}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setError("Failed to delete image");
-        return;
-      }
-    }
-
-    setImagePreview(null);
-    setSlide((prev) => ({
-      ...prev,
-      imageUrl: null,
-    }));
   };
 
   const handleTypeSelect = (type) => {
@@ -172,13 +143,20 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
 
   const handleSubmit = async () => {
     try {
+      console.log("Current slide state before submit:", slide); // Debug log
+
       const finalSlide = {
-        ...slide,
+        title: slide.title,
+        type: slide.type,
         content:
           slide.type === "bullet_points"
             ? slide.points.join("\n")
             : slide.content,
+        imageUrl: slide.imageUrl, // This is already the media ID
+        position: slide.position || 0,
       };
+
+      console.log("Final slide payload:", finalSlide); // Debug log
 
       if (!finalSlide.title) {
         throw new Error("Slide title is required");
@@ -276,15 +254,6 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                   <Upload className="w-5 h-5" />
                   Upload Image
                 </label>
-                {imagePreview && (
-                  <button
-                    onClick={handleImageRemove}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    Remove
-                  </button>
-                )}
               </div>
 
               {imagePreview && (

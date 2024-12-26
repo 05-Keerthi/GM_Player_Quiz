@@ -29,19 +29,18 @@ function parseQuestionData(question) {
 }
 
 const QuestionEditor = ({ question, onUpdate, onClose }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [uploadError, setUploadError] = useState(null);
   const [parsedQuestion, setParsedQuestion] = useState(() =>
     parseQuestionData(question)
   );
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
-  const API_BASE_URL = "http://localhost:5000"; // You might want to move this to an environment variable
+  const API_BASE_URL = "http://localhost:5000";
 
   useEffect(() => {
     setParsedQuestion(parseQuestionData(question));
     if (question?.imageUrl) {
-      // If imageUrl is already a full path, use it directly
       if (question.imageUrl.startsWith("/uploads/")) {
         setImagePreview(`${API_BASE_URL}${question.imageUrl}`);
       } else {
@@ -51,8 +50,6 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
       setImagePreview(null);
     }
   }, [question]);
-
-  if (!question) return null;
 
   const getQuestionTypeIcon = (type) => {
     const typeIcons = {
@@ -141,12 +138,13 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
 
-        // Use the URL directly from the response
+        // Set the preview URL
         setImagePreview(`${API_BASE_URL}${mediaData.url}`);
 
+        // Update question state with the new image ID
         setParsedQuestion((prev) => ({
           ...prev,
-          imageUrl: mediaData._id, // Store the media ID
+          imageUrl: mediaData._id,
         }));
       } catch (error) {
         console.error("Image upload error:", error);
@@ -157,49 +155,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
     }
   };
 
-  // Utility function for both editors
-  const getMediaIdentifier = (imageUrl) => {
-    if (!imageUrl) return null;
-
-    if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
-      return imageUrl.split("/uploads/")[1];
-    }
-
-    return imageUrl;
-  };
-
-  // Update handleImageRemove in QuestionEditor.js
-  const handleImageRemove = async () => {
-    if (parsedQuestion.imageUrl) {
-      try {
-        const mediaIdentifier = getMediaIdentifier(parsedQuestion.imageUrl);
-        if (!mediaIdentifier) {
-          throw new Error("Invalid image URL");
-        }
-
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${API_BASE_URL}/api/media/byFilename/${encodeURIComponent(
-            mediaIdentifier
-          )}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setUploadError("Failed to delete image");
-        return;
-      }
-    }
-
+  const handleImageRemove = () => {
     setImagePreview(null);
     setParsedQuestion((prev) => ({
       ...prev,
@@ -207,18 +163,14 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
     }));
   };
 
-  // Update handleSave in QuestionEditor.js to handle image deletion
   const handleSave = () => {
     if (onUpdate) {
-      // If the image was removed, indicate this in the update data
-      const updateData = {
-        ...parsedQuestion,
-        deleteImage: !parsedQuestion.imageUrl && question.imageUrl,
-      };
-      onUpdate(updateData);
+      onUpdate(parsedQuestion);
     }
     onClose();
   };
+
+  if (!question) return null;
 
   return (
     <motion.div

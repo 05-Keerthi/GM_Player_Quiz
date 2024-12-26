@@ -14,11 +14,12 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [points, setPoints] = useState([""]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
   const [error, setError] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
-  const API_BASE_URL = "http://localhost:5000"; // You might want to move this to an environment variable
+  const API_BASE_URL = "http://localhost:5000";
 
   useEffect(() => {
     if (slide) {
@@ -30,7 +31,6 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       }
 
       if (slide.imageUrl) {
-        // If imageUrl is already a full path, use it directly
         if (slide.imageUrl.startsWith("/uploads/")) {
           setImagePreview(`${API_BASE_URL}${slide.imageUrl}`);
         } else {
@@ -51,11 +51,26 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     return typeIcons[type] || null;
   };
 
+  const handlePointChange = (index, value) => {
+    const newPoints = [...points];
+    newPoints[index] = value;
+    setPoints(newPoints);
+  };
+
+  const addPoint = () => {
+    setPoints([...points, ""]);
+  };
+
+  const removePoint = (index) => {
+    const newPoints = points.filter((_, i) => i !== index);
+    setPoints(newPoints);
+  };
+
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setIsUploading(true);
-      setError(null);
+      setUploadError(null);
 
       try {
         const formData = new FormData();
@@ -77,63 +92,23 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
 
-        // Use the URL directly from the response
         setImagePreview(`${API_BASE_URL}${mediaData.url}`);
-
-        // Store the media ID in the slide object
-        slide.imageUrl = mediaData._id;
+        if (slide) {
+          slide.imageUrl = mediaData._id;
+        }
       } catch (error) {
         console.error("Image upload error:", error);
-        setError("Failed to upload image");
+        setUploadError("Failed to upload image");
       } finally {
         setIsUploading(false);
       }
     }
   };
 
-  const getMediaIdentifier = (imageUrl) => {
-    if (!imageUrl) return null;
-
-    if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
-      return imageUrl.split("/uploads/")[1];
-    }
-
-    return imageUrl;
-  };
-
-  // Update handleImageRemove in SlideEditor.js
-  const handleImageRemove = async () => {
-    if (slide.imageUrl) {
-      try {
-        const mediaIdentifier = getMediaIdentifier(slide.imageUrl);
-        if (!mediaIdentifier) {
-          throw new Error("Invalid image URL");
-        }
-
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${API_BASE_URL}/api/media/byFilename/${encodeURIComponent(
-            mediaIdentifier
-          )}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-
-        setImagePreview(null);
-        slide.imageUrl = null;
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setError("Failed to delete image");
-        return;
-      }
+  const handleImageRemove = () => {
+    setImagePreview(null);
+    if (slide) {
+      slide.imageUrl = null;
     }
   };
 
@@ -143,66 +118,15 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         title,
         type: slide.type,
         content: slide.type === "bullet_points" ? points.join("\n") : content,
+        imageUrl: slide.imageUrl, // Will be null if image was removed
       };
-
-      // Only include imageUrl in the update if it exists or has changed
-      if (slide.imageUrl) {
-        // If the imageUrl is a full URL, extract the media ID
-        if (
-          typeof slide.imageUrl === "string" &&
-          slide.imageUrl.includes("/uploads/")
-        ) {
-          // Extract mediaId from the URL path
-          const pathMatch = slide.imageUrl.match(/\/uploads\/(.*)/);
-          if (pathMatch) {
-            const imagePath = "uploads/" + pathMatch[1];
-            // Find the media document by path
-            const mediaResponse = await fetch(
-              `${API_BASE_URL}/api/media/byPath`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify({ path: imagePath }),
-              }
-            );
-
-            if (mediaResponse.ok) {
-              const mediaData = await mediaResponse.json();
-              updatedData.imageUrl = mediaData._id;
-            }
-          }
-        } else {
-          // If it's already a media ID, use it directly
-          updatedData.imageUrl = slide.imageUrl;
-        }
-      } else {
-        // If imageUrl is null, include it to explicitly remove the image
-        updatedData.imageUrl = null;
-      }
 
       await onUpdate(updatedData);
       onClose();
     } catch (error) {
+      console.error("Error saving slide:", error);
       setError(error.message);
     }
-  };
-
-  const handlePointChange = (index, value) => {
-    const newPoints = [...points];
-    newPoints[index] = value;
-    setPoints(newPoints);
-  };
-
-  const addPoint = () => {
-    setPoints([...points, ""]);
-  };
-
-  const removePoint = (index) => {
-    const newPoints = points.filter((_, i) => i !== index);
-    setPoints(newPoints);
   };
 
   if (!slide) return null;
@@ -248,6 +172,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           />
         </div>
 
+        {/* Image Upload Section */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">
             Slide Image
@@ -277,6 +202,12 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
               </button>
             )}
           </div>
+
+          {uploadError && (
+            <div className="text-red-500 bg-red-50 p-2 rounded-lg">
+              {uploadError}
+            </div>
+          )}
 
           {imagePreview && (
             <div className="relative mt-4 group">
