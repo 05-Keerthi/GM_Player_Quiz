@@ -50,8 +50,8 @@ exports.addQuestion = async (req, res) => {
     // Include the full image URL in the response if available
     const responseQuestion = {
       ...newQuestion.toObject(),
-      imageUrl: fullImageUrl, // Replace image ID with the full URL in the response if it exists
-      imageId: imageUrl
+      imageUrl: fullImageUrl // Replace image ID with the full URL in the response if it exists
+      
     };
 
     res.status(201).json(responseQuestion);
