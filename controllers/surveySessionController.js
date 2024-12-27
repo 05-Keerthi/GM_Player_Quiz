@@ -470,7 +470,7 @@ exports.nextSurveyQuestion = async (req, res) => {
 
     // Emit the next item to the client
     const io = req.app.get("socketio");
-    io.emit("next-item", {
+    io.emit("next-survey-question", {
       type: quiz.order[nextIndex].type,
       item: itemWithImageUrl,
     });
