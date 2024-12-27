@@ -214,6 +214,8 @@ const getMediaIdFromPath = async (imageUrl) => {
   }
 };
 
+
+
 // Update the updateQuestion function in questionController.js
 exports.updateQuestion = async (req, res) => {
   const { id } = req.params;
@@ -225,13 +227,17 @@ exports.updateQuestion = async (req, res) => {
       return res.status(404).json({ message: "Question not found" });
     }
 
-    // Handle imageUrl - convert URL to Media ID if needed
-    const mediaId = await getMediaIdFromPath(imageUrl);
-    
+    // Handle imageUrl - explicitly check for null
+    let mediaId = null;
+    if (imageUrl !== null && imageUrl !== undefined) {
+      mediaId = await getMediaIdFromPath(imageUrl);
+    }
+
     // Update fields
     question.title = title || question.title;
     question.type = type || question.type;
-    question.imageUrl = mediaId || question.imageUrl;
+    // Explicitly set imageUrl to null if mediaId is null
+    question.imageUrl = imageUrl === null ? null : (mediaId || question.imageUrl);
     question.options = options || question.options;
     question.correctAnswer = correctAnswer || question.correctAnswer;
     question.points = points || question.points;
@@ -239,24 +245,27 @@ exports.updateQuestion = async (req, res) => {
 
     await question.save();
 
-    // Populate imageUrl to include Media details
-    const updatedQuestion = await Question.findById(id).populate("imageUrl");
+    // Populate imageUrl to include Media details only if it exists
+    const updatedQuestion = question.imageUrl 
+      ? await Question.findById(id).populate("imageUrl")
+      : await Question.findById(id);
 
     // Base URL for constructing the full image path
     const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
-    // Construct full URL if imageUrl exists
+    // Construct full URL if imageUrl exists and has path
     let fullImageUrl = null;
     if (updatedQuestion.imageUrl && updatedQuestion.imageUrl.path) {
       const encodedImagePath = encodeURIComponent(updatedQuestion.imageUrl.path.split("\\").pop());
       fullImageUrl = `${baseUrl}${encodedImagePath}`;
     }
 
+    // Return null for imageUrl if it was explicitly set to null
     res.status(200).json({
       message: "Question updated successfully",
       question: {
         ...updatedQuestion.toObject(),
-        imageUrl: fullImageUrl,
+        imageUrl: imageUrl === null ? null : fullImageUrl,
       },
     });
   } catch (error) {
@@ -265,9 +274,10 @@ exports.updateQuestion = async (req, res) => {
   }
 };
 
+// Update the updateQuestion function in questionController.js
 // exports.updateQuestion = async (req, res) => {
 //   const { id } = req.params;
-//   const { title, type, imageUrl, options, points, timer } = req.body;
+//   const { title, type, imageUrl, options, correctAnswer, points, timer } = req.body;
 
 //   try {
 //     const question = await Question.findById(id);
@@ -275,32 +285,27 @@ exports.updateQuestion = async (req, res) => {
 //       return res.status(404).json({ message: "Question not found" });
 //     }
 
-//     // Update fields only if provided
-//     if (title) question.title = title;
-//     if (type) question.type = type;
-//     if (imageUrl) question.imageUrl = imageUrl; // Should be an ObjectId
-//     if (options) {
-//       question.options = options;
-
-//       // Extract the correct answer from the updated options
-//       const correctOption = options.find(option => option.isCorrect);
-//       if (!correctOption) {
-//         return res.status(400).json({ message: "At least one option must have isCorrect set to true" });
-//       }
-//       question.correctAnswer = correctOption.text;
-//     }
-//     if (points) question.points = points;
-//     if (timer) question.timer = timer;
+//     // Handle imageUrl - convert URL to Media ID if needed
+//     const mediaId = await getMediaIdFromPath(imageUrl);
+    
+//     // Update fields
+//     question.title = title || question.title;
+//     question.type = type || question.type;
+//     question.imageUrl = mediaId || question.imageUrl;
+//     question.options = options || question.options;
+//     question.correctAnswer = correctAnswer || question.correctAnswer;
+//     question.points = points || question.points;
+//     question.timer = timer || question.timer;
 
 //     await question.save();
 
-//     // Populate `imageUrl` to include Media details
+//     // Populate imageUrl to include Media details
 //     const updatedQuestion = await Question.findById(id).populate("imageUrl");
 
 //     // Base URL for constructing the full image path
-//     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/`;
+//     const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
 
-//     // Construct full URL if `imageUrl` exists
+//     // Construct full URL if imageUrl exists
 //     let fullImageUrl = null;
 //     if (updatedQuestion.imageUrl && updatedQuestion.imageUrl.path) {
 //       const encodedImagePath = encodeURIComponent(updatedQuestion.imageUrl.path.split("\\").pop());
@@ -309,24 +314,18 @@ exports.updateQuestion = async (req, res) => {
 
 //     res.status(200).json({
 //       message: "Question updated successfully",
-//       updatedFields: {
-//         ...(title && { title }),
-//         ...(type && { type }),
-//         ...(imageUrl && { imageUrl: fullImageUrl }),
-//         ...(options && { options }),
-//         ...(points && { points }),
-//         ...(timer && { timer }),
-//       },
 //       question: {
 //         ...updatedQuestion.toObject(),
-//         imageUrl: fullImageUrl, // Return the full URL in the response
+//         imageUrl: fullImageUrl,
 //       },
 //     });
 //   } catch (error) {
 //     console.error(error);
-//     res.status(500).json({ message: "Server error" });
+//     res.status(500).json({ message: "Server error", error: error.message });
 //   }
 // };
+
+
 
 
 exports.deleteQuestion = async (req, res) => {
