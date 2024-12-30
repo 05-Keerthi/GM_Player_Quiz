@@ -51,8 +51,8 @@ const UnifiedSettingsModal = ({
 
       const apiEndpoint =
         type === "quiz"
-          ? "http://localhost:5000/api/quizzes"
-          : "http://localhost:5000/api/survey-quiz";
+          ?`${process.env.REACT_APP_API_URL}/api/quizzes`          
+          :`${process.env.REACT_APP_API_URL}/api/survey-quiz`;
 
       const response = await fetch(
         `${apiEndpoint}/${initialData.id || initialData.quizId}`,

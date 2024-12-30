@@ -420,21 +420,21 @@ const UnifiedList = ({ contentType }) => {
                                   </p>
 
                                   <div className="flex justify-between items-center mt-4">
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                      <ListChecks className="w-5 h-5" />
-                                      <span>
-                                        {item.questions?.length || 0} Questions
-                                      </span>
-                                      {isQuiz && (
-                                        <>
-                                          <ListChecks className="w-5 h-5" />
-                                          <span>
-                                            {item.slides?.length || 0} Slides
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-
+  <div className="flex items-center gap-2 text-gray-700">
+    <ListChecks className="w-5 h-5" />
+    <span>{item.questions?.length || 0} Questions</span>
+    {isQuiz ? (
+      <>
+        <ListChecks className="w-5 h-5" />
+        <span>{item.slides?.length || 0} Slides</span>
+      </>
+    ) : (
+      <>
+        <ListChecks className="w-5 h-5" />
+        <span>{item.surveySlides?.length || 0} Slides</span>
+      </>
+    )}
+  </div>
                                     <div className="flex gap-2">
                                       <button
                                         onClick={(e) => handleEdit(e, item._id)}

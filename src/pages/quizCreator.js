@@ -145,7 +145,7 @@ const QuizCreator = () => {
       const cleanSlides = slides.filter((slide) => slide._id); // Filter out malformed slides
       const cleanQuestions = questions.filter((question) => question._id); // Filter out malformed questions
 
-      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
         method: "PUT",
         body: JSON.stringify({
           title: quiz.title,
@@ -171,7 +171,7 @@ const handleAddSlide = async (slideData) => {
     console.log('Sending slide data:', slideData);
 
     const response = await authenticatedFetch(
-      `http://localhost:5000/api/quizzes/${quizId}/slides`,
+      `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
       {
         method: "POST",
         headers: {
@@ -215,7 +215,7 @@ const handleAddSlide = async (slideData) => {
     setOrderedItems(updatedOrderedItems);
 
     // Save the updated quiz state to backend
-    await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+    await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
       method: "PUT",
       body: JSON.stringify({
         title: quiz.title,
@@ -266,7 +266,7 @@ const handleAddSlide = async (slideData) => {
       };
 
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${slideId}`,
+        `${process.env.REACT_APP_API_URL}/api/slides/${slideId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -312,7 +312,7 @@ const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/slides/${itemToDelete}`,
+        `${process.env.REACT_APP_API_URL}/api/slides/${itemToDelete}`,
         {
           method: "DELETE",
         }
@@ -350,7 +350,7 @@ const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/quizzes/${quizId}/questions`,
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/questions`,
         {
           method: "POST",
           headers: {
@@ -389,7 +389,7 @@ const handleAddSlide = async (slideData) => {
       setOrderedItems(updatedOrderedItems);
 
       // Save the updated quiz state to backend
-      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
         method: "PUT",
         body: JSON.stringify({
           title: quiz.title,
@@ -446,7 +446,7 @@ const handleAddSlide = async (slideData) => {
       console.log("Question update payload:", updatePayload); // Debug log
 
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/questions/${questionId}`,
+        `${process.env.REACT_APP_API_URL}/api/questions/${questionId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -497,7 +497,7 @@ const handleAddSlide = async (slideData) => {
       const formData = new FormData();
       formData.append("media", file);
 
-      const response = await fetch("http://localhost:5000/api/media/upload", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/media/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -571,7 +571,7 @@ const handleAddSlide = async (slideData) => {
 
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:5000/api/media/byFilename/${encodeURIComponent(
+        `${process.env.REACT_APP_API_URL}/api/media/byFilename/${encodeURIComponent(
           filename
         )}`,
         {
@@ -604,7 +604,7 @@ const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
       const response = await authenticatedFetch(
-        `http://localhost:5000/api/questions/${itemToDelete}`,
+        `${process.env.REACT_APP_API_URL}/api/questions/${itemToDelete}`,
         {
           method: "DELETE",
         }
@@ -665,7 +665,7 @@ const handleAddSlide = async (slideData) => {
         type: item.type,
       }));
 
-      await authenticatedFetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
         method: "PUT",
         body: JSON.stringify({
           title: quiz.title,
@@ -711,7 +711,7 @@ const handleAddSlide = async (slideData) => {
       try {
         setLoading(true);
         const quizResponse = await authenticatedFetch(
-          `http://localhost:5000/api/quizzes/${quizId}`
+          `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`
         );
 
         if (!quizResponse.ok) {

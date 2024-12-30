@@ -45,27 +45,59 @@ const UserSurveyPlay = () => {
     }
   }, [isAuthenticated, user, sessionId]);
 
+  // useEffect(() => {
+  //   if (socket) {
+  //     socket.on("next-survey-question", (data) => {
+  //       console.log("Received question data:", data);
+  //       const { question, isLastQuestion, initialTime } = data;
+  //       setCurrentItem(question);
+  //       setIsLastItem(isLastQuestion);
+  //       setHasSubmitted(false);
+  //       setStartTime(Date.now());
+  //       setTimeLeft(initialTime || question.timer || 30);
+  //     });
+
+  //     socket.on("timer-sync", (data) => {
+  //       setTimeLeft(data.timeLeft);
+  //     });
+
+  //     socket.on("survey-session-ended", () => {
+  //       setIsSurveyEnded(true);
+  //       navigate("/joinsurvey");
+  //     });
+
+  //     return () => {
+  //       socket.off("next-survey-question");
+  //       socket.off("timer-sync");
+  //       socket.off("survey-session-ended");
+  //     };
+  //   }
+  // }, [socket, navigate]);
   useEffect(() => {
     if (socket) {
       socket.on("next-survey-question", (data) => {
         console.log("Received question data:", data);
-        const { question, isLastQuestion, initialTime } = data;
-        setCurrentItem(question);
-        setIsLastItem(isLastQuestion);
+        const { type, item } = data;
+        
+        // Safely access timer property with fallback values
+        const timer = item?.timer || 30; // Default to 30 seconds if no timer specified
+        
+        setCurrentItem(item);
+        setIsLastItem(false); // You'll need to implement logic for this
         setHasSubmitted(false);
         setStartTime(Date.now());
-        setTimeLeft(initialTime || question.timer || 30);
+        setTimeLeft(timer);
       });
-
+  
       socket.on("timer-sync", (data) => {
         setTimeLeft(data.timeLeft);
       });
-
+  
       socket.on("survey-session-ended", () => {
         setIsSurveyEnded(true);
         navigate("/joinsurvey");
       });
-
+  
       return () => {
         socket.off("next-survey-question");
         socket.off("timer-sync");
@@ -73,7 +105,6 @@ const UserSurveyPlay = () => {
       };
     }
   }, [socket, navigate]);
-
   const handleSubmitAnswer = async (answer) => {
     if (hasSubmitted || !answer || !user || !startTime) {
       return;

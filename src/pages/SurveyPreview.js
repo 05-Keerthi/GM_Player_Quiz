@@ -320,7 +320,7 @@ const SurveyPreviewPage = () => {
   const fetchSurveyData = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/survey-quiz/${surveyId}`,
+        `${process.env.REACT_APP_API_URL}/api/survey-quiz/${surveyId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
