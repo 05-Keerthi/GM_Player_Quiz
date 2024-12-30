@@ -29,7 +29,7 @@ const SurveyLobby = () => {
   // Initialize socket connection
   useEffect(() => {
     console.log("Initializing socket connection");
-    const newSocket = io("http://localhost:5000");
+    const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
     setSocket(newSocket);
 
     return () => {
