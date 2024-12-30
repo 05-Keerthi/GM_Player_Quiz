@@ -99,7 +99,6 @@ const UserQuizList = () => {
                   <TableCell>Quiz Title</TableCell>
                   <TableCell>Completion Date</TableCell>
                   <TableCell>Score</TableCell>
-                  <TableCell>Status</TableCell>
                   <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -110,14 +109,7 @@ const UserQuizList = () => {
                     <TableCell>
                       {new Date(report.completedAt).toLocaleString()}
                     </TableCell>
-                    <TableCell>{report.totalScore}%</TableCell>
-                    <TableCell>
-                      {report.totalScore >= 80 ? (
-                        <span className="text-green-600">Passed</span>
-                      ) : (
-                        <span className="text-red-600">Failed</span>
-                      )}
-                    </TableCell>
+                    <TableCell>{report.totalScore}</TableCell>
                     <TableCell>
                       <Button
                         variant="contained"

@@ -123,22 +123,12 @@ const UserReport = () => {
                 </TableRow>
                 <TableRow>
                   <TableCell>Total Score</TableCell>
-                  <TableCell>{currentReport.totalScore}%</TableCell>
+                  <TableCell>{currentReport.totalScore}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Completion Date</TableCell>
                   <TableCell>
                     {new Date(currentReport.completedAt).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Status</TableCell>
-                  <TableCell>
-                    {currentReport.totalScore >= 80 ? (
-                      <span className="text-green-600 font-bold">Passed</span>
-                    ) : (
-                      <span className="text-red-600 font-bold">Failed</span>
-                    )}
                   </TableCell>
                 </TableRow>
               </TableBody>
