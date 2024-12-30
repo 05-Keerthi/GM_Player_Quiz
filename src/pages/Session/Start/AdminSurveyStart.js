@@ -27,7 +27,7 @@ const AdminSurveyStart = () => {
 
   // Initialize socket and first question
   useEffect(() => {
-    const newSocket = io(`${process.env.REACT_APP_API_URL}`);
+    const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
     setSocket(newSocket);
     newSocket.emit("create-survey-session", { sessionId });
 

@@ -1,4 +1,3 @@
-// SlideEditor.js
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -19,7 +18,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
-  const API_BASE_URL = "http://localhost:5000";
+  const API_BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
 
   useEffect(() => {
     if (slide) {
