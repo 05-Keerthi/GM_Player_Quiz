@@ -5,7 +5,6 @@ import io from "socket.io-client";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
 import SurveyResults from "./SurveyResults";
-import AdminSurveyAnswerCounts from "../../../components/Session/AdminSurveyAnswerCounts";
 
 const AdminSurveyStart = () => {
   const [searchParams] = useSearchParams();
@@ -26,8 +25,9 @@ const AdminSurveyStart = () => {
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
+  // Initialize socket and first question
   useEffect(() => {
-    const newSocket = io("http://localhost:5000");
+    const newSocket = io(`${process.env.REACT_APP_API_URL}`);
     setSocket(newSocket);
     newSocket.emit("create-survey-session", { sessionId });
 
@@ -35,37 +35,53 @@ const AdminSurveyStart = () => {
       try {
         if (joinCode && sessionId) {
           const response = await nextSurveyQuestion(joinCode, sessionId);
-          if (response.question) {
-            const transformedItem = {
-              _id: response.question._id,
-              title: response.question.title,
-              imageUrl: response.question.imageUrl,
-              description: response.question.description,
-              dimension: response.question.dimension,
-              timer: response.question.timer,
-              type: "question",
-              options: response.question.answerOptions.map((option) => ({
-                _id: option._id,
-                text: option.optionText,
-                isCorrect: false,
-              })),
-            };
+          if (response.item || response.question) {
+            const item = response.item || response.question;
+            const type = response.type || "question";
+
+            const transformedItem =
+              type === "slide"
+                ? {
+                    _id: item._id,
+                    type: "slide",
+                    title: item.surveyTitle,
+                    content: item.surveyContent,
+                    imageUrl: item.imageUrl,
+                    surveyQuiz: item.surveyQuiz,
+                  }
+                : {
+                    _id: item._id,
+                    title: item.title,
+                    imageUrl: item.imageUrl,
+                    description: item.description,
+                    dimension: item.dimension,
+                    timer: item.timer,
+                    type: "question",
+                    answerOptions: item.answerOptions?.map((option) => ({
+                      _id: option._id,
+                      optionText: option.optionText,
+                      isCorrect: false,
+                    })),
+                  };
 
             setCurrentItem(transformedItem);
             setIsLastItem(response.isLastItem || false);
 
-            const initialTime = transformedItem.timer || 30;
-            setTimeLeft(initialTime);
+            if (type !== "slide") {
+              const initialTime = transformedItem.timer || 30;
+              setTimeLeft(initialTime);
+              setTimerActive(true);
+              startTimer(newSocket, sessionId, initialTime);
+            }
 
             newSocket.emit("next-survey-question", {
               sessionId,
-              type: "question",
+              type,
               item: transformedItem,
               isLastItem: response.isLastItem || false,
-              initialTime,
+              initialTime:
+                type !== "slide" ? transformedItem.timer || 30 : null,
             });
-
-            startTimer(newSocket, sessionId, initialTime);
           }
         }
       } catch (error) {
@@ -81,6 +97,7 @@ const AdminSurveyStart = () => {
     };
   }, [sessionId, joinCode]);
 
+  // Socket event listeners
   useEffect(() => {
     if (socket) {
       socket.on("survey-answer-submitted", (data) => {
@@ -142,62 +159,90 @@ const AdminSurveyStart = () => {
       }
 
       const response = await nextSurveyQuestion(joinCode, sessionId);
+      console.log("Next question response:", response);
 
-      // Check if we got the "no more questions" message
-      if (response.message === "No more questions left in the survey session") {
-        if (socket) {
-          socket.emit("survey-completed", { sessionId });
-        }
-        // Navigate to results page with necessary params
-        navigate(`/results/${sessionId}?joinCode=${joinCode}`);
-        return;
-      }
-
-      if (response.question) {
-        const transformedItem = {
-          _id: response.question._id,
-          title: response.question.title,
-          imageUrl: response.question.imageUrl,
-          description: response.question.description,
-          dimension: response.question.dimension,
-          timer: response.question.timer,
-          type: "question",
-          options: response.question.answerOptions.map((option) => ({
-            _id: option._id,
-            text: option.optionText,
-            isCorrect: false,
-          })),
-        };
-
-        setCurrentItem(transformedItem);
-        const newTime = transformedItem.timer || 30;
-        setTimeLeft(newTime);
-        setTimerActive(true);
-        setIsLastItem(response.isLastItem || false);
-
-        if (socket) {
-          socket.emit("next-survey-question", {
-            sessionId,
-            type: "question",
-            item: transformedItem,
-            isLastItem: response.isLastItem || false,
-            initialTime: newTime,
-          });
-
-          startTimer(socket, sessionId, newTime);
-        }
-      }
-    } catch (error) {
-      console.error("Error getting next question:", error);
-      // Check if the error indicates no more questions
+      // Check if we're at the end or it's the last item
       if (
-        error.response?.data?.message ===
-        "No more questions left in the survey session"
+        isLastItem ||
+        response.message === "No more items left in the survey session" ||
+        response.message === "No more questions left in the survey session"
       ) {
         if (socket) {
           socket.emit("survey-completed", { sessionId });
         }
-        // Navigate to results page with necessary params
+
+        // Clear any existing timer
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          setTimerInterval(null);
+        }
+
+        setIsSurveyEnded(true);
+        navigate(`/results/${sessionId}?joinCode=${joinCode}`);
+        return;
+      }
+
+      if (response.item || response.question) {
+        const item = response.item || response.question;
+        const type = response.type || "question";
+
+        const transformedItem =
+          type === "slide"
+            ? {
+                _id: item._id,
+                type: "slide",
+                title: item.surveyTitle,
+                content: item.surveyContent,
+                imageUrl: item.imageUrl,
+                surveyQuiz: item.surveyQuiz,
+              }
+            : {
+                _id: item._id,
+                title: item.title,
+                imageUrl: item.imageUrl,
+                description: item.description,
+                dimension: item.dimension,
+                timer: item.timer,
+                type: "question",
+                answerOptions: item.answerOptions?.map((option) => ({
+                  _id: option._id,
+                  optionText: option.optionText,
+                  isCorrect: false,
+                })),
+              };
+
+        setCurrentItem(transformedItem);
+        setIsLastItem(response.isLastItem || false);
+
+        if (type !== "slide") {
+          const newTime = transformedItem.timer || 30;
+          setTimeLeft(newTime);
+          setTimerActive(true);
+          startTimer(socket, sessionId, newTime);
+        }
+
+        if (socket) {
+          socket.emit("next-survey-question", {
+            sessionId,
+            type,
+            item: transformedItem,
+            isLastItem: response.isLastItem || false,
+            initialTime: type !== "slide" ? transformedItem.timer || 30 : null,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error getting next question:", error);
+      if (
+        error.response?.data?.message ===
+          "No more items left in the survey session" ||
+        error.response?.data?.message ===
+          "No more questions left in the survey session"
+      ) {
+        if (socket) {
+          socket.emit("survey-completed", { sessionId });
+        }
+        setIsSurveyEnded(true);
         navigate(`/results/${sessionId}?joinCode=${joinCode}`);
       }
     }
@@ -227,6 +272,7 @@ const AdminSurveyStart = () => {
     }
   };
 
+  // Show results component if showResults is true
   if (showResults) {
     return (
       <SurveyResults
@@ -237,7 +283,7 @@ const AdminSurveyStart = () => {
     );
   }
 
-  // Rest of the render logic remains the same
+  // Main render
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
@@ -247,23 +293,16 @@ const AdminSurveyStart = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : (
-            <>
-              <AdminSurveyAnswerCounts
-                sessionId={sessionId}
-                currentItem={currentItem}
-                socket={socket}
-              />
-              <SurveyContentDisplay
-                item={currentItem}
-                isAdmin={true}
-                onNext={handleNext}
-                timeLeft={timeLeft}
-                isLastItem={isLastItem}
-                onEndSurvey={handleEndSurvey}
-                isSurveyEnded={isSurveyEnded}
-                submittedAnswers={submittedAnswers}
-              />
-            </>
+            <SurveyContentDisplay
+              item={currentItem}
+              isAdmin={true}
+              onNext={handleNext}
+              timeLeft={timeLeft}
+              isLastItem={isLastItem}
+              onEndSurvey={handleEndSurvey}
+              isSurveyEnded={isSurveyEnded}
+              submittedAnswers={submittedAnswers}
+            />
           )}
         </div>
       </div>

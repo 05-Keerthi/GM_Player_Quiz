@@ -1,4 +1,3 @@
-// 
 import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
@@ -12,173 +11,349 @@ const SurveyContentDisplay = ({
   onEndSurvey,
   isSurveyEnded,
   submittedAnswers = [],
+  socket,
+  optionCounts: passedOptionCounts,
+  totalVotes: passedTotalVotes,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [openEndedAnswer, setOpenEndedAnswer] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
-  const [timerActive, setTimerActive] = useState(true);
+  const [optionCounts, setOptionCounts] = useState({});
+  const [totalVotes, setTotalVotes] = useState(0);
 
   useEffect(() => {
-    // Reset states when item changes
     setSelectedOption(null);
+    setSelectedOptions([]);
+    setOpenEndedAnswer("");
     setIsTimeUp(false);
     setIsAnswerSubmitted(false);
-    setTimerActive(true);
-  }, [item]);
 
-  useEffect(() => {
-    if (timeLeft === 0 && timerActive) {
-      setIsTimeUp(true);
-      setTimerActive(false);
-      if (!isAnswerSubmitted && !isAdmin && selectedOption) {
-        onSubmitAnswer?.(selectedOption);
+    if (item?.type === "poll") {
+      if (isAdmin && passedOptionCounts && passedTotalVotes) {
+        setOptionCounts(passedOptionCounts);
+        setTotalVotes(passedTotalVotes);
+      } else {
+        const initialCounts = {};
+        item.answerOptions?.forEach((_, index) => {
+          initialCounts[index] = 0;
+        });
+        setOptionCounts(initialCounts);
+        setTotalVotes(0);
       }
     }
-  }, [timeLeft, isAnswerSubmitted, isAdmin, onSubmitAnswer, selectedOption, timerActive]);
+  }, [item, isAdmin, passedOptionCounts, passedTotalVotes]);
 
-  // Array of background colors for options
+  useEffect(() => {
+    if (timeLeft === 0 && !isSlide) {
+      setIsTimeUp(true);
+    }
+  }, [timeLeft]);
+
+  useEffect(() => {
+    if (isAdmin && item?.type === "poll") {
+      setOptionCounts(passedOptionCounts || {});
+      setTotalVotes(passedTotalVotes || 0);
+    }
+  }, [isAdmin, passedOptionCounts, passedTotalVotes, item]);
+
+  useEffect(() => {
+    if (socket && item?._id && item?.type === "poll" && !isAdmin) {
+      const handleAnswerSubmitted = ({ answerDetails }) => {
+        if (answerDetails.questionId === item._id) {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = item.answerOptions.findIndex(
+              (opt) => opt.optionText === answerDetails.answer
+            );
+            if (optionIndex !== -1) {
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            }
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
+        }
+      };
+
+      socket.on("survey-answer-submitted", handleAnswerSubmitted);
+      return () => socket.off("survey-answer-submitted", handleAnswerSubmitted);
+    }
+  }, [socket, item, isAdmin]);
+
   const bgColors = [
-    "bg-blue-100",
-    "bg-green-100",
-    "bg-yellow-100",
-    "bg-purple-100",
-    "bg-pink-100",
-    "bg-indigo-100",
-    "bg-orange-100",
-    "bg-teal-100",
+    "bg-red-300",
+    "bg-green-200",
+    "bg-yellow-200",
+    "bg-blue-200",
+    "bg-purple-200",
+    "bg-pink-200",
+    "bg-indigo-200",
+    "bg-orange-200",
   ];
 
-  const renderSubmissionStats = () => {
-    if (!isAdmin || !item?.options) return null;
+  const isSlide = item?.type === "slide";
+  const isOpenEnded = item?.type === "open_ended";
+  const isMultipleSelect = item?.type === "multiple_select";
 
-    const totalSubmissions = submittedAnswers.length;
-    const optionCounts = item.options.reduce((acc, option) => {
-      const count = submittedAnswers.filter(
-        answer => answer.answer._id === option._id
-      ).length;
-      acc[option._id] = {
-        count,
-        percentage: totalSubmissions ? ((count / totalSubmissions) * 100).toFixed(1) : 0
-      };
-      return acc;
-    }, {});
+  const handleOpenEndedSubmit = () => {
+    if (!isAdmin && openEndedAnswer.trim() && !isTimeUp && !isAnswerSubmitted) {
+      onSubmitAnswer?.({
+        type: "open_ended",
+        answer: openEndedAnswer.trim(),
+        questionId: item._id,
+      });
+      setIsAnswerSubmitted(true);
+    }
+  };
+
+  const handleOptionSelect = (option) => {
+    if (isAdmin || isTimeUp || isAnswerSubmitted) return;
+
+    if (isMultipleSelect) {
+      setSelectedOptions((prev) => {
+        const isSelected = prev.some((opt) => opt._id === option._id);
+        return isSelected
+          ? prev.filter((opt) => opt._id !== option._id)
+          : [...prev, option];
+      });
+    } else {
+      setSelectedOption(option);
+      onSubmitAnswer?.({
+        type: "single_select",
+        answer: option.optionText,
+        questionId: item._id,
+      });
+      setIsAnswerSubmitted(true);
+    }
+  };
+
+  const handleMultipleSelectSubmit = () => {
+    if (selectedOptions.length === 0 || isTimeUp || isAnswerSubmitted) return;
+
+    const answers = selectedOptions.map((opt) => opt.optionText);
+    onSubmitAnswer?.({
+      type: "multiple_select",
+      answer: answers,
+      questionId: item._id,
+    });
+    setIsAnswerSubmitted(true);
+  };
+
+  const getPercentage = (count) => {
+    if (totalVotes === 0) return 0;
+    return Math.round((count / totalVotes) * 100);
+  };
+
+  const renderOpenEndedQuestion = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-medium">{item?.title}</h3>
+      {item?.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt="Question"
+          className="w-full max-h-64 object-contain rounded-lg"
+        />
+      )}
+      {isAdmin ? (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium mb-2">Submitted Answers:</h4>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {submittedAnswers.map((answer, index) => (
+              <div
+                key={index}
+                className="p-3 bg-white rounded border border-gray-200"
+              >
+                {answer}
+              </div>
+            ))}
+            {submittedAnswers.length === 0 && (
+              <p className="text-gray-500 italic">No answers submitted yet</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <textarea
+            value={openEndedAnswer}
+            onChange={(e) => setOpenEndedAnswer(e.target.value)}
+            placeholder="Type your answer here..."
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={4}
+            disabled={isTimeUp || isAnswerSubmitted}
+          />
+          <button
+            onClick={handleOpenEndedSubmit}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
+              ${
+                isTimeUp || isAnswerSubmitted
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }
+            `}
+            disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
+          >
+            Submit Answer
+          </button>
+          {isAnswerSubmitted && (
+            <p className="text-green-600 font-medium text-center">
+              Answer submitted successfully!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderSlide = () => (
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 rounded-t-lg">
+        <h3 className="text-2xl font-bold text-white">{item?.title}</h3>
+      </div>
+      <div className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
+        {item?.imageUrl && (
+          <div className="flex justify-center">
+            <img
+              src={item.imageUrl}
+              alt="Slide"
+              className="max-h-[40vh] object-contain rounded-lg shadow-md"
+            />
+          </div>
+        )}
+        <div className="prose max-w-none flex-1">
+          {item?.content?.split("\n").map(
+            (paragraph, index) =>
+              paragraph.trim() && (
+                <p key={index} className="text-lg mb-4">
+                  {paragraph}
+                </p>
+              )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderQuestion = () => {
+    const isPoll = item?.type === "poll";
+    const options = item?.answerOptions || [];
 
     return (
-      <div className="mt-6 space-y-4">
-        <h4 className="font-medium text-lg">Response Statistics</h4>
-        <div className="grid gap-3">
-          {item.options.map((option, index) => (
-            <div key={option._id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-              <div className="flex items-center space-x-2">
-                <span className={`w-3 h-3 rounded-full ${bgColors[index % bgColors.length]}`}></span>
-                <span>{option.text}</span>
-                {option.isCorrect && (
-                  <span className="text-green-600 text-sm font-medium">(Correct)</span>
-                )}
-              </div>
-              <div className="text-right">
-                <span className="font-medium">{optionCounts[option._id]?.count || 0}</span>
-                <span className="text-gray-500 ml-2">
-                  ({optionCounts[option._id]?.percentage || 0}%)
-                </span>
-              </div>
-            </div>
+      <div className="space-y-4">
+        <h3 className="text-xl mb-4">{item?.title}</h3>
+        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+          <p className="text-gray-600 mb-4">
+            Select multiple options and click Submit when done
+          </p>
+        )}
+        {item?.imageUrl && (
+          <img
+            src={item.imageUrl}
+            alt="Question"
+            className="w-full max-h-64 object-contain rounded-lg mb-4"
+          />
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {options.map((option, index) => (
+            <button
+              key={option._id}
+              onClick={() => handleOptionSelect(option)}
+              className={`p-4 text-lg rounded-lg border transition-all
+                ${bgColors[index % bgColors.length]} 
+                ${
+                  !isAdmin &&
+                  (isMultipleSelect
+                    ? selectedOptions.some((opt) => opt._id === option._id)
+                    : selectedOption?._id === option._id)
+                    ? "border-blue-500 ring-2 ring-blue-500"
+                    : "hover:brightness-95"
+                }
+                ${
+                  (isTimeUp || isAnswerSubmitted) && !isMultipleSelect
+                    ? "opacity-60 cursor-not-allowed"
+                    : ""
+                }
+              `}
+              disabled={
+                isAdmin || isTimeUp || (!isMultipleSelect && isAnswerSubmitted)
+              }
+            >
+              {option.optionText}
+            </button>
           ))}
         </div>
+
+        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleMultipleSelectSubmit}
+              disabled={selectedOptions.length === 0 || isTimeUp}
+              className={`px-6 py-2 bg-blue-600 text-white rounded-lg
+                ${
+                  selectedOptions.length === 0 || isTimeUp
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-blue-700"
+                }
+              `}
+            >
+              Submit Selections
+            </button>
+          </div>
+        )}
+
+        {!isAdmin && isAnswerSubmitted && (
+          <p className="text-green-600 font-medium text-center mt-4">
+            Answer submitted successfully!
+          </p>
+        )}
+
+        {isPoll && (isAdmin || isAnswerSubmitted) && (
+          <div className="mt-8">
+            <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
+              {options.map((option, index) => {
+                const count = optionCounts[index] || 0;
+                const percentage = getPercentage(count);
+
+                return (
+                  <div key={`progress-${index}`} className="relative">
+                    <div className="h-12 w-full bg-gray-100 rounded-full relative">
+                      <div
+                        className={`h-full ${bgColors[index % bgColors.length]} 
+                          transition-all duration-500 rounded-full absolute top-0 left-0`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                      <div className="absolute inset-0 px-4 flex items-center justify-between">
+                        <span className="text-gray-800 font-medium z-10">
+                          {option.optionText}
+                        </span>
+                        <span className="text-gray-800 font-medium z-10">
+                          {percentage}% ({count})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
-  const renderSlide = () => (
-    <div className="space-y-6">
-      <h3 className="text-2xl font-medium">{item?.title}</h3>
-      {item?.imageUrl && (
-        <div className="w-full flex justify-center">
-          <img
-            src={item.imageUrl}
-            alt="Slide content"
-            className="max-w-full max-h-96 object-contain rounded-lg shadow-md"
-          />
-        </div>
-      )}
-      <div className="prose max-w-none">
-        <p className="text-lg">{item?.description}</p>
-      </div>
-    </div>
-  );
-
-  const renderQuestion = () => (
-    <div className="space-y-4">
-      <h3 className="text-xl font-medium mb-4">{item?.title}</h3>
-      
-      {item?.imageUrl && (
-        <div className="mb-6">
-          <img
-            src={item.imageUrl}
-            alt="Question"
-            className="w-full max-h-64 object-contain rounded-lg shadow-md"
-          />
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="bg-gray-50 p-6 rounded-lg space-y-2">
-          <p className="text-gray-600"><span className="font-bold">Description:</span> {item?.description}</p>
-          <p className="text-gray-600"><span className="font-bold">Dimension:</span> {item?.dimension}</p>
-          {item?.timer && (
-            <p className="text-gray-600"><span className="font-bold">Timer:</span> {item?.timer}s</p>
-          )}
-        </div>
-      )}
-
-      {!isAdmin ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {item?.options?.map((option, index) => (
-            <button
-              key={option._id}
-              onClick={() => {
-                if (timeLeft > 0 && !selectedOption && !isTimeUp) {
-                  setSelectedOption(option);
-                  onSubmitAnswer?.(option);
-                  setIsAnswerSubmitted(true);
-                }
-              }}
-              className={`
-                p-4 text-lg rounded-lg border transition-all duration-200
-                ${bgColors[index % bgColors.length]}
-                ${selectedOption?._id === option._id ? "ring-2 ring-blue-500 border-blue-500" : "hover:brightness-95 hover:shadow-md"}
-                ${(timeLeft === 0 || selectedOption || isTimeUp) ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
-                flex items-center justify-center text-center min-h-[60px]
-              `}
-              disabled={timeLeft === 0 || selectedOption || isTimeUp}
-            >
-              {option.text}
-            </button>
-          ))}
-        </div>
-      ) : (
-        renderSubmissionStats()
-      )}
-
-      {!isAdmin && isAnswerSubmitted && (
-        <div className="text-center mt-6">
-          <p className="text-green-600 font-medium">Response submitted successfully!</p>
-        </div>
-      )}
-    </div>
-  );
-
   if (isSurveyEnded) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">
         <h2 className="text-2xl font-bold mb-4">Survey Completed!</h2>
-        <p className="text-gray-600 mb-6">Thank you for participating in the survey.</p>
+        <p className="text-gray-600 mb-6">
+          Thank you for participating in the survey.
+        </p>
         {isAdmin && (
           <button
             onClick={onEndSurvey}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            End Survey
+            End survey
           </button>
         )}
       </div>
@@ -186,22 +361,28 @@ const SurveyContentDisplay = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">
-          {item?.type === "slide" ? "Slide" : "Question"}
-        </h2>
-        {item?.timer && (
-          <div className="flex items-center gap-2">
-            <Timer className="w-6 h-6 text-gray-600" />
-            <span className={`font-medium text-lg ${timeLeft <= 5 ? "text-red-600" : "text-gray-600"}`}>
+    <div
+      className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}
+    >
+      {!isSlide && (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">Question</h2>
+          <div className="flex items-center gap-2 text-lg">
+            <Timer className="w-6 h-6" />
+            <span
+              className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
+            >
               {timeLeft}s
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {item?.type === "slide" ? renderSlide() : renderQuestion()}
+      {isSlide
+        ? renderSlide()
+        : isOpenEnded
+        ? renderOpenEndedQuestion()
+        : renderQuestion()}
 
       {isAdmin && (
         <div className="flex justify-end mt-6">
@@ -209,7 +390,7 @@ const SurveyContentDisplay = ({
             onClick={onNext}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            {isLastItem ? "End Survey" : "Next"}
+            {isLastItem ? "End" : "Next"}
           </button>
         </div>
       )}
