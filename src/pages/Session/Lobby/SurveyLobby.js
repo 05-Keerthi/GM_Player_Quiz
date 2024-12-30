@@ -166,6 +166,42 @@ const SurveyLobby = () => {
       setError("Failed to process invitations. Please try again.");
     }
   };
+  const handleSessionUpdate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!sessionData || !sessionData.surveyQuiz) {
+        console.error("No session data available");
+        return;
+      }
+  
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/survey-notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type: "Survey-session_update",
+          sessionId: sessionData._id,
+          message: `The session for "${sessionData.surveyQuiz.title}" has been updated.`
+        }),
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Survey session update notification sent successfully:", data);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to send survey session update notification:", errorData);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error sending survey session update notification:", error);
+      return false;
+    }
+  };
 
   const renderCurrentItem = () => {
     if (!currentItem) return null;
@@ -240,21 +276,54 @@ const SurveyLobby = () => {
               Invite
             </button>
             {!currentItem && (
-              <button
-                onClick={handleStartSession}
-                disabled={loading || !surveyPlayers?.length}
-                className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Starting...
-                  </div>
-                ) : (
-                  "Start Survey"
-                )}
-              </button>
-            )}
+  <button
+    onClick={async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        if (!sessionData || !sessionData.surveyQuiz) {
+          console.error("No session data available");
+          return;
+        }
+
+        // Send survey session update notification
+        const notificationResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/survey-notifications`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            type: "Survey-session_update",
+            sessionId: sessionData._id,
+            message: `The session for "${sessionData.surveyQuiz.title}" has been updated.`
+          }),
+        });
+
+        if (!notificationResponse.ok) {
+          console.warn("Failed to send survey session update notification");
+        }
+
+        // Proceed with starting the session
+        await handleStartSession();
+      } catch (error) {
+        console.error("Error sending session update or starting session:", error);
+        setError("Failed to start session. Please try again.");
+      }
+    }}
+    disabled={loading || !surveyPlayers?.length}
+    className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {loading ? (
+      <div className="flex items-center gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Starting...
+      </div>
+    ) : (
+      "Start Survey"
+    )}
+  </button>
+)}
           </div>
         </div>
       </div>
