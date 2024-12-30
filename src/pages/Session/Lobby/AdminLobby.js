@@ -191,8 +191,8 @@ const AdminLobby = () => {
         console.error("No session data available");
         return;
       }
-  
-      const response = await fetch("http://localhost:5000/api/notifications", {
+
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -316,7 +316,7 @@ const AdminLobby = () => {
           return;
         }
 
-        const response = await fetch("http://localhost:5000/api/notifications", {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
