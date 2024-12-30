@@ -31,7 +31,7 @@ const UserSurveyPlay = () => {
   // Socket initialization
   useEffect(() => {
     if (isAuthenticated && user && sessionId) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
+      const newSocket = io(`${process.env.REACT_APP_API_URL}`);
       setSocket(newSocket);
 
       // Join survey session

@@ -1,99 +1,36 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
-import { useNotificationContext } from "../context/notificationContext";
-import { useSurveyNotificationContext } from "../context/SurveynotificationContext";
 import defaultLogo from "../assets/GMI-Logo.png";
 import ProfileDropdown from "../models/ProfileDropDown";
 import NotificationDropdown from "../models/notificationDropdown";
-import io from "socket.io-client";
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuthContext();
-  const { getNotificationsByUserId } = useNotificationContext();
-  const { getNotificationsByUserId: getSurveyNotificationsByUserId } =
-    useSurveyNotificationContext();
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuthContext();
   const [logoSrc, setLogoSrc] = useState(defaultLogo);
   const [logoError, setLogoError] = useState(false);
-  const [socket, setSocket] = useState(null);
 
-  // Initialize socket connection
+  // Logo handling
   useEffect(() => {
-    if (user) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
-      setSocket(newSocket);
-
-      // Join user-specific room for notifications
-      newSocket.emit("join-user-room", { userId: user.id });
-
-      return () => {
-        if (newSocket) {
-          newSocket.disconnect();
-        }
-      };
-    }
-  }, [user]);
-
-  // Handle socket events for notifications
-  useEffect(() => {
-    if (socket && user) {
-      // Listen for new survey notifications
-      const handleNewSurveyNotification = async (data) => {
-        console.log("Received new survey notification:", data);
-        await getSurveyNotificationsByUserId(user.id);
-      };
-
-      // Listen for regular notifications
-      const handleNewNotification = async (data) => {
-        console.log("Received new notification:", data);
-        await getNotificationsByUserId(user.id);
-      };
-
-      socket.on("new_survey_notification", handleNewSurveyNotification);
-      socket.on("receive-notification", handleNewNotification);
-
-      return () => {
-        socket.off("new_survey_notification", handleNewSurveyNotification);
-        socket.off("receive-notification", handleNewNotification);
-      };
-    }
-  }, [socket, user, getNotificationsByUserId, getSurveyNotificationsByUserId]);
-
-  // Fetch both types of notifications when user is authenticated
-  useEffect(() => {
-    if (user) {
-      // Fetch regular notifications
-      getNotificationsByUserId(user.id);
-      // Fetch survey notifications
-      getSurveyNotificationsByUserId(user.id);
-
-      // Also get any unread notifications
-      if (socket) {
-        socket.emit("get-unread-survey-notifications", { userId: user.id });
-      }
-    }
-  }, [user]);
-
-  // Logo handling code remains the same...
-  useEffect(() => {
-    setLogoError(false);
-    try {
-      const tenantLogo = user?.tenantId?.logo;
-
-      if (
-        tenantLogo &&
-        typeof tenantLogo === "string" &&
-        tenantLogo.startsWith("data")
-      ) {
-        setLogoSrc(tenantLogo);
-      } else {
+    const initializeLogo = () => {
+      setLogoError(false);
+      try {
+        const tenantLogo = user?.tenantId?.logo;
+        setLogoSrc(
+          tenantLogo &&
+            typeof tenantLogo === "string" &&
+            tenantLogo.startsWith("data")
+            ? tenantLogo
+            : defaultLogo
+        );
+      } catch (error) {
+        console.error("Error setting logo:", error);
         setLogoSrc(defaultLogo);
       }
-    } catch (error) {
-      console.error("Error setting logo:", error);
-      setLogoSrc(defaultLogo);
-    }
+    };
+
+    initializeLogo();
   }, [user]);
 
   const handleLogoError = () => {
@@ -103,12 +40,12 @@ const Navbar = () => {
     }
   };
 
+  // Color contrast handling
   const getContrastColor = (hexColor) => {
     try {
       const r = parseInt(hexColor.slice(1, 3), 16);
       const g = parseInt(hexColor.slice(3, 5), 16);
       const b = parseInt(hexColor.slice(5, 7), 16);
-
       const brightness = (r * 299 + g * 587 + b * 114) / 1000;
       return brightness < 128 ? "#FFFFFF" : "#000000";
     } catch (error) {
@@ -117,23 +54,26 @@ const Navbar = () => {
     }
   };
 
+  // Style configuration
   const primaryColor = user?.tenantId?.primaryColor || "#2929FF";
   const secondaryColor = user?.tenantId?.secondaryColor || "#FFFFFF";
   const areColorsSame =
     primaryColor.toLowerCase() === secondaryColor.toLowerCase();
 
-  const navbarStyle = {
-    backgroundColor: primaryColor,
-  };
-
-  const textStyle = {
-    color: areColorsSame ? getContrastColor(primaryColor) : secondaryColor,
-    fontFamily: user?.tenantId?.fontFamily || "inherit",
+  const styles = {
+    navbar: {
+      backgroundColor: primaryColor,
+    },
+    text: {
+      color: areColorsSame ? getContrastColor(primaryColor) : secondaryColor,
+      fontFamily: user?.tenantId?.fontFamily || "inherit",
+    },
   };
 
   return (
-    <div className="border-b-4 p-2" style={navbarStyle}>
+    <div className="border-b-4 p-2" style={styles.navbar}>
       <div className="flex items-center h-12 p-3 gap-4 justify-between">
+        {/* Logo and Title Section */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div
             className="h-10 w-10 relative bg-gray-100 rounded-full overflow-hidden cursor-pointer border-2 group transition-transform duration-200 ease-in-out hover:scale-110"
@@ -149,15 +89,16 @@ const Navbar = () => {
           </div>
 
           <div>
-            <h1 className="text-lg font-semibold" style={textStyle}>
+            <h1 className="text-lg font-semibold" style={styles.text}>
               Welcome to {user?.tenantId?.name || "GM Play"}..!
             </h1>
-            <p className="text-sm" style={textStyle}>
+            <p className="text-sm" style={styles.text}>
               Engage, learn, and have fun
             </p>
           </div>
         </div>
 
+        {/* Actions Section */}
         <div className="flex items-center gap-4 relative">
           {isAuthenticated && user ? (
             <>

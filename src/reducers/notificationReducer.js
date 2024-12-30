@@ -18,11 +18,12 @@ export const ACTIONS = {
 
 export const notificationReducer = (state, action) => {
   switch (action.type) {
-    case ACTIONS.SET_NOTIFICATIONS:
-      return {
-        ...state,
-        notifications: action.payload,
-      };
+ // notificationReducer.js
+case ACTIONS.SET_NOTIFICATIONS:
+  return {
+    ...state,
+    notifications: Array.isArray(action.payload) ? action.payload : [], // Ensure it's an array
+  };
     case ACTIONS.ADD_NOTIFICATION:
       return {
         ...state,

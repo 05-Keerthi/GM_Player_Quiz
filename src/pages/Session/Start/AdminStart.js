@@ -30,7 +30,7 @@ const AdminStart = () => {
 
   // Initialize socket and fetch first question
   useEffect(() => {
-    const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
+    const newSocket = io(`${process.env.REACT_APP_API_URL}`);
     setSocket(newSocket);
     newSocket.emit("create-session", { sessionId });
 

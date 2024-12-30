@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { FaBell } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
 import { useNotificationContext } from "../context/notificationContext";
 import { useSurveyNotificationContext } from "../context/SurveynotificationContext";
 import io from "socket.io-client";
@@ -8,6 +9,7 @@ import io from "socket.io-client";
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const [socket, setSocket] = useState(null);
 
   // Regular notification context
@@ -28,168 +30,149 @@ const NotificationDropdown = () => {
     markAsRead: markSurveyAsRead,
   } = useSurveyNotificationContext();
 
+  // Initialize socket connection
+  useEffect(() => {
+    if (user?.id) {
+      const newSocket = io(process.env.REACT_APP_API_URL);
+      setSocket(newSocket);
+
+      newSocket.emit("join-user-room", { userId: user.id });
+
+      return () => {
+        if (newSocket) {
+          newSocket.disconnect();
+        }
+      };
+    }
+  }, [user]);
+
   // Fetch notifications when component mounts
   useEffect(() => {
     const fetchNotifications = async () => {
-      try {
-        const userId = localStorage.getItem("userId");
-        if (userId) {
+      if (user?.id) {
+        try {
           await Promise.all([
-            getRegularNotifications(userId),
-            getSurveyNotifications(userId),
+            getRegularNotifications(user.id),
+            getSurveyNotifications(user.id),
           ]);
+        } catch (error) {
+          console.error("Error fetching notifications:", error);
         }
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
       }
     };
 
     fetchNotifications();
-  }, [getRegularNotifications, getSurveyNotifications]);
+  }, [user]);
 
-  // Socket connection setup
+  // Handle socket events for notifications
   useEffect(() => {
-    const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
-    setSocket(newSocket);
+    if (socket && user?.id) {
+      socket.on("receive-notification", async () => {
+        await getRegularNotifications(user.id);
+      });
 
-    newSocket.on("newNotification", async () => {
-      const userId = localStorage.getItem("userId");
-      if (userId) {
-        await Promise.all([
-          getRegularNotifications(userId),
-          getSurveyNotifications(userId),
-        ]);
-      }
-    });
+      socket.on("new_survey_notification", async () => {
+        await getSurveyNotifications(user.id);
+      });
 
-    return () => {
-      newSocket.off("newNotification");
-      newSocket.disconnect();
-    };
-  }, [getRegularNotifications, getSurveyNotifications]);
-
-
-  
-  const handleSurveyNotificationClick = async (notification) => {
-    try {
-      console.log("Handling survey notification:", notification);
-      if (!notification.read) {
-        const notificationId = notification._id;
-        await markSurveyAsRead(notificationId);
-        // Refresh notifications
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-          await getSurveyNotifications(userId);
-        }
-      }
-
-      // Navigate to survey join page with the correct code
-      if (notification.joinCode) {
-        navigate(`/joinsurvey?code=${notification.joinCode}`);
-      } else if (notification.type === "survey_result" && notification.sessionId) {
-        navigate(`/leaderboard?sessionId=${notification.sessionId}`);
-      }
-      setIsOpen(false);
-      setIsOpen(false);
-    } catch (error) {
-      console.error("Error handling survey notification:", error);
+      return () => {
+        socket.off("receive-notification");
+        socket.off("new_survey_notification");
+      };
     }
-  };
+  }, [socket, user]);
 
-  const handleRegularNotificationClick = async (notification) => {
+  const handleNotificationClick = async (notification) => {
     try {
-      console.log("Handling regular notification:", notification);
-      if (!notification.read) {
-        await markRegularAsRead(notification._id);
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-          await getRegularNotifications(userId);
+      if (notification.type === "Survey-Invitation") {
+        if (!notification.read) {
+          await markSurveyAsRead(notification._id);
+          if (user?.id) {
+            await getSurveyNotifications(user.id);
+          }
         }
-      }
 
-      if (notification.type === "quiz_result" && notification.sessionId) {
-        navigate(`/leaderboard?sessionId=${notification.sessionId}`);
-      } else if (notification.sixDigitCode) {
-        navigate(`/join?code=${notification.sixDigitCode}`);
+        if (notification.joinCode) {
+          navigate(`/joinsurvey?code=${notification.joinCode}`);
+        } else if (
+          notification.type === "survey_result" &&
+          notification.sessionId
+        ) {
+          navigate(`/leaderboard?sessionId=${notification.sessionId}`);
+        }
+      } else {
+        if (!notification.read) {
+          await markRegularAsRead(notification._id);
+          if (user?.id) {
+            await getRegularNotifications(user.id);
+          }
+        }
+
+        if (notification.type === "quiz_result" && notification.sessionId) {
+          navigate(`/leaderboard?sessionId=${notification.sessionId}`);
+        } else if (notification.sixDigitCode) {
+          navigate(`/join?code=${notification.sixDigitCode}`);
+        }
       }
 
       setIsOpen(false);
     } catch (error) {
-      console.error("Error handling regular notification:", error);
+      console.error("Error handling notification click:", error);
     }
   };
 
-  const handleNotificationClick = (notification) => {
-    if (notification.type === "Survey-Invitation") {
-      handleSurveyNotificationClick(notification);
-    } else {
-      handleRegularNotificationClick(notification);
-    }
-  };
-
-  const renderNotificationMessage = (notification) => {
-    switch (notification.type) {
-      case "Survey-Invitation":
-        return (
-          <div className="text-sm">
-            <span className="text-gray-600 font-medium">Survey Invitation</span>
-            <div className="text-gray-500 text-sm mt-1">
-              <span>{notification.message}</span>
-            </div>
-            {notification.surveyJoinCode && (
-              <div className="text-xs text-gray-500 mt-1">
-                <span className="font-medium">Join Code: </span>
-                <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                  {notification.surveyJoinCode}
-                </span>
-              </div>
-            )}
-            <div className="text-xs text-gray-500 mt-1">
-              <span className="font-medium">Click to participate</span>
-            </div>
-          </div>
-        );
-      case "quiz_result":
-        return (
-          <div className="text-sm">
-            <span className="text-gray-600 font-medium">
-              Quiz Result Available
-            </span>
-            <div className="text-gray-500 text-sm mt-1">
-              <span>Score: {notification.score}</span>
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <div className="text-sm">
-            <span className="text-gray-600">{notification.message}</span>
-          </div>
-        );
-    }
-  };
-
-  // Debug logging
-  useEffect(() => {
-    console.log("Survey Notifications:", surveyNotifications);
-    console.log("Regular Notifications:", regularNotifications);
-  }, [surveyNotifications, regularNotifications]);
-
-  // Combine and sort all notifications
+  // Combine and sort notifications
   const allNotifications = [
-    ...regularNotifications,
-    ...surveyNotifications,
+    ...(regularNotifications || []),
+    ...(surveyNotifications || []),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const unreadCount =
-    regularNotifications.filter((n) => !n.read).length +
-    surveyNotifications.filter((n) => !n.read).length;
+  // Calculate unread count
+  const unreadCount = allNotifications.filter((n) => !n.read).length;
+
+  // Render notification message based on type
+  const renderNotificationMessage = (notification) => {
+    const messageComponents = {
+      "Survey-Invitation": () => (
+        <div className="text-sm">
+          <span className="text-gray-600 font-medium">Survey Invitation</span>
+          <div className="text-gray-500 text-sm mt-1">
+            <span>{notification.message}</span>
+          </div>
+          {notification.joinCode && (
+            <div className="text-xs text-gray-500 mt-1">
+              <span className="font-medium">Join Code: </span>
+              <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                {notification.joinCode}
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+      quiz_result: () => (
+        <div className="text-sm">
+          <span className="text-gray-600 font-medium">
+            Quiz Result Available
+          </span>
+          <div className="text-gray-500 text-sm mt-1">
+            <span>Score: {notification.score}</span>
+          </div>
+        </div>
+      ),
+      default: () => (
+        <div className="text-sm">
+          <span className="text-gray-600">{notification.message}</span>
+        </div>
+      ),
+    };
+
+    const MessageComponent =
+      messageComponents[notification.type] || messageComponents.default;
+    return <MessageComponent />;
+  };
 
   return (
-    <div
-      className="relative notification-dropdown"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <div
         className="cursor-pointer relative"
         onClick={() => setIsOpen(!isOpen)}
@@ -222,7 +205,7 @@ const NotificationDropdown = () => {
             ) : allNotifications.length > 0 ? (
               allNotifications.map((notification) => (
                 <div
-                  key={notification.id || notification._id}
+                  key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
                   className={`block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
                     !notification.read ? "bg-blue-50" : ""

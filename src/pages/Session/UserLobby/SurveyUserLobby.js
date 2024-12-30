@@ -20,17 +20,17 @@ const SurveyUserLobby = () => {
 
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
+      const newSocket = io(`${process.env.REACT_APP_API_URL}`);
       setSocket(newSocket);
-  
+
       // Join the survey session with full user details
       newSocket.emit("join-survey-session", {
         sessionId,
         userId: user._id,
         username: user.username,
-        email: user.email  // Add email to the emission
+        email: user.email, // Add email to the emission
       });
-  
+
       return () => newSocket.disconnect();
     }
   }, [isAuthenticated, user, joinCode, sessionId]);

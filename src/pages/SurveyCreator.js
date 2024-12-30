@@ -9,7 +9,7 @@ import { useQuestionContext } from "../context/questionContext";
 import { useSurveyContext } from "../context/surveyContext";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import SurveySlideEditor from "../models/SurveySlideEditor";
-import { useSurveySlideContext } from "../context/surveySlideContext";
+import { useSurveySlideContext } from "../context/SurveySlideContext";
 
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -154,13 +154,16 @@ const SurveyCreator = () => {
     formData.append("media", file);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/media/upload`, {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/media/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Image upload failed");

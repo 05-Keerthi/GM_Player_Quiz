@@ -23,7 +23,7 @@ const UserLobby = () => {
   // Initialize socket and join session
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}/api`);
+      const newSocket = io(`${process.env.REACT_APP_API_URL}`);
       setSocket(newSocket);
 
       newSocket.emit("join-session", {
@@ -42,7 +42,9 @@ const UserLobby = () => {
     if (socket) {
       socket.on("session-started", (data) => {
         console.log("Session started data:", data);
-        navigate(`/play?quizId=${data.session.quiz._id}&sessionId=${sessionId}`);
+        navigate(
+          `/play?quizId=${data.session.quiz._id}&sessionId=${sessionId}`
+        );
       });
 
       socket.on("next-item", ({ type, item }) => {
