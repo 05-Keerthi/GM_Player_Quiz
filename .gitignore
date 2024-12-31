@@ -5,5 +5,5 @@
 .env
 
 # Docker files
-Dockerfile
+
 .dockerignore
