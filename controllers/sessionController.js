@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const Session = require("../models/session");
 const Quiz = require("../models/quiz");
 const Question = require("../models/question");
@@ -6,15 +5,6 @@ const QRCode = require("qrcode");
 const crypto = require("crypto");
 const Media = require("../models/Media");
 const Slide = require("../models/slide");
-=======
-const Session = require('../models/session');
-const Quiz = require('../models/quiz');
-const Question = require('../models/question');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
-const Media = require('../models/Media');
-const Slide = require('../models/slide'); 
->>>>>>> 7d8636dca3bcc12b92092d6e871edbfa13ca1534
 const User = require("../models/User");
 const Report = require("../models/Report");
 const Answer = require("../models/answer");
@@ -220,7 +210,6 @@ exports.startSession = async (req, res) => {
     res.status(500).json({ message: "Error starting the session", error });
   }
 };
-
 
 exports.nextQuestion = async (req, res) => {
   const { joinCode, sessionId } = req.params;
