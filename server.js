@@ -1,4 +1,3 @@
-
 const app = require('./app');
 const http = require('http');
 const connectDB = require('./config/db');

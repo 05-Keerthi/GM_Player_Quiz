@@ -166,8 +166,6 @@ exports.createNotification = async (req, res) => {
 };
 
 
-
-// Get all notifications for the authenticated user
 // GET /api/notifications/:userId - Get all notifications for the authenticated user or a specific user by userId
 exports.getNotificationsByUserId = async (req, res) => {
   const { userId } = req.params;

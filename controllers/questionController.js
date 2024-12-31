@@ -61,72 +61,6 @@ exports.addQuestion = async (req, res) => {
   }
 };
 
-// exports.addQuestion = async (req, res) => {
-//   const { quizId } = req.params;
-//   const { title, type, imageUrl, options, points, timer } = req.body;
-
-//   try {
-//     // Validate if the quiz exists
-//     const quiz = await Quiz.findById(quizId);
-//     if (!quiz) {
-//       return res.status(404).json({ message: 'Quiz not found' });
-//     }
-
-//     let fullImageUrl = null;
-
-//     if (imageUrl) {
-//       // Fetch the image document by ID (using Media model)
-//       const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
-//       if (!image) {
-//         return res.status(404).json({ message: 'Image not found' });
-//       }
-
-//       // Base URL for constructing the full image path
-//       const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
-
-//       // Construct the full image URL (from the Media path) and encode it for spaces
-//       const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
-//       fullImageUrl = `${baseUrl}${encodedImagePath}`;
-//     }
-
-//     // Extract the correct answer from the options
-//     const correctOption = options.find(option => option.isCorrect);
-//     if (!correctOption) {
-//       return res.status(400).json({ message: 'At least one option must have isCorrect set to true' });
-//     }
-
-//     // Create a new question
-//     const newQuestion = new Question({
-//       quiz: quizId,
-//       title,
-//       type,
-//       imageUrl: imageUrl ? imageUrl : null, // Save the image ID if provided, otherwise null
-//       options,
-//       correctAnswer: correctOption.text, // Automatically set the correctAnswer from options
-//       points,
-//       timer
-//     });
-
-//     await newQuestion.save();
-
-//     quiz.questions.push(newQuestion._id);
-//     await quiz.save();
-
-//     // Include the full image URL in the response if available
-//     const responseQuestion = {
-//       ...newQuestion.toObject(),
-//       imageUrl: fullImageUrl // Replace image ID with the full URL in the response if it exists
-//     };
-
-//     res.status(201).json(responseQuestion);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// };
-
-
-
 exports.getQuestions = async (req, res) => {
   const { quizId } = req.params;
 
@@ -273,59 +207,6 @@ exports.updateQuestion = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Update the updateQuestion function in questionController.js
-// exports.updateQuestion = async (req, res) => {
-//   const { id } = req.params;
-//   const { title, type, imageUrl, options, correctAnswer, points, timer } = req.body;
-
-//   try {
-//     const question = await Question.findById(id);
-//     if (!question) {
-//       return res.status(404).json({ message: "Question not found" });
-//     }
-
-//     // Handle imageUrl - convert URL to Media ID if needed
-//     const mediaId = await getMediaIdFromPath(imageUrl);
-    
-//     // Update fields
-//     question.title = title || question.title;
-//     question.type = type || question.type;
-//     question.imageUrl = mediaId || question.imageUrl;
-//     question.options = options || question.options;
-//     question.correctAnswer = correctAnswer || question.correctAnswer;
-//     question.points = points || question.points;
-//     question.timer = timer || question.timer;
-
-//     await question.save();
-
-//     // Populate imageUrl to include Media details
-//     const updatedQuestion = await Question.findById(id).populate("imageUrl");
-
-//     // Base URL for constructing the full image path
-//     const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
-
-//     // Construct full URL if imageUrl exists
-//     let fullImageUrl = null;
-//     if (updatedQuestion.imageUrl && updatedQuestion.imageUrl.path) {
-//       const encodedImagePath = encodeURIComponent(updatedQuestion.imageUrl.path.split("\\").pop());
-//       fullImageUrl = `${baseUrl}${encodedImagePath}`;
-//     }
-
-//     res.status(200).json({
-//       message: "Question updated successfully",
-//       question: {
-//         ...updatedQuestion.toObject(),
-//         imageUrl: fullImageUrl,
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
-
 
 
 exports.deleteQuestion = async (req, res) => {

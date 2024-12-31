@@ -3,3 +3,7 @@
 
 # Environment variables
 .env
+
+# Docker files
+Dockerfile
+.dockerignore

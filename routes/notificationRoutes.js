@@ -6,8 +6,7 @@ const { auth, isAdmin } = require('../middlewares/auth'); // Add your auth middl
 // Create a notification (admin only)
 router.post('/notifications', auth, isAdmin, notificationController.createNotification);
 
-// // Get all notifications for the authenticated user
-// router.get('/notifications', auth, notificationController.getNotifications);
+// Get all notifications for the authenticated user
 
 router.get('/notifications/:userId',auth, notificationController.getNotificationsByUserId);
 
