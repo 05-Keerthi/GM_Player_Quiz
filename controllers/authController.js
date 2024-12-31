@@ -66,56 +66,6 @@ const register = async (req, res) => {
   }
 };
 
-// // Login user
-// const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     const existingUser = await User.findOne({ email }).populate("tenantId");
-
-//     if (!existingUser) {
-//       return res.status(400).json({ message: "Invalid Email." });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, existingUser.password);
-//     if (!isMatch) {
-//       return res.status(400).json({ message: "Invalid Password." });
-//     }
-
-//     const token = generateAccessToken(existingUser);
-//     const refreshToken = generateRefreshToken(existingUser);
-
-//     // Store refresh token
-//     const refreshTokenInstance = new RefreshToken({
-//       token: refreshToken,
-//       userId: existingUser._id,
-//     });
-//     await refreshTokenInstance.save();
-
-//     // Log the activity
-//     const activityLog = new ActivityLog({
-//       user: existingUser._id,
-//       activityType: "login",
-//       details: {
-//         ip: req.ip, // Optionally log IP address
-//       },
-//     });
-//     await activityLog.save();
-
-//     res.status(200).json({
-//       token,
-//       refresh_token: refreshToken,
-//       user: {
-//         id: existingUser._id,
-//         username: existingUser.username,
-//         email: existingUser.email,
-//         role: existingUser.role,
-//         tenantId: existingUser.tenantId,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 
 // Login user
 const login = async (req, res) => {

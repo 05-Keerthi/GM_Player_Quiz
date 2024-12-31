@@ -7,7 +7,7 @@ const activityLogSchema = new mongoose.Schema({
     enum: ['login', 'quiz_create', 'quiz_play', 'quiz_share', 'subscription_change'], 
     required: true 
   },
-  details: { type: Map, of: String }, // Additional details stored as key-value pairs
+  details: { type: Map, of: String }, 
   createdAt: { type: Date, default: Date.now },
 });
 
