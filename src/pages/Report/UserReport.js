@@ -20,7 +20,8 @@ import { useReportContext } from "../../context/ReportContext";
 const UserReport = () => {
   const { quizId, userId } = useParams();
   const navigate = useNavigate();
-  const { getUserReportByQuiz, currentReport, loading, error } = useReportContext();
+  const { getUserReportByQuiz, currentReport, loading, error } =
+    useReportContext();
 
   useEffect(() => {
     if (quizId && userId) {
@@ -29,7 +30,7 @@ const UserReport = () => {
   }, [quizId, userId]);
 
   const handleBack = () => {
-    navigate(-1);
+    navigate(`/userreports/${userId}`);
   };
 
   if (loading) {

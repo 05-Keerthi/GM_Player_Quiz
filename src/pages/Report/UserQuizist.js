@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../../components/NavbarComp";
 import {
   Container,
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -12,75 +13,12 @@ import {
   Paper,
   CircularProgress,
   Typography,
-  Collapse,
-  IconButton,
-  Box
 } from "@mui/material";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useReportContext } from "../../context/ReportContext";
 import { paginateData, PaginationControls } from "../../utils/pagination";
 
-// Row component to handle expandable attempts
-const QuizRow = ({ quizData, userId }) => {
-  const [open, setOpen] = useState(false);
-  
-  // Group attempts by quiz
-  const attempts = quizData.attempts.sort((a, b) => 
-    new Date(b.completedAt) - new Date(a.completedAt)
-  );
-
-  return (
-    <>
-      <TableRow hover>
-        <TableCell>
-          <IconButton size="small" onClick={() => setOpen(!open)}>
-            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-          </IconButton>
-        </TableCell>
-        <TableCell>{quizData.quizTitle}</TableCell>
-        <TableCell>{attempts.length}</TableCell>
-        <TableCell>{Math.max(...attempts.map(a => a.totalScore))}</TableCell>
-        <TableCell>{new Date(attempts[0].completedAt).toLocaleString()}</TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box margin={1}>
-              <Typography variant="h6" gutterBottom component="div">
-                Attempts
-              </Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Attempt #</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Score</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {attempts.map((attempt, index) => (
-                    <TableRow key={attempt._id}>
-                      <TableCell>{attempts.length - index}</TableCell>
-                      <TableCell>{new Date(attempt.completedAt).toLocaleString()}</TableCell>
-                      <TableCell>{attempt.totalScore}</TableCell>
-                      <TableCell>
-          
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
-    </>
-  );
-};
-
 const UserQuizList = () => {
-
+  const navigate = useNavigate();
   const { userId } = useParams();
   const { getUserReports, reports, loading, error } = useReportContext();
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +30,9 @@ const UserQuizList = () => {
     }
   }, [userId]);
 
+  const handleQuizClick = (quizId) => {
+    navigate(`/reports/${quizId}/user/${userId}`);
+  };
 
   if (loading) {
     return (
@@ -109,30 +50,39 @@ const UserQuizList = () => {
       <>
         <Navbar />
         <div className="flex justify-center items-center h-screen text-red-500">
-          <Typography variant="h6" color="error" gutterBottom>
-            {error}
-          </Typography>
+          <div className="text-center">
+            <Typography variant="h6" color="error" gutterBottom>
+              {error}
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       </>
     );
   }
 
-  // Group reports by quiz
-  const groupedReports = reports.reduce((acc, report) => {
-    const quizId = report.quiz?._id;
-    if (!acc[quizId]) {
-      acc[quizId] = {
-        quizId,
-        quizTitle: report.quiz?.title || "N/A",
-        attempts: []
-      };
-    }
-    acc[quizId].attempts.push(report);
-    return acc;
-  }, {});
+  if (!reports || reports.length === 0) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex justify-center items-center h-screen">
+          <Typography variant="h6">No quizzes taken yet</Typography>
+        </div>
+      </>
+    );
+  }
 
-  const quizList = Object.values(groupedReports);
-  const { currentItems, totalPages } = paginateData(quizList, currentPage, itemsPerPage);
+  const { currentItems, totalPages } = paginateData(
+    reports,
+    currentPage,
+    itemsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,21 +96,30 @@ const UserQuizList = () => {
             <Table aria-label="Quiz List Table">
               <TableHead>
                 <TableRow>
-                  <TableCell />
                   <TableCell>Quiz Title</TableCell>
-                  <TableCell>Total Attempts</TableCell>
-                  <TableCell>Best Score</TableCell>
-                  <TableCell>Last Attempt Date</TableCell>
+                  <TableCell>Completion Date</TableCell>
+                  <TableCell>Score</TableCell>
+                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {currentItems.map((quizData) => (
-                  <QuizRow 
-                    key={quizData.quizId}
-                    quizData={quizData}
-                    userId={userId}
-            
-                  />
+                {currentItems.map((report) => (
+                  <TableRow key={report._id} hover className="cursor-pointer">
+                    <TableCell>{report.quiz?.title || "N/A"}</TableCell>
+                    <TableCell>
+                      {new Date(report.completedAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>{report.totalScore}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleQuizClick(report.quiz?._id)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>
