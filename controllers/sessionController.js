@@ -1,16 +1,15 @@
-const Session = require('../models/session');
-const Quiz = require('../models/quiz');
-const Question = require('../models/question');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
-const Media = require('../models/Media');
-const Slide = require('../models/slide'); 
+const Session = require("../models/session");
+const Quiz = require("../models/quiz");
+const Question = require("../models/question");
+const QRCode = require("qrcode");
+const crypto = require("crypto");
+const Media = require("../models/Media");
+const Slide = require("../models/slide");
 const User = require("../models/User");
-const Report = require('../models/Report');
-const Answer = require('../models/answer');
-const Leaderboard = require('../models/leaderBoard');
-const ActivityLog = require('../models/ActivityLog');
-
+const Report = require("../models/Report");
+const Answer = require("../models/answer");
+const Leaderboard = require("../models/leaderBoard");
+const ActivityLog = require("../models/ActivityLog");
 
 // create a new session for quiz
 exports.createSession = async (req, res) => {
@@ -26,13 +25,15 @@ exports.createSession = async (req, res) => {
       quiz: quizId,
       host: hostId,
       joinCode,
-      status: 'waiting',
+      status: "waiting",
     });
 
     const savedSession = await session.save();
 
     // Now construct qrData using the session ID
-    const qrData = `${req.protocol}://${req.get('host')}/api/sessions/${joinCode}/${savedSession._id}/join`;
+    const qrData = `${req.protocol}://${req.get(
+      "host"
+    )}/api/sessions/${joinCode}/${savedSession._id}/join`;
 
     // Generate QR code as base64
     const qrCodeImageUrl = await QRCode.toDataURL(qrData);
@@ -66,10 +67,9 @@ exports.createSession = async (req, res) => {
       createdAt: populatedSession.createdAt,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating the session', error });
+    res.status(500).json({ message: "Error creating the session", error });
   }
 };
-
 
 // join a session(user)
 exports.joinSession = async (req, res) => {
@@ -137,14 +137,10 @@ exports.startSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
-    // Find and populate the session
     const session = await Session.findOne({
       joinCode,
       _id: sessionId,
-    })
-      .populate("quiz")
-      .populate("players", "username email")
-      .populate("host", "username email");
+    }).populate("quiz");
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -154,9 +150,13 @@ exports.startSession = async (req, res) => {
       return res.status(400).json({ message: "Session cannot be started" });
     }
 
-    // Fetch both questions and slides
-    const questions = await Question.find({ _id: { $in: session.quiz.questions } });
-    const slides = await Slide.find({ _id: { $in: session.quiz.slides } });
+    // Fetch questions and slides with populated imageUrl
+    const questions = await Question.find({
+      _id: { $in: session.quiz.questions },
+    }).populate("imageUrl", "path");
+    const slides = await Slide.find({
+      _id: { $in: session.quiz.slides },
+    }).populate("imageUrl", "path");
 
     session.status = "in_progress";
     session.questions = questions.map((q) => q._id);
@@ -164,67 +164,52 @@ exports.startSession = async (req, res) => {
     session.startTime = Date.now();
     await session.save();
 
-    // Construct Base URL
-    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+    // Transform questions to include full image URLs
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
-    // Process questions to include full image URLs and correct answers
-    const questionsWithImageUrls = await Promise.all(
-      questions.map(async (question) => {
-        let fullImageUrl = null;
-        if (question.imageUrl) {
-          const media = await Media.findById(question.imageUrl);
-          if (media && media.path) {
-            const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
-            fullImageUrl = `${baseUrl}${encodedPath}`;
-          }
-        }
-        return {
-          ...question.toObject(),
-          imageUrl: fullImageUrl,
-        };
-      })
-    );
+    const processedQuestions = questions.map((question) => {
+      const questionObj = question.toObject();
+      if (questionObj.imageUrl && questionObj.imageUrl.path) {
+        const encodedImagePath = encodeURIComponent(
+          questionObj.imageUrl.path.split("\\").pop()
+        );
+        questionObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+      }
+      return questionObj;
+    });
 
-    // Process slides to include full image URLs
-    const slidesWithImageUrls = await Promise.all(
-      slides.map(async (slide) => {
-        let fullImageUrl = null;
-        if (slide.imageUrl) {
-          const media = await Media.findById(slide.imageUrl);
-          if (media && media.path) {
-            const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
-            fullImageUrl = `${baseUrl}${encodedPath}`;
-          }
-        }
-        return {
-          ...slide.toObject(),
-          imageUrl: fullImageUrl,
-        };
-      })
-    );
+    // Transform slides to include full image URLs
+    const processedSlides = slides.map((slide) => {
+      const slideObj = slide.toObject();
+      if (slideObj.imageUrl && slideObj.imageUrl.path) {
+        const encodedImagePath = encodeURIComponent(
+          slideObj.imageUrl.path.split("\\").pop()
+        );
+        slideObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+      }
+      return slideObj;
+    });
 
     // Emit the session start event
     const io = req.app.get("socketio");
     io.emit("session-started", {
       session,
-      questions: questionsWithImageUrls,
-      slides: slidesWithImageUrls,
+      questions: processedQuestions,
+      slides: processedSlides,
     });
 
     res.status(200).json({
       message: "Session started successfully",
       session,
-      questions: questionsWithImageUrls,
-      slides: slidesWithImageUrls,
+      questions: processedQuestions,
+      slides: processedSlides,
     });
   } catch (error) {
     console.error("Start session error:", error);
     res.status(500).json({ message: "Error starting the session", error });
   }
 };
-
-
-// end the session
 
 exports.nextQuestion = async (req, res) => {
   const { joinCode, sessionId } = req.params;
@@ -243,39 +228,32 @@ exports.nextQuestion = async (req, res) => {
       return res.status(400).json({ message: "Session is not in progress" });
     }
 
-    const quiz = await Quiz.findById(session.quiz)
-      .populate("questions")
-      .populate("slides");
+    const quiz = await Quiz.findById(session.quiz._id)
+      .populate({
+        path: "questions",
+        populate: { path: "imageUrl", select: "path" },
+      })
+      .populate({
+        path: "slides",
+        populate: { path: "imageUrl", select: "path" },
+      });
 
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // Validate `quiz.order`
-    const validIds = [
-      ...quiz.questions.map((q) => q._id.toString()),
-      ...quiz.slides.map((s) => s._id.toString()),
-    ];
-
-    const invalidIds = quiz.order.filter((item) => !validIds.includes(item.id.toString()));
-
-    // Remove invalid IDs from the order
-    if (invalidIds.length > 0) {
-      console.warn("Cleaning invalid IDs from quiz.order:", invalidIds);
-      quiz.order = quiz.order.filter((item) =>
-        validIds.includes(item.id.toString())
-      );
-      await quiz.save();
-    }
-
-    // Get the current index and determine the next item
+    // Get current index and determine next item
     const currentIndex = session.currentQuestion
-      ? quiz.order.findIndex((item) => item.id.toString() === session.currentQuestion.toString())
+      ? quiz.order.findIndex(
+          (item) => item.id.toString() === session.currentQuestion.toString()
+        )
       : -1;
 
     const nextIndex = currentIndex + 1;
     if (nextIndex >= quiz.order.length) {
-      return res.status(400).json({ message: "No more items left in the session" });
+      return res
+        .status(400)
+        .json({ message: "No more items left in the session" });
     }
 
     const nextItemId = quiz.order[nextIndex].id;
@@ -284,41 +262,40 @@ exports.nextQuestion = async (req, res) => {
       quiz.slides.find((s) => s._id.toString() === nextItemId.toString());
 
     if (!nextItem) {
-      return res.status(404).json({ message: "Next item not found in the quiz", missingId: nextItemId });
+      return res
+        .status(404)
+        .json({ message: "Next item not found in the quiz" });
     }
 
-    // Update session
+    // Update session with current question
     session.currentQuestion = nextItem._id;
     await session.save();
 
-    // Process image URL if exists
-    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
-    let fullImageUrl = null;
+    // Process the image URL
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    const itemToSend = nextItem.toObject();
 
-    if (nextItem.imageUrl) {
-      const media = await Media.findById(nextItem.imageUrl);
-      if (media && media.path) {
-        const encodedPath = media.path.replace(/ /g, "%20").replace(/\\/g, "/");
-        fullImageUrl = `${baseUrl}${encodedPath}`;
-      }
+    if (itemToSend.imageUrl && itemToSend.imageUrl.path) {
+      const encodedImagePath = encodeURIComponent(
+        itemToSend.imageUrl.path.split("\\").pop()
+      );
+      itemToSend.imageUrl = `${baseUrl}${encodedImagePath}`;
     }
-
-    const itemWithImageUrl = {
-      ...nextItem.toObject(),
-      imageUrl: fullImageUrl,
-    };
 
     // Emit the next item
     const io = req.app.get("socketio");
     io.emit("next-item", {
       type: quiz.order[nextIndex].type,
-      item: itemWithImageUrl,
+      item: itemToSend,
+      isLastItem: nextIndex === quiz.order.length - 1,
     });
 
     res.status(200).json({
       message: "Next item retrieved successfully",
       type: quiz.order[nextIndex].type,
-      item: itemWithImageUrl,
+      item: itemToSend,
+      isLastItem: nextIndex === quiz.order.length - 1,
     });
   } catch (error) {
     console.error("Next question error:", error);
@@ -348,7 +325,9 @@ exports.endSession = async (req, res) => {
     const { title: quizTitle, description: quizDescription } = session.quiz;
 
     // Fetch all leaderboard scores for this session
-    const leaderboardEntries = await Leaderboard.find({ session: sessionId }).sort({ score: -1 });
+    const leaderboardEntries = await Leaderboard.find({
+      session: sessionId,
+    }).sort({ score: -1 });
 
     // Map user IDs to ranks
     const rankMap = leaderboardEntries.reduce((map, entry, index) => {
@@ -363,12 +342,21 @@ exports.endSession = async (req, res) => {
       const userId = player._id;
       const username = player.username;
 
-      const leaderboardEntry = leaderboardEntries.find(entry => entry.player.toString() === userId.toString());
+      const leaderboardEntry = leaderboardEntries.find(
+        (entry) => entry.player.toString() === userId.toString()
+      );
       const leaderboardScore = leaderboardEntry ? leaderboardEntry.score : 0;
       const rank = rankMap[userId.toString()] || null;
 
-      const totalQuestions = await Answer.countDocuments({ session: sessionId, user: userId });
-      const correctAnswers = await Answer.countDocuments({ session: sessionId, user: userId, isCorrect: true });
+      const totalQuestions = await Answer.countDocuments({
+        session: sessionId,
+        user: userId,
+      });
+      const correctAnswers = await Answer.countDocuments({
+        session: sessionId,
+        user: userId,
+        isCorrect: true,
+      });
       const incorrectAnswers = totalQuestions - correctAnswers;
 
       // Save report
@@ -417,9 +405,9 @@ exports.endSession = async (req, res) => {
     });
   } catch (error) {
     console.error("End session error:", error);
-    res.status(500).json({ message: "Error ending the session and generating reports", error });
+    res.status(500).json({
+      message: "Error ending the session and generating reports",
+      error,
+    });
   }
 };
-
-
-
