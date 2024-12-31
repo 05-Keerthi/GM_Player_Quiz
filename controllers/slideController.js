@@ -213,7 +213,7 @@ exports.updateSlide = async (req, res) => {
     return res.status(200).json({
       message: "Slide updated successfully",
       slide: {
-        ...updatedSlide.toObject(),
+        ...slide.toObject(),
         imageUrl: fullImageUrl,
       },
     });
