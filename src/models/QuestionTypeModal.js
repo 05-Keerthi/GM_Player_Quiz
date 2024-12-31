@@ -23,7 +23,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     correctAnswer: [],
     points: 10,
     timer: 10,
-    imageUrl: null,
+    imageUrl: null, // This will store the media ID
     quizId: quizId,
   });
   const [error, setError] = useState(null);
@@ -92,13 +92,16 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         formData.append("media", file);
 
         const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const uploadResponse = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/media/upload`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
 
         if (!uploadResponse.ok) {
           throw new Error("Image upload failed");
@@ -107,15 +110,16 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
 
-        // Set the preview URL using the path from the response
-        const fullUrl = `${API_BASE_URL}/uploads/${mediaData.filename}`;
-        setImagePreview(fullUrl);
-
-        // Store the media ID for backend reference
+        // Set the media ID in the question state
         setQuestion((prev) => ({
           ...prev,
-          imageUrl: mediaData._id,
+          imageUrl: mediaData._id, // Store the media ID
         }));
+
+        // Set the full URL for preview only
+        setImagePreview(
+          `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+        );
       } catch (error) {
         console.error("Image upload error:", error);
         setError("Failed to upload image");
@@ -125,27 +129,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     }
   };
 
-  const handleImageRemove = async () => {
-    if (question.imageUrl) {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(`${API_BASE_URL}/api/media/${question.imageUrl}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to delete image");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        setError("Failed to delete image");
-        return;
-      }
-    }
-
+  const handleImageRemove = () => {
     setImagePreview(null);
     setQuestion((prev) => ({
       ...prev,
@@ -217,7 +201,23 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         throw new Error("Question title is required");
       }
 
-      await onAddQuestion(question);
+      // Prepare the payload exactly as the backend expects
+      const payload = {
+        title: question.title,
+        type: question.type,
+        options: question.options.map((opt) => ({
+          text: opt.text,
+          isCorrect: opt.isCorrect,
+        })),
+        correctAnswer: question.correctAnswer,
+        points: question.points,
+        timer: question.timer,
+        imageUrl: question.imageUrl, // This is already the media ID
+        quizId: question.quizId,
+      };
+
+      // The response will contain the full URL
+      await onAddQuestion(payload);
       setSelectedType(null);
       setStep(1);
       setImagePreview(null);

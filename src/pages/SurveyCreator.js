@@ -9,7 +9,7 @@ import { useQuestionContext } from "../context/questionContext";
 import { useSurveyContext } from "../context/surveyContext";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import SurveySlideEditor from "../models/SurveySlideEditor";
-import { useSurveySlideContext } from "../context/SurveySlideContext";
+import { useSurveySlideContext } from "../context/surveySlideContext";
 
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -155,7 +155,7 @@ const SurveyCreator = () => {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/media/upload`,
+        `${process.env.REACT_APP_API_URL}/media/upload`,
         {
           method: "POST",
           body: formData,

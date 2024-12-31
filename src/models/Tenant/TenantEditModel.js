@@ -1,10 +1,9 @@
-// TenantEditModal.js
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../../context/TenantContext";
 
 const TenantEditModal = ({ isOpen, onClose, tenant }) => {
-  const { updateTenant, getAllTenants } = useTenantContext();
+  const { updateTenant } = useTenantContext();
   const [formData, setFormData] = useState({
     name: "",
     customDomain: "",
@@ -45,8 +44,7 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateTenant(tenant._id, formData);
-      await getAllTenants();
+      const updatedTenant = await updateTenant(tenant._id, formData);
       toast.success("Tenant updated successfully!");
       onClose();
     } catch (error) {

@@ -21,7 +21,8 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     content: "",
     imageUrl: null,
     points: [""],
-    quizId: quizId,
+    quizId: quizId, 
+    position: 0,
   });
   const [error, setError] = useState(null);
 
@@ -62,8 +63,6 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     },
   ];
 
-  const API_BASE_URL = "http://localhost:5000"; // Consider moving to env variable
-
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -75,13 +74,16 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         formData.append("media", file);
 
         const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const uploadResponse = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/media/upload`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
 
         if (!uploadResponse.ok) {
           throw new Error("Image upload failed");
@@ -90,17 +92,18 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
 
-        // Set the preview URL using the path from the response
-        const fullUrl = `${API_BASE_URL}/uploads/${mediaData.filename}`;
-        setImagePreview(fullUrl);
-
-        // Store the media ID for backend reference
+        // Store the media ID
         setSlide((prev) => ({
           ...prev,
-          imageUrl: mediaData._id, // Store the media ID
+          imageUrl: mediaData._id, // Store just the media ID
         }));
 
-        console.log("Image uploaded, mediaId:", mediaData._id); // Debug log
+        // Set preview URL
+        setImagePreview(
+          `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+        );
+
+        console.log("Media uploaded successfully:", mediaData._id); // Debug log
       } catch (error) {
         console.error("Image upload error:", error);
         setError("Failed to upload image");
@@ -108,6 +111,14 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         setIsUploading(false);
       }
     }
+  };
+
+  const handleImageRemove = () => {
+    setImagePreview(null);
+    setSlide((prev) => ({
+      ...prev,
+      imageUrl: null,
+    }));
   };
 
   const handleTypeSelect = (type) => {
@@ -143,7 +154,8 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
 
   const handleSubmit = async () => {
     try {
-      console.log("Current slide state before submit:", slide); // Debug log
+      // Log the current state before submission
+      console.log("Current slide state before submission:", slide);
 
       const finalSlide = {
         title: slide.title,
@@ -154,25 +166,35 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
             : slide.content,
         imageUrl: slide.imageUrl, // This is already the media ID
         position: slide.position || 0,
+        quizId: quizId, // Ensure quizId is included
       };
 
-      console.log("Final slide payload:", finalSlide); // Debug log
+      console.log("Submitting slide payload:", finalSlide); // Debug log
 
       if (!finalSlide.title) {
         throw new Error("Slide title is required");
       }
 
+      // Validate type is one of the allowed values
+      const validTypes = ["classic", "big_title", "bullet_points"];
+      if (!validTypes.includes(finalSlide.type)) {
+        throw new Error(
+          `Invalid slide type. Must be one of: ${validTypes.join(", ")}`
+        );
+      }
+
       await onAddSlide(finalSlide);
+
+      // Reset the form
       setSelectedType(null);
       setStep(1);
       setImagePreview(null);
       onClose();
     } catch (error) {
-      setError(error.message);
       console.error("Slide submission error:", error);
+      setError(error.message);
     }
   };
-
   if (!isOpen) return null;
 
   return (

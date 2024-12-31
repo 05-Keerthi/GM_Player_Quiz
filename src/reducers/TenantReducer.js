@@ -51,10 +51,10 @@ export const tenantReducer = (state, action) => {
       return {
         ...state,
         tenants: state.tenants.map((tenant) =>
-          tenant.id === action.payload.id ? action.payload : tenant
+          tenant._id === action.payload._id ? action.payload : tenant
         ),
         currentTenant:
-          state.currentTenant?.id === action.payload.id
+          state.currentTenant?._id === action.payload._id
             ? action.payload
             : state.currentTenant,
       };
@@ -62,9 +62,11 @@ export const tenantReducer = (state, action) => {
     case ACTIONS.DELETE_TENANT:
       return {
         ...state,
-        tenants: state.tenants.filter((tenant) => tenant.id !== action.payload),
+        tenants: state.tenants.filter(
+          (tenant) => tenant._id !== action.payload
+        ),
         currentTenant:
-          state.currentTenant?.id === action.payload
+          state.currentTenant?._id === action.payload
             ? null
             : state.currentTenant,
       };
@@ -75,13 +77,12 @@ export const tenantReducer = (state, action) => {
         currentTenant: action.payload,
       };
 
-    // Tenant Admin-specific cases
     case ACTIONS.SET_TENANT_ADMINS:
       return {
         ...state,
         currentTenant: {
           ...state.currentTenant,
-          admins: action.payload, // Assuming `admins` is part of the tenant object
+          admins: action.payload,
         },
       };
 
@@ -100,7 +101,7 @@ export const tenantReducer = (state, action) => {
         currentTenant: {
           ...state.currentTenant,
           admins: (state.currentTenant?.admins || []).map((admin) =>
-            admin.id === action.payload.id ? action.payload : admin
+            admin._id === action.payload._id ? action.payload : admin
           ),
         },
       };
@@ -111,7 +112,7 @@ export const tenantReducer = (state, action) => {
         currentTenant: {
           ...state.currentTenant,
           admins: (state.currentTenant?.admins || []).filter(
-            (admin) => admin.id !== action.payload
+            (admin) => admin._id !== action.payload
           ),
         },
       };

@@ -36,8 +36,8 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
         name: "",
         customDomain: "",
         theme: "",
-        primaryColor: "#000000",
-        secondaryColor: "#000000",
+        primaryColor: "#FFFFFF",
+        secondaryColor: "#FFFFFF",
         fontFamily: "",
         logo: "",
       });
