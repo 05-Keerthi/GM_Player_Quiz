@@ -164,81 +164,64 @@ const QuizCreator = () => {
     }
   };
 
-
-const handleAddSlide = async (slideData) => {
-  try {
-    setLoading(true);
-    console.log('Sending slide data:', slideData);
-
-    const response = await authenticatedFetch(
-      `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(slideData),
+  const handleAddSlide = async (slideData) => {
+    try {
+      setLoading(true);
+      console.log('Sending slide data:', slideData);
+  
+      const response = await authenticatedFetch(
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(slideData),
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error(`Failed to add slide: ${response.statusText}`);
       }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to add slide: ${response.statusText}`);
+  
+      const newSlide = await response.json();
+      console.log('Received slide response:', newSlide);
+  
+      // Ensure the slide data is in the correct format for our UI
+      const formattedSlide = {
+        _id: newSlide._id,
+        title: newSlide.title,
+        content: newSlide.content,
+        type: newSlide.type,
+        imageUrl: newSlide.imageUrl, // This will be the full URL from the response
+        position: newSlide.position || 0,
+        quiz: newSlide.quiz
+      };
+  
+      // Update slides array
+      setSlides(prevSlides => [...prevSlides, formattedSlide]);
+  
+      // Create new ordered item
+      const newOrderedItem = {
+        id: formattedSlide._id,
+        type: "slide",
+        data: formattedSlide
+      };
+  
+      // Update ordered items
+      setOrderedItems(prevItems => [...prevItems, newOrderedItem]);
+  
+      setCurrentSlide(formattedSlide);
+      setIsAddSlideOpen(false);
+      showAlert("Slide added successfully", "success");
+  
+    } catch (err) {
+      console.error('Error adding slide:', err);
+      handleApiError(err);
+    } finally {
+      setLoading(false);
     }
-
-    const newSlide = await response.json();
-    console.log('Received slide response:', newSlide);
-
-    // Ensure the slide data is in the correct format for our UI
-    const formattedSlide = {
-      _id: newSlide._id,
-      title: newSlide.title,
-      content: newSlide.content,
-      type: newSlide.type,
-      imageUrl: newSlide.imageUrl,
-      position: newSlide.position || 0,
-      quiz: newSlide.quiz
-    };
-
-    // Update slides array
-    const updatedSlides = [...slides, formattedSlide];
-    setSlides(updatedSlides);
-
-    // Create new ordered item
-    const newOrderedItem = {
-      id: formattedSlide._id,
-      type: "slide",
-      data: formattedSlide
-    };
-
-    // Update ordered items
-    const updatedOrderedItems = [...orderedItems, newOrderedItem];
-    setOrderedItems(updatedOrderedItems);
-
-    // Save the updated quiz state to backend
-    await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        title: quiz.title,
-        description: quiz.description,
-        questions: questions,
-        slides: updatedSlides,
-        order: updatedOrderedItems.map((item) => ({
-          id: item.id,
-          type: item.type,
-        })),
-      }),
-    });
-
-    setCurrentSlide(formattedSlide);
-    setIsAddSlideOpen(false);
-    showAlert("Slide added successfully", "success");
-  } catch (err) {
-    console.error('Error adding slide:', err);
-    handleApiError(err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleUpdateSlide = async (slideId, updatedData) => {
     try {
@@ -497,7 +480,7 @@ const handleAddSlide = async (slideData) => {
       const formData = new FormData();
       formData.append("media", file);
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/media/upload`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/media/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

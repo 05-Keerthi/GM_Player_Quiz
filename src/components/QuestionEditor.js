@@ -125,7 +125,7 @@ const handleImageUpload = async (e) => {
       formData.append("media", file);
 
       const token = localStorage.getItem("token");
-      const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+      const uploadResponse = await fetch(`${API_BASE_URL}/media/upload`, {
         method: "POST",
         body: formData,
         headers: {

@@ -70,28 +70,29 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     if (file) {
       setIsUploading(true);
       setUploadError(null);
-
+  
       try {
         const formData = new FormData();
         formData.append("media", file);
-
+  
         const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/api/media/upload`, {
+        const uploadResponse = await fetch(`${API_BASE_URL}/media/upload`, {
           method: "POST",
           body: formData,
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-
+  
         if (!uploadResponse.ok) {
           throw new Error("Image upload failed");
         }
-
+  
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
-
-        setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+  
+        // Set both preview URL and store the media ID
+        setImagePreview(`${API_BASE_URL}/uploads/${encodeURIComponent(mediaData.path.split('\\').pop())}`);
         if (slide) {
           slide.imageUrl = mediaData._id;
         }
@@ -103,23 +104,27 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       }
     }
   };
-
+  
+  // 2. Update handleImageRemove in SlideEditor.js
   const handleImageRemove = () => {
     setImagePreview(null);
     if (slide) {
       slide.imageUrl = null;
     }
   };
-
+  
+  // 3. Update handleSave in SlideEditor.js
   const handleSave = async () => {
     try {
       const updatedData = {
         title,
         type: slide.type,
         content: slide.type === "bullet_points" ? points.join("\n") : content,
-        imageUrl: slide.imageUrl, // Will be null if image was removed
+        imageUrl: slide.imageUrl,
+        deleteImage: !imagePreview && slide.imageUrl ? true : undefined
       };
-
+  
+      console.log('Saving slide with data:', updatedData);
       await onUpdate(updatedData);
       onClose();
     } catch (error) {

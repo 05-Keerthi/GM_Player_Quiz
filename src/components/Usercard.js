@@ -132,10 +132,6 @@ const UserManagement = () => {
             </button>
           </>
         )}
-        <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors flex items-center gap-1">
-          <UserPlus size={18} />
-          <span>Invite</span>
-        </button>
       </div>
     );
   };

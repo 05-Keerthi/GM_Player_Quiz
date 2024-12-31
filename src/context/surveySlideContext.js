@@ -36,7 +36,7 @@ export const SurveySlideProvider = ({ children }) => {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/media/upload",
+        "http://localhost:5000/media/upload",
         formData,
         {
           headers: {

@@ -43,16 +43,21 @@ export const userReducer = (state, action) => {
       return {
         ...state,
         users: state.users.map((user) =>
-          user.id === action.payload.id ? action.payload : user
+          user._id === action.payload._id ? action.payload : user
         ),
-        currentUser: action.payload,
+        currentUser:
+          state.currentUser?._id === action.payload._id
+            ? action.payload
+            : state.currentUser,
         loading: false,
       };
 
     case USER_ACTIONS.DELETE_USER_SUCCESS:
       return {
         ...state,
-        users: state.users.filter((user) => user.id !== action.payload),
+        users: state.users.filter((user) => user._id !== action.payload),
+        currentUser:
+          state.currentUser?._id === action.payload ? null : state.currentUser,
         loading: false,
       };
 

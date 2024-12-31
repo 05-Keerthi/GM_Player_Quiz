@@ -303,9 +303,10 @@ export default function HomePage() {
 
         {renderSecondSection()}
 
-        {isCreateModalOpen && (
-          <CreateTenantModal closeModal={() => setIsCreateModalOpen(false)} />
-        )}
+        <CreateTenantModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
       </main>
     </div>
   );

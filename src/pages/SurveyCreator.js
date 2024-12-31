@@ -9,7 +9,7 @@ import { useQuestionContext } from "../context/questionContext";
 import { useSurveyContext } from "../context/surveyContext";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import SurveySlideEditor from "../models/SurveySlideEditor";
-import { useSurveySlideContext } from "../context/SurveySlideContext";
+import { useSurveySlideContext } from "../context/surveySlideContext";
 
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -20,7 +20,7 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 
   return (
     <div
-      className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in`}
+      className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in z-50`}
     >
       <AlertCircle className="w-5 h-5" />
       <p className="flex-1">{message}</p>
@@ -47,19 +47,12 @@ const SurveyCreator = () => {
   const [slideToDelete, setSlideToDelete] = useState(null);
   const [orderedItems, setOrderedItems] = useState([]);
   const [surveyTitle, setSurveyTitle] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { surveyId } = useParams();
   const navigate = useNavigate();
-  const [surveyData, setSurveyData] = useState({
-    title: "",
-    description: "",
-    questions: [],
-    slides: [],
-    order: [],
-  });
 
   const {
-    state: surveyState,
     currentSurvey,
     loading: surveyLoading,
     getSurveyById,
@@ -67,7 +60,6 @@ const SurveyCreator = () => {
   } = useSurveyContext();
 
   const {
-    state: questionState,
     loading: questionLoading,
     createQuestion,
     updateQuestion,
@@ -76,16 +68,15 @@ const SurveyCreator = () => {
   } = useQuestionContext();
 
   const {
-    state: slideState,
     loading: slideLoading,
     createSlide,
     updateSlide,
     deleteSlide,
     getAllSlides,
-    uploadImage,
   } = useSurveySlideContext();
 
-  const loading = surveyLoading || questionLoading || slideLoading;
+  const loading =
+    surveyLoading || questionLoading || slideLoading || isSubmitting;
 
   const showAlert = (message, type = "error") => {
     setAlert({ message, type });
@@ -94,58 +85,7 @@ const SurveyCreator = () => {
 
   const handleApiError = (error) => {
     showAlert(error.message || "An error occurred");
-  };
-
-  useEffect(() => {
-    if (currentSurvey?.title) {
-      setSurveyTitle(currentSurvey.title);
-    }
-  }, [currentSurvey]);
-
-  const handleSettingsUpdate = async (updatedSurvey) => {
-    try {
-      await updateSurvey(surveyId, updatedSurvey);
-      setSurveyTitle(updatedSurvey.title); // Update local state immediately
-      setIsSettingsOpen(false);
-      showAlert("Survey settings updated successfully", "success");
-    } catch (error) {
-      handleApiError(error);
-    }
-  };
-
-  const handleSaveClick = async () => {
-    try {
-      const questionIds = orderedItems
-        .filter((item) => item.type === "question")
-        .map((item) => item.id);
-
-      const slideIds = orderedItems
-        .filter((item) => item.type === "slide")
-        .map((item) => item.id);
-
-      const orderArray = orderedItems.map((item) => ({
-        id: item.id,
-        type: item.type,
-      }));
-
-      await updateSurvey(surveyId, {
-        title: surveyTitle,
-        description: currentSurvey?.description || "",
-        questions: questionIds,
-        slides: slideIds,
-        order: orderArray,
-      });
-
-      // Refresh survey data
-      await getSurveyById(surveyId);
-      showAlert("Survey saved successfully", "success");
-    } catch (error) {
-      handleApiError(error);
-    }
-  };
-
-  const handlePreviewClick = () => {
-    navigate(`/SurveyPreview/${surveyId}`);
+    setIsSubmitting(false);
   };
 
   const handleImageUpload = async (file) => {
@@ -170,8 +110,7 @@ const SurveyCreator = () => {
       }
 
       const data = await response.json();
-      const imageUrl = data.media[0]._id;
-      return imageUrl;
+      return data.media[0]._id;
     } catch (error) {
       console.error("Upload error:", error);
       throw error;
@@ -179,6 +118,7 @@ const SurveyCreator = () => {
   };
 
   const handleAddQuestion = async (questionData) => {
+    setIsSubmitting(true);
     try {
       let imageId = null;
       if (questionData.imageFile) {
@@ -194,17 +134,17 @@ const SurveyCreator = () => {
       const newQuestion = await createQuestion(surveyId, questionPayload);
 
       if (newQuestion && newQuestion._id) {
-        const newOrderedItem = {
-          id: newQuestion._id,
-          type: "question",
-          data: newQuestion,
-        };
+        setOrderedItems((prevItems) => {
+          const newItems = [
+            ...prevItems,
+            {
+              id: newQuestion._id,
+              type: "question",
+              data: newQuestion,
+            },
+          ];
 
-        // Update local state
-        setOrderedItems((prev) => {
-          const newItems = [...prev, newOrderedItem];
-
-          // Update survey immediately with new order
+          // Update survey with new order
           const orderPayload = newItems.map((item) => ({
             id: item.id,
             type: item.type,
@@ -223,16 +163,18 @@ const SurveyCreator = () => {
 
         // Refresh survey data
         await getSurveyById(surveyId);
+        setIsAddingQuestion(false);
+        showAlert("Question added successfully", "success");
       }
-
-      setIsAddingQuestion(false);
-      showAlert("Question added successfully", "success");
     } catch (error) {
       handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateQuestion = async (questionId, updatedData) => {
+    setIsSubmitting(true);
     try {
       let imageId = null;
       if (updatedData.imageFile) {
@@ -252,16 +194,15 @@ const SurveyCreator = () => {
       );
 
       if (updatedQuestion && updatedQuestion._id) {
-        setOrderedItems((prev) =>
-          prev.map((item) => {
-            if (item.type === "question" && item.id === questionId) {
-              return {
-                ...item,
-                data: updatedQuestion,
-              };
-            }
-            return item;
-          })
+        setOrderedItems((prevItems) =>
+          prevItems.map((item) =>
+            item.type === "question" && item.id === questionId
+              ? {
+                  ...item,
+                  data: updatedQuestion,
+                }
+              : item
+          )
         );
       }
 
@@ -269,54 +210,17 @@ const SurveyCreator = () => {
       showAlert("Question updated successfully", "success");
     } catch (error) {
       handleApiError(error);
-    }
-  };
-
-  const handleDeleteQuestion = (e, questionId) => {
-    e.stopPropagation();
-    setItemToDelete(questionId);
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteQuestion(surveyId, itemToDelete);
-
-      if (currentQuestion?._id === itemToDelete) {
-        setCurrentQuestion(null);
-      }
-
-      setOrderedItems((prev) => {
-        const newItems = prev.filter(
-          (item) => !(item.id === itemToDelete && item.type === "question")
-        );
-
-        // Update order after filtering
-        const updatedOrder = newItems
-          .filter((item) => item && item.id)
-          .map((item) => ({
-            id: item.id,
-            type: item.type || "question",
-          }));
-
-        updateSurvey(surveyId, { order: updatedOrder });
-        return newItems;
-      });
-
-      showAlert("Question deleted successfully", "success");
-    } catch (error) {
-      handleApiError(error);
     } finally {
-      setShowDeleteModal(false);
-      setItemToDelete(null);
+      setIsSubmitting(false);
     }
   };
 
-  const handleAddSurveySlide = async (slideData) => {
+  const handleAddSlide = async (slideData) => {
+    setIsSubmitting(true);
     try {
       let imageId = null;
       if (slideData.imageFile) {
-        imageId = await uploadImage(slideData.imageFile);
+        imageId = await handleImageUpload(slideData.imageFile);
       }
 
       const slidePayload = {
@@ -329,17 +233,17 @@ const SurveyCreator = () => {
       const newSlide = await createSlide(surveyId, slidePayload);
 
       if (newSlide && newSlide._id) {
-        const newOrderedItem = {
-          id: newSlide._id,
-          type: "slide",
-          data: newSlide,
-        };
+        setOrderedItems((prevItems) => {
+          const newItems = [
+            ...prevItems,
+            {
+              id: newSlide._id,
+              type: "slide",
+              data: newSlide,
+            },
+          ];
 
-        // Update local state
-        setOrderedItems((prev) => {
-          const newItems = [...prev, newOrderedItem];
-
-          // Create order array for backend
+          // Update survey with new order
           const orderPayload = newItems.map((item) => ({
             id: item.id,
             type: item.type,
@@ -358,20 +262,22 @@ const SurveyCreator = () => {
 
         // Refresh survey data
         await getSurveyById(surveyId);
+        setIsAddingSlide(false);
+        showAlert("Slide added successfully", "success");
       }
-
-      setIsAddingSlide(false);
-      showAlert("Slide added successfully", "success");
     } catch (error) {
       handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateSlide = async (slideId, updatedData) => {
+    setIsSubmitting(true);
     try {
       let imageId = null;
       if (updatedData.imageFile) {
-        imageId = await uploadImage(updatedData.imageFile);
+        imageId = await handleImageUpload(updatedData.imageFile);
       }
 
       const updatePayload = {
@@ -383,16 +289,15 @@ const SurveyCreator = () => {
       const updatedSlide = await updateSlide(slideId, updatePayload);
 
       if (updatedSlide && updatedSlide._id) {
-        setOrderedItems((prev) =>
-          prev.map((item) => {
-            if (item.type === "slide" && item.id === slideId) {
-              return {
-                ...item,
-                data: updatedSlide,
-              };
-            }
-            return item;
-          })
+        setOrderedItems((prevItems) =>
+          prevItems.map((item) =>
+            item.type === "slide" && item.id === slideId
+              ? {
+                  ...item,
+                  data: updatedSlide,
+                }
+              : item
+          )
         );
       }
 
@@ -400,44 +305,78 @@ const SurveyCreator = () => {
       showAlert("Slide updated successfully", "success");
     } catch (error) {
       handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteSlide = (e, slideId) => {
-    e.stopPropagation();
-    setSlideToDelete(slideId);
-    setShowSlideDeleteModal(true);
-  };
-
-  const handleConfirmSlideDelete = async () => {
+  const handleDeleteQuestion = async (questionId) => {
+    setIsSubmitting(true);
     try {
-      await deleteSlide(slideToDelete);
+      await deleteQuestion(surveyId, questionId);
 
-      if (currentSlide?._id === slideToDelete) {
-        setCurrentSlide(null);
-      }
-
-      setOrderedItems((prev) => {
-        const newItems = prev.filter(
-          (item) => !(item.id === slideToDelete && item.type === "slide")
+      setOrderedItems((prevItems) => {
+        const newItems = prevItems.filter(
+          (item) => !(item.id === questionId && item.type === "question")
         );
 
-        // Update order after filtering
-        const updatedOrder = newItems
-          .filter((item) => item && item.id)
-          .map((item) => ({
-            id: item.id,
-            type: item.type || "slide",
-          }));
+        const orderPayload = newItems.map((item) => ({
+          id: item.id,
+          type: item.type,
+        }));
 
-        updateSurvey(surveyId, { order: updatedOrder });
+        updateSurvey(surveyId, {
+          order: orderPayload,
+        });
+
         return newItems;
       });
+
+      if (currentQuestion?._id === questionId) {
+        setCurrentQuestion(null);
+      }
+
+      showAlert("Question deleted successfully", "success");
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const handleDeleteSlide = async (slideId) => {
+    setIsSubmitting(true);
+    try {
+      await deleteSlide(slideId);
+
+      setOrderedItems((prevItems) => {
+        const newItems = prevItems.filter(
+          (item) => !(item.id === slideId && item.type === "slide")
+        );
+
+        const orderPayload = newItems.map((item) => ({
+          id: item.id,
+          type: item.type,
+        }));
+
+        updateSurvey(surveyId, {
+          order: orderPayload,
+        });
+
+        return newItems;
+      });
+
+      if (currentSlide?._id === slideId) {
+        setCurrentSlide(null);
+      }
 
       showAlert("Slide deleted successfully", "success");
     } catch (error) {
       handleApiError(error);
     } finally {
+      setIsSubmitting(false);
       setShowSlideDeleteModal(false);
       setSlideToDelete(null);
     }
@@ -451,39 +390,25 @@ const SurveyCreator = () => {
       const [movedItem] = reorderedItems.splice(sourceIndex, 1);
       reorderedItems.splice(destinationIndex, 0, movedItem);
 
-      // Update local state first
       setOrderedItems(reorderedItems);
 
-      // Create arrays of question and slide IDs
-      const questionIds = reorderedItems
-        .filter((item) => item.type === "question")
-        .map((item) => item.id);
-
-      const slideIds = reorderedItems
-        .filter((item) => item.type === "slide")
-        .map((item) => item.id);
-
-      // Create order payload
       const orderPayload = reorderedItems.map((item) => ({
         id: item.id,
         type: item.type,
       }));
 
-      // Update the survey with all relevant data
       await updateSurvey(surveyId, {
-        questions: questionIds,
-        slides: slideIds,
         order: orderPayload,
       });
 
       showAlert("Order updated successfully", "success");
     } catch (error) {
       handleApiError(error);
-      // Revert to previous state on error
       setOrderedItems((prev) => [...prev]);
     }
   };
 
+  // Load initial survey data
   useEffect(() => {
     const loadSurveyData = async () => {
       if (!surveyId) {
@@ -493,7 +418,7 @@ const SurveyCreator = () => {
 
       try {
         const survey = await getSurveyById(surveyId);
-        setSurveyTitle(survey.Title || "");
+        setSurveyTitle(survey.title || "");
 
         const surveyQuestions = await getAllQuestions(surveyId);
         const surveySlides = await getAllSlides(surveyId);
@@ -506,7 +431,6 @@ const SurveyCreator = () => {
             Array.isArray(survey.order) &&
             survey.order.length > 0
           ) {
-            // Use existing order
             finalOrderedItems = survey.order
               .filter((item) => item && item.id)
               .map((item) => {
@@ -535,7 +459,6 @@ const SurveyCreator = () => {
               })
               .filter(Boolean);
           } else {
-            // Create default order
             finalOrderedItems = [
               ...surveySlides.map((slide) => ({
                 id: slide._id,
@@ -551,20 +474,7 @@ const SurveyCreator = () => {
           }
         }
 
-        // Set ordered items
         setOrderedItems(finalOrderedItems);
-
-        // Initialize survey data
-        setSurveyData({
-          title: survey.title || "",
-          description: survey.description || "",
-          questions: surveyQuestions.map((q) => q._id),
-          slides: surveySlides.map((s) => s._id),
-          order: finalOrderedItems.map((item) => ({
-            id: item.id,
-            type: item.type,
-          })),
-        });
       } catch (error) {
         handleApiError(error);
         navigate("/survey-list");
@@ -572,7 +482,61 @@ const SurveyCreator = () => {
     };
 
     loadSurveyData();
-  }, [surveyId, navigate]);
+  }, [surveyId]);
+
+  // Update survey title when currentSurvey changes
+  useEffect(() => {
+    if (currentSurvey?.title) {
+      setSurveyTitle(currentSurvey.title);
+    }
+  }, [currentSurvey]);
+
+  const handleSettingsUpdate = async (updatedSurvey) => {
+    setIsSubmitting(true);
+    try {
+      await updateSurvey(surveyId, updatedSurvey);
+      setSurveyTitle(updatedSurvey.title);
+      setIsSettingsOpen(false);
+      showAlert("Survey settings updated successfully", "success");
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveClick = async () => {
+    setIsSubmitting(true);
+    try {
+      const orderArray = orderedItems.map((item) => ({
+        id: item.id,
+        type: item.type,
+      }));
+
+      await updateSurvey(surveyId, {
+        title: surveyTitle,
+        description: currentSurvey?.description || "",
+        questions: orderedItems
+          .filter((item) => item.type === "question")
+          .map((item) => item.id),
+        slides: orderedItems
+          .filter((item) => item.type === "slide")
+          .map((item) => item.id),
+        order: orderArray,
+      });
+
+      await getSurveyById(surveyId);
+      showAlert("Survey saved successfully", "success");
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePreviewClick = () => {
+    navigate(`/SurveyPreview/${surveyId}`);
+  };
 
   return (
     <>
@@ -620,7 +584,7 @@ const SurveyCreator = () => {
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-blue-700"
                 }`}
-                onClick={handleSaveClick} // Changed from updateSurvey direct call
+                onClick={handleSaveClick}
                 disabled={loading}
               >
                 {loading ? "Saving..." : "Save"}
@@ -679,9 +643,11 @@ const SurveyCreator = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (item.type === "question") {
-                              handleDeleteQuestion(e, item.id);
+                              setItemToDelete(item.id);
+                              setShowDeleteModal(true);
                             } else {
-                              handleDeleteSlide(e, item.id);
+                              setSlideToDelete(item.id);
+                              setShowSlideDeleteModal(true);
                             }
                           }}
                           className="p-1 text-gray-400 hover:text-red-500 rounded-full"
@@ -699,14 +665,24 @@ const SurveyCreator = () => {
                 </div>
                 <div className="space-y-2 mt-4">
                   <button
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className={`w-full px-4 py-2 bg-blue-600 text-white rounded-lg ${
+                      loading
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-blue-700"
+                    }`}
                     onClick={() => setIsAddingQuestion(true)}
+                    disabled={loading}
                   >
                     Add Question
                   </button>
                   <button
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className={`w-full px-4 py-2 bg-blue-600 text-white rounded-lg ${
+                      loading
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-blue-700"
+                    }`}
                     onClick={() => setIsAddingSlide(true)}
+                    disabled={loading}
                   >
                     Add Slide
                   </button>
@@ -744,7 +720,7 @@ const SurveyCreator = () => {
                     onUpdate={
                       currentSlide
                         ? (data) => handleUpdateSlide(currentSlide._id, data)
-                        : handleAddSurveySlide
+                        : handleAddSlide
                     }
                     onClose={() => {
                       setCurrentSlide(null);
@@ -787,16 +763,6 @@ const SurveyCreator = () => {
         />
 
         {/* Delete Confirmation Modals */}
-        {showSlideDeleteModal && (
-          <ConfirmationModal
-            isOpen={showSlideDeleteModal}
-            onClose={() => setShowSlideDeleteModal(false)}
-            onConfirm={handleConfirmSlideDelete}
-            title="Delete Slide"
-            message="Are you sure you want to delete this slide? This action cannot be undone."
-          />
-        )}
-
         {showDeleteModal && (
           <ConfirmationModal
             isOpen={showDeleteModal}
@@ -804,9 +770,22 @@ const SurveyCreator = () => {
               setShowDeleteModal(false);
               setItemToDelete(null);
             }}
-            onConfirm={handleConfirmDelete}
+            onConfirm={() => handleDeleteQuestion(itemToDelete)}
             title="Delete Question"
             message="Are you sure you want to delete this question? This action cannot be undone."
+          />
+        )}
+
+        {showSlideDeleteModal && (
+          <ConfirmationModal
+            isOpen={showSlideDeleteModal}
+            onClose={() => {
+              setShowSlideDeleteModal(false);
+              setSlideToDelete(null);
+            }}
+            onConfirm={() => handleDeleteSlide(slideToDelete)}
+            title="Delete Slide"
+            message="Are you sure you want to delete this slide? This action cannot be undone."
           />
         )}
       </div>
