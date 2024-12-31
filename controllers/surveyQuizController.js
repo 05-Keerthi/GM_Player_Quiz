@@ -5,65 +5,6 @@ const SurveySlide = require('../models/surveySlide');
 const Media = require('../models/Media');
 
 
-// const ActivityLog = require('../models/ActivityLog'); 
-
-// // Create a new SurveyQuiz
-// exports.createSurveyQuiz = async (req, res) => {
-//   try {
-//     const { title, description, categoryId, slides, questions, isPublic } = req.body;
-
-//     if (!categoryId) {
-//       return res.status(400).json({ message: 'Category ID is required' });
-//     }
-
-//         // Validate categories, slides, and questions are valid ObjectIds
-//     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
-//     const slideIds = await SurveySlide.find({ '_id': { $in: slides } });
-//     const questionIds = await SurveyQuestion.find({ '_id': { $in: questions } });
-
-//     // Create the SurveyQuiz document
-//     const surveyQuiz = new SurveyQuiz({
-//       title,
-//       description,
-//       categories: categoryId,
-//       slides,
-//       questions,
-//       createdBy: req.user._id, // Assuming you have a user in the request
-//       status: 'draft', // Default status as draft
-//       isPublic,
-//     });
-
-//     // Save to database
-//     await surveyQuiz.save();
-
-//     // const activityLog = new ActivityLog({
-//     //   user: req.user._id,
-//     //   activityType: 'survey_create',
-//     //   details: {
-//     //     username: req.user.username,
-//     //     surveyTitle: title,
-//     //     surveyDescription: description,
-//     //     tenantId: req.user.tenantId || 'defaultTenantId', 
-//     //     duration: req.body.duration || 'N/A',           
-//     //   },
-//     //   createdAt: new Date(),
-//     // });
-    
-//     // await activityLog.save();
-
-//         // Fetch the saved surveyQuiz with populated fields
-//     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
-//       .populate('categories')
-//       .populate('slides')
-//       .populate('questions'); 
-
-//     res.status(201).json({ message: 'SurveyQuiz created successfully', surveyQuiz: populatedSurveyQuiz  });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-
 exports.createSurveyQuiz = async (req, res) => {
   try {
     const { title, description, categoryId, slides, questions, isPublic, order } = req.body;

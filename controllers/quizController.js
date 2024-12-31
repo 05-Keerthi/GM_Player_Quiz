@@ -8,56 +8,6 @@ const Media = require('../models/Media');
 const ActivityLog = require('../models/ActivityLog'); 
 
 
-// exports.createQuiz = async (req, res) => {
-//   try {
-//     const { title, description, categoryId, slides, questions, tenantId, duration } = req.body;
-
-//     if (!categoryId) {
-//       return res.status(400).json({ message: 'Category ID is required' });
-//     }
-
-//     // Validate categories, slides, and questions are valid ObjectIds
-//     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
-//     const slideIds = await Slide.find({ '_id': { $in: slides } });
-//     const questionIds = await Question.find({ '_id': { $in: questions } });
-
-//     const quiz = new Quiz({
-//       title,
-//       description,
-//       categories: categoryId,
-//       slides,
-//       questions,
-//       tenantId,
-//       createdBy: req.user._id,
-//       status: 'draft', // Default status as draft
-//       duration,
-//     });
-
-//     await quiz.save();
-
-//     // Log the activity in the ActivityLog
-//     const activityLog = new ActivityLog({
-//       user: req.user._id,  // The user who created the quiz
-//       activityType: 'quiz_create',
-//       details: {
-//         username: req.user.username,
-//         quizTitle: title,
-//         quizDescription: description,
-//         tenantId: tenantId,
-//         duration: duration,
-//       },
-//       createdAt: new Date(),
-//     });
-
-//     await activityLog.save();
-    
-//     res.status(201).json({ message: 'Quiz created successfully', quiz });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-
 // Create a new quiz (admin only)
 exports.createQuiz = async (req, res) => {
   try {
@@ -138,40 +88,6 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
-
-
-// // Create a new quiz (admin only)
-// exports.createQuiz = async (req, res) => {
-//   try {
-//     const { title, description, categoryId, slides, questions, tenantId, duration } = req.body;
-
-//     if (!categoryId) {
-//       return res.status(400).json({ message: 'Category ID is required' });
-//     }
-
-//     // Validate categories, slides, and questions are valid ObjectIds
-//     const categoryIds = await Category.find({ '_id': { $in: categoryId } });
-//     const slideIds = await Slide.find({ '_id': { $in: slides } });
-//     const questionIds = await Question.find({ '_id': { $in: questions } });
-
-//     const quiz = new Quiz({
-//       title,
-//       description,
-//       categories: categoryId,
-//       slides,
-//       questions,
-//       tenantId,
-//       createdBy: req.user._id,
-//       status: 'draft', // Default status as draft
-//       duration,
-//     });
-
-//     await quiz.save();
-//     res.status(201).json({ message: 'Quiz created successfully', quiz });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
 
 // Get all quizzes
 exports.getQuizzes = async (req, res) => {

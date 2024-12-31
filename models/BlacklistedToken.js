@@ -9,10 +9,10 @@ const blacklistedTokenSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 24 * 60 * 60 // Automatically remove documents after 24 hours
+    expires: 24 * 60 * 60 
   }
 });
 
 const BlacklistedToken = mongoose.model('BlacklistedToken', blacklistedTokenSchema);
 
-module.exports = BlacklistedToken;  // Make sure this is correct
+module.exports = BlacklistedToken;  

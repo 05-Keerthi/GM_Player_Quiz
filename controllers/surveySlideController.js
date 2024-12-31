@@ -14,13 +14,6 @@ exports.addSurveySlide = async (req, res) => {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
 
-    // // Validate the type
-    // const validTypes = ["classic", "big_title", "bullet_points"];
-    // if (!validTypes.includes(surveyType)) {
-    //   return res
-    //     .status(400)
-    //     .json({ message: `Invalid type. Valid types are: ${validTypes.join(", ")}` });
-    // }
 
     let fullImageUrl = null;
 
