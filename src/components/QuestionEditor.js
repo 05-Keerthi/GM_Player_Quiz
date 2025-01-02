@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -40,6 +39,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
 
   useEffect(() => {
     setParsedQuestion(parseQuestionData(question));
+
     if (question?.imageUrl) {
       if (question.imageUrl.startsWith("/uploads/")) {
         setImagePreview(`${API_BASE_URL}${question.imageUrl}`);
@@ -141,7 +141,9 @@ const handleImageUpload = async (e) => {
       const mediaData = uploadData.media[0];
 
       // Set the preview URL
-      setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+      setImagePreview(
+        `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+      );
 
       // Update question state with the new image URL
       setParsedQuestion(prev => ({
@@ -253,20 +255,34 @@ const handleSave = () => {
           )}
 
           {imagePreview && (
-            <div className="relative mt-4 group">
-              <img
-                src={imagePreview}
-                alt="Question"
-                className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+            <div className="relative mt-4">
+              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
+                <div className="relative w-full" style={{ paddingBottom: "75%" }}>
+                  <img
+                    src={imagePreview}
+                    alt="Slide"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+              <div className="absolute top-2 right-2 flex gap-2">
+                <button
+                  onClick={handleImageRemove}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           )}
         </div>
+
 
         {/* Question Type Dropdown */}
         <div>

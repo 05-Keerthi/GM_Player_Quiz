@@ -92,7 +92,10 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         const mediaData = uploadData.media[0];
   
         // Set both preview URL and store the media ID
-        setImagePreview(`${API_BASE_URL}/uploads/${encodeURIComponent(mediaData.path.split('\\').pop())}`);
+        setImagePreview(
+          `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+        );
+  
         if (slide) {
           slide.imageUrl = mediaData._id;
         }
@@ -213,22 +216,34 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
             </div>
           )}
 
-          {imagePreview && (
-            <div className="relative mt-4 group">
-              <img
-                src={imagePreview}
-                alt="Slide"
-                className="w-full h-64 object-cover rounded-lg shadow-md group-hover:opacity-80 transition"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+        {imagePreview && (
+                    <div className="relative mt-4">
+                      <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
+                        <div className="relative w-full" style={{ paddingBottom: "75%" }}>
+                          <img
+                            src={imagePreview}
+                            alt="Slide"
+                            className="absolute inset-0 w-full h-full object-contain"
+                          />
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <button
+                          onClick={handleImageRemove}
+                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                          title="Remove image"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {slide.type === "bullet_points" ? (
           <div className="space-y-4">
             <label className="block text-sm font-semibold text-gray-700">
