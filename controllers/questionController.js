@@ -2,6 +2,66 @@ const Question = require('../models/question');
 const Quiz = require('../models/quiz');
 const Media = require('../models/Media');
 
+// exports.addQuestion = async (req, res) => {
+//   const { quizId } = req.params;
+//   const { title, type, imageUrl, options, correctAnswer, points, timer } = req.body;
+
+//   try {
+//     // Validate if the quiz exists
+//     const quiz = await Quiz.findById(quizId);
+//     if (!quiz) {
+//       return res.status(404).json({ message: 'Quiz not found' });
+//     }
+
+//     let fullImageUrl = null;
+
+//     if (imageUrl) {
+//       // Fetch the image document by ID (using Media model)
+//       const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
+//       if (!image) {
+//         return res.status(404).json({ message: 'Image not found' });
+//       }
+
+//       // Base URL for constructing the full image path
+//       const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+
+//       // Construct the full image URL (from the Media path) and encode it for spaces
+//       const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
+//       fullImageUrl = `${baseUrl}${encodedImagePath}`;
+//     }
+
+//     // Create a new question
+//     const newQuestion = new Question({
+//       quiz: quizId,
+//       title,
+//       type,
+//       imageUrl: imageUrl ? imageUrl : null, // Save the image ID if provided, otherwise null
+//       options,
+//       correctAnswer,
+//       points,
+//       timer
+//     });
+
+//     await newQuestion.save();
+
+//     quiz.questions.push(newQuestion._id);
+//     await quiz.save();
+
+//     // Include the full image URL in the response if available
+//     const responseQuestion = {
+//       ...newQuestion.toObject(),
+//       imageUrl: fullImageUrl // Replace image ID with the full URL in the response if it exists
+      
+//     };
+
+//     res.status(201).json(responseQuestion);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// };
+
+
 exports.addQuestion = async (req, res) => {
   const { quizId } = req.params;
   const { title, type, imageUrl, options, correctAnswer, points, timer } = req.body;
@@ -30,13 +90,16 @@ exports.addQuestion = async (req, res) => {
       fullImageUrl = `${baseUrl}${encodedImagePath}`;
     }
 
+    // Transform options to store only the text (optional based on your database schema)
+    const formattedOptions = options.map(opt => ({ text: opt.text, color: opt.color }));
+
     // Create a new question
     const newQuestion = new Question({
       quiz: quizId,
       title,
       type,
       imageUrl: imageUrl ? imageUrl : null, // Save the image ID if provided, otherwise null
-      options,
+      options: formattedOptions, // Save the options with text and color
       correctAnswer,
       points,
       timer
@@ -51,7 +114,6 @@ exports.addQuestion = async (req, res) => {
     const responseQuestion = {
       ...newQuestion.toObject(),
       imageUrl: fullImageUrl // Replace image ID with the full URL in the response if it exists
-      
     };
 
     res.status(201).json(responseQuestion);
