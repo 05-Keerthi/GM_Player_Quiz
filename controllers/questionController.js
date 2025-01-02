@@ -88,10 +88,11 @@ exports.addQuestion = async (req, res) => {
       fullImageUrl = `${baseUrl}${encodedImagePath}`;
     }
 
-    // Ensure options are stored with text, and optionally color if provided
+    // Ensure options are stored with text, color (if provided), and isCorrect (optional)
     const formattedOptions = options.map(opt => ({
       text: opt.text,
-      color: opt.color || null // Default to null if color is not provided
+      color: opt.color || null, // Default to null if color is not provided
+      isCorrect: opt.isCorrect || false // Default to false if isCorrect is not provided
     }));
 
     // Create a new question
@@ -102,8 +103,8 @@ exports.addQuestion = async (req, res) => {
       imageUrl: imageUrl || null,
       options: formattedOptions,
       correctAnswer,
-      points,
-      timer
+      points: points || 10, // Default to 10 if not provided
+      timer: timer || 10 // Default to 10 seconds if not provided
     });
 
     await newQuestion.save();
@@ -113,7 +114,7 @@ exports.addQuestion = async (req, res) => {
 
     const responseQuestion = {
       ...newQuestion.toObject(),
-      imageUrl: fullImageUrl
+      imageUrl: fullImageUrl // Include full image URL if available
     };
 
     res.status(201).json(responseQuestion);
@@ -122,6 +123,7 @@ exports.addQuestion = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 exports.getQuestions = async (req, res) => {
