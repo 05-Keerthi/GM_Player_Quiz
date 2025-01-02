@@ -24,7 +24,8 @@ const questionSchema = new mongoose.Schema({
   options: [
     {
       text: { type: String, required: true },
-      color: { type: String, required: false, default: null }
+      color: { type: String, required: false, default: null },
+      isCorrect: { type: Boolean, required: false, default: false }
     }
   ],
   correctAnswer: [{ type: String }],
