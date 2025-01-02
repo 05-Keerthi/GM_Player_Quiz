@@ -1,6 +1,7 @@
-const SurveySlide = require("../models/surveySlide"); 
-const SurveyQuiz = require("../models/surveyQuiz"); 
-const Media = require("../models/Media"); 
+const SurveySlide = require("../models/surveySlide");
+const SurveyQuiz = require("../models/surveyQuiz");
+const Media = require("../models/Media");
+const mongoose = require("mongoose");
 
 // Add a new survey slide
 exports.addSurveySlide = async (req, res) => {
@@ -14,7 +15,6 @@ exports.addSurveySlide = async (req, res) => {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
 
-
     let fullImageUrl = null;
 
     if (imageUrl) {
@@ -23,8 +23,11 @@ exports.addSurveySlide = async (req, res) => {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
-      fullImageUrl = `${baseUrl}${encodeURIComponent(image.path.split("\\").pop())}`;
+      const baseUrl =
+        process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+      fullImageUrl = `${baseUrl}${encodeURIComponent(
+        image.path.split("\\").pop()
+      )}`;
     }
 
     // Create the survey slide
@@ -54,7 +57,9 @@ exports.addSurveySlide = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -68,14 +73,17 @@ exports.getSurveySlides = async (req, res) => {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
 
-    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
     const slides = await SurveySlide.find({ surveyQuiz: surveyQuizId })
       .sort({ position: 1 })
       .populate("imageUrl", "path");
 
     if (slides.length === 0) {
-      return res.status(404).json({ message: "No slides found for this survey quiz" });
+      return res
+        .status(404)
+        .json({ message: "No slides found for this survey quiz" });
     }
 
     const slidesWithFullImageUrl = slides.map((slide) => {
@@ -100,7 +108,8 @@ exports.getSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
     const slide = await SurveySlide.findById(id).populate("imageUrl", "path");
     if (!slide) {
@@ -120,62 +129,86 @@ exports.getSurveySlide = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
-// Update a survey slide
 exports.updateSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
     const { surveyTitle, surveyContent, imageUrl, position } = req.body;
 
-    const slide = await SurveySlide.findById(id).populate("imageUrl", "path");
+    const slide = await SurveySlide.findById(id);
     if (!slide) {
       return res.status(404).json({ message: "Survey Slide not found" });
     }
 
-    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
-    let fullImageUrl = null;
-
-    if (imageUrl) {
-      const image = await Media.findById(imageUrl);
-      if (!image) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-      slide.imageUrl = image._id;
-      fullImageUrl = `${baseUrl}${encodeURIComponent(
-        image.path.split("\\").pop()
-      )}`;
-    } else if (slide.imageUrl && slide.imageUrl.path) {
-      fullImageUrl = `${baseUrl}${encodeURIComponent(
-        slide.imageUrl.path.split("\\").pop()
-      )}`;
-    }
-
-
+    // Update basic fields if provided
     if (surveyTitle) slide.surveyTitle = surveyTitle;
     if (surveyContent) slide.surveyContent = surveyContent;
-    // if (surveyType) slide.surveyType = surveyType;
     if (position) slide.position = position;
+
+    // Handle imageUrl - explicitly check if it's null or a value
+    if (imageUrl === null) {
+      // Remove image association
+      slide.imageUrl = null;
+    } else if (imageUrl) {
+      // Existing image URL handling
+      if (imageUrl.startsWith("http")) {
+        const filename = decodeURIComponent(imageUrl.split("/").pop());
+        const media = await Media.findOne({ filename: filename });
+
+        if (!media) {
+          return res
+            .status(404)
+            .json({ message: "Image not found in media library" });
+        }
+        slide.imageUrl = media._id;
+      } else if (mongoose.Types.ObjectId.isValid(imageUrl)) {
+        const media = await Media.findById(imageUrl);
+        if (!media) {
+          return res.status(404).json({ message: "Image not found" });
+        }
+        slide.imageUrl = imageUrl;
+      } else {
+        return res
+          .status(400)
+          .json({ message: "Invalid image URL or ID format" });
+      }
+    }
 
     await slide.save();
 
-    const updatedFields = {
-      surveyTitle: slide.surveyTitle,
-      surveyContent: slide.surveyContent,
+    // Prepare response with full URL if image exists
+    let fullImageUrl = null;
+    if (slide.imageUrl) {
+      const media = await Media.findById(slide.imageUrl);
+      if (media) {
+        const baseUrl =
+          process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+        const encodedImagePath = encodeURIComponent(
+          media.path.split("\\").pop()
+        );
+        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+      }
+    }
+
+    const responseSlide = {
+      ...slide.toObject(),
       imageUrl: fullImageUrl,
-      position: slide.position,
-      surveyQuizId: slide.surveyQuiz ? slide.surveyQuiz._id : null,
     };
 
     return res.status(200).json({
       message: "Survey Slide updated successfully",
-      updatedFields,
+      data: responseSlide,
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -196,7 +229,8 @@ exports.deleteSurveySlide = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
-
