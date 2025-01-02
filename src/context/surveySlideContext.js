@@ -27,7 +27,6 @@ export const SurveySlideContext = createContext();
 export const SurveySlideProvider = ({ children }) => {
   const [state, dispatch] = useReducer(slideReducer, initialState);
 
-  // Helper function for image upload
   const uploadImage = async (imageFile) => {
     if (!imageFile) return null;
 
@@ -36,7 +35,7 @@ export const SurveySlideProvider = ({ children }) => {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/media/upload",
+        `${process.env.REACT_APP_API_URL}/media/upload`,
         formData,
         {
           headers: {
@@ -46,7 +45,7 @@ export const SurveySlideProvider = ({ children }) => {
         }
       );
 
-      if (!response.data || !response.data.media || !response.data.media[0]) {
+      if (!response.data?.media?.[0]) {
         throw new Error("Invalid image upload response");
       }
 
@@ -61,19 +60,36 @@ export const SurveySlideProvider = ({ children }) => {
     createSlide: async (surveyQuizId, slideData) => {
       dispatch({ type: SLIDE_ACTIONS.CREATE_SLIDE_START });
       try {
-        const { data: newSlide } = await api.post(
+        // Ensure proper slide data structure
+        const processedSlideData = {
+          ...slideData,
+          surveyQuiz: surveyQuizId,
+        };
+
+        const response = await api.post(
           `/surveys/${surveyQuizId}/slides`,
-          slideData
+          processedSlideData
         );
+
+        // Check for both possible response structures
+        const newSlide = response.data?.slide || response.data;
+
+        if (!newSlide || !newSlide._id) {
+          throw new Error("Invalid slide data received from server");
+        }
+
         dispatch({
           type: SLIDE_ACTIONS.CREATE_SLIDE_SUCCESS,
-          payload: newSlide.slide,
+          payload: newSlide,
         });
+
         return newSlide;
       } catch (error) {
+        const errorMessage =
+          error.response?.data?.message || "Failed to create slide";
         dispatch({
           type: SLIDE_ACTIONS.CREATE_SLIDE_FAILURE,
-          payload: error.response?.data?.message || "Failed to create slide",
+          payload: errorMessage,
         });
         throw error;
       }
@@ -82,19 +98,38 @@ export const SurveySlideProvider = ({ children }) => {
     updateSlide: async (slideId, slideData) => {
       dispatch({ type: SLIDE_ACTIONS.UPDATE_SLIDE_START });
       try {
-        const { data: updatedSlide } = await api.put(
+        // Process slide data before sending
+        const processedSlideData = {
+          ...slideData,
+          // Ensure consistent data structure
+          surveyTitle: slideData.surveyTitle || slideData.title,
+          surveyContent: slideData.surveyContent || slideData.content,
+        };
+
+        const response = await api.put(
           `/surveys/slides/${slideId}`,
-          slideData
+          processedSlideData
         );
+
+        // Handle different response structures
+        const updatedSlide = response.data?.updatedFields || response.data;
+
+        if (!updatedSlide) {
+          throw new Error("Invalid slide data received from server");
+        }
+
         dispatch({
           type: SLIDE_ACTIONS.UPDATE_SLIDE_SUCCESS,
-          payload: updatedSlide.updatedFields,
+          payload: updatedSlide,
         });
+
         return updatedSlide;
       } catch (error) {
+        const errorMessage =
+          error.response?.data?.message || "Failed to update slide";
         dispatch({
           type: SLIDE_ACTIONS.UPDATE_SLIDE_FAILURE,
-          payload: error.response?.data?.message || "Failed to update slide",
+          payload: errorMessage,
         });
         throw error;
       }
@@ -124,13 +159,32 @@ export const SurveySlideProvider = ({ children }) => {
     getAllSlides: async (surveyQuizId) => {
       dispatch({ type: SLIDE_ACTIONS.FETCH_SLIDES_START });
       try {
-        const { data } = await api.get(`/surveys/${surveyQuizId}/slides`);
-        const slides = data || [];
+        const response = await api.get(`/surveys/${surveyQuizId}/slides`);
+
+        // Handle potential response structures
+        let slides;
+        if (Array.isArray(response.data)) {
+          slides = response.data;
+        } else if (Array.isArray(response.data?.data)) {
+          slides = response.data.data;
+        } else {
+          slides = [];
+        }
+
+        // Process slides to ensure consistent structure
+        const processedSlides = slides.map((slide) => ({
+          ...slide,
+          surveyTitle: slide.surveyTitle || slide.title,
+          surveyContent: slide.surveyContent || slide.content,
+          surveyQuiz: slide.surveyQuiz || surveyQuizId,
+        }));
+
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDES_SUCCESS,
-          payload: slides,
+          payload: processedSlides,
         });
-        return slides;
+
+        return processedSlides;
       } catch (error) {
         if (error.response?.status === 404) {
           dispatch({
@@ -154,12 +208,28 @@ export const SurveySlideProvider = ({ children }) => {
     getSlideById: async (slideId) => {
       dispatch({ type: SLIDE_ACTIONS.FETCH_SLIDE_START });
       try {
-        const { data: slide } = await api.get(`/surveys/slides/${slideId}`);
+        const response = await api.get(`/surveys/slides/${slideId}`);
+
+        // Handle different response structures
+        const slide = response.data?.slide || response.data;
+
+        if (!slide) {
+          throw new Error("Slide not found");
+        }
+
+        // Process slide to ensure consistent structure
+        const processedSlide = {
+          ...slide,
+          surveyTitle: slide.surveyTitle || slide.title,
+          surveyContent: slide.surveyContent || slide.content,
+        };
+
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDE_SUCCESS,
-          payload: slide.slide,
+          payload: processedSlide,
         });
-        return slide;
+
+        return processedSlide;
       } catch (error) {
         const errorPayload = {
           message: error.response?.data?.message || "Failed to fetch slide",

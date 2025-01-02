@@ -27,7 +27,6 @@ export const QuestionContext = createContext();
 export const QuestionProvider = ({ children }) => {
   const [state, dispatch] = useReducer(questionReducer, initialState);
 
-  // Helper function for image upload
   const uploadImage = async (imageFile) => {
     if (!imageFile) return null;
 
@@ -61,10 +60,14 @@ export const QuestionProvider = ({ children }) => {
    createQuestion: async (surveyId, questionData) => {
       dispatch({ type: QUESTION_ACTIONS.CREATE_QUESTION_START });
       try {
-        const { data: newQuestion } = await api.post(
+        const { data } = await api.post(
           `/${surveyId}/create-survey-question`,
           questionData
         );
+        
+        // Make sure we return the question data consistently
+        const newQuestion = data.data || data;
+        
         dispatch({
           type: QUESTION_ACTIONS.CREATE_QUESTION_SUCCESS,
           payload: newQuestion,
@@ -82,13 +85,17 @@ export const QuestionProvider = ({ children }) => {
     updateQuestion: async (surveyId, questionId, questionData) => {
       dispatch({ type: QUESTION_ACTIONS.UPDATE_QUESTION_START });
       try {
-        const { data: updatedQuestion } = await api.put(
+        const { data } = await api.put(
           `/${surveyId}/survey-question/${questionId}`,
           questionData
         );
+        
+        // Make sure we return the data consistently
+        const updatedQuestion = data.data || data;
+        
         dispatch({
           type: QUESTION_ACTIONS.UPDATE_QUESTION_SUCCESS,
-          payload: updatedQuestion.data,
+          payload: updatedQuestion,
         });
         return updatedQuestion;
       } catch (error) {
@@ -99,6 +106,7 @@ export const QuestionProvider = ({ children }) => {
         throw error;
       }
     },
+
     deleteQuestion: async (surveyId, questionId) => {
       dispatch({ type: QUESTION_ACTIONS.DELETE_QUESTION_START });
       try {
@@ -153,9 +161,10 @@ export const QuestionProvider = ({ children }) => {
     getQuestionById: async (surveyId, questionId) => {
       dispatch({ type: QUESTION_ACTIONS.FETCH_QUESTION_START });
       try {
-        const { data: question } = await api.get(
+        const { data } = await api.get(
           `/${surveyId}/survey-question/${questionId}`
         );
+        const question = data.data || data;
         dispatch({
           type: QUESTION_ACTIONS.FETCH_QUESTION_SUCCESS,
           payload: question,
@@ -198,9 +207,7 @@ export const QuestionProvider = ({ children }) => {
 export const useQuestionContext = () => {
   const context = useContext(QuestionContext);
   if (!context) {
-    throw new Error(
-      "useQuestionContext must be used within a QuestionProvider"
-    );
+    throw new Error("useQuestionContext must be used within a QuestionProvider");
   }
   return context;
 };

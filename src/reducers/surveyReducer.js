@@ -38,6 +38,21 @@ export const SURVEY_ACTIONS = {
   CLEAR_ERROR: "CLEAR_ERROR",
 };
 
+// Helper function to ensure consistent survey data structure
+const processSurveyData = (survey) => {
+  if (!survey) return null;
+  
+  return {
+    ...survey,
+    questions: Array.isArray(survey.questions) ? survey.questions : [],
+    slides: Array.isArray(survey.slides) ? survey.slides : [],
+    order: Array.isArray(survey.order) ? survey.order.map(item => ({
+      id: item.id,
+      type: item.type
+    })) : []
+  };
+};
+
 export const surveyReducer = (state, action) => {
   switch (action.type) {
     case SURVEY_ACTIONS.CREATE_SURVEY_START:
@@ -57,7 +72,7 @@ export const surveyReducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        surveys: action.payload,
+        surveys: action.payload.map(processSurveyData),
         error: null,
       };
 
@@ -65,27 +80,29 @@ export const surveyReducer = (state, action) => {
       return {
         ...state,
         loading: false,
-        currentSurvey: action.payload,
+        currentSurvey: processSurveyData(action.payload),
         error: null,
       };
 
     case SURVEY_ACTIONS.CREATE_SURVEY_SUCCESS:
+      const newSurvey = processSurveyData(action.payload);
       return {
         ...state,
         loading: false,
-        surveys: [...state.surveys, action.payload],
-        currentSurvey: action.payload,
+        surveys: [...state.surveys, newSurvey],
+        currentSurvey: newSurvey,
         error: null,
       };
 
     case SURVEY_ACTIONS.UPDATE_SURVEY_SUCCESS:
+      const updatedSurvey = processSurveyData(action.payload);
       return {
         ...state,
         loading: false,
         surveys: state.surveys.map((survey) =>
-          survey._id === action.payload._id ? action.payload : survey
+          survey._id === updatedSurvey._id ? updatedSurvey : survey
         ),
-        currentSurvey: action.payload,
+        currentSurvey: updatedSurvey,
         error: null,
       };
 
@@ -102,13 +119,14 @@ export const surveyReducer = (state, action) => {
 
     case SURVEY_ACTIONS.PUBLISH_SURVEY_SUCCESS:
     case SURVEY_ACTIONS.CLOSE_SURVEY_SUCCESS:
+      const processedSurvey = processSurveyData(action.payload);
       return {
         ...state,
         loading: false,
         surveys: state.surveys.map((survey) =>
-          survey._id === action.payload._id ? action.payload : survey
+          survey._id === processedSurvey._id ? processedSurvey : survey
         ),
-        currentSurvey: action.payload,
+        currentSurvey: processedSurvey,
         error: null,
       };
 
