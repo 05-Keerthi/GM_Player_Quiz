@@ -91,8 +91,8 @@ exports.submitAnswer = async (req, res) => {
         pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text)) : 0;
       }
     } else if (answerType === 'boolean') {
-      isCorrect = question.correctAnswer.includes(answer);
-      pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.correctAnswer) : 0;
+      isCorrect = question.options.some(opt => opt.text === answer && opt.isCorrect);
+      pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text)) : 0;
     } else if (answerType === 'text') {
       isCorrect = question.correctAnswer.some(correctAnswer => correctAnswer.toLowerCase() === answer.toLowerCase());
       pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.correctAnswer) : 0;
