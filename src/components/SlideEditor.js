@@ -92,7 +92,10 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         const mediaData = uploadData.media[0];
   
         // Set both preview URL and store the media ID
-        setImagePreview(`${API_BASE_URL}/uploads/${encodeURIComponent(mediaData.path.split('\\').pop())}`);
+        setImagePreview(
+          `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+        );
+  
         if (slide) {
           slide.imageUrl = mediaData._id;
         }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -40,6 +39,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
 
   useEffect(() => {
     setParsedQuestion(parseQuestionData(question));
+
     if (question?.imageUrl) {
       if (question.imageUrl.startsWith("/uploads/")) {
         setImagePreview(`${API_BASE_URL}${question.imageUrl}`);
@@ -141,7 +141,9 @@ const handleImageUpload = async (e) => {
       const mediaData = uploadData.media[0];
 
       // Set the preview URL
-      setImagePreview(`${API_BASE_URL}${mediaData.url}`);
+      setImagePreview(
+        `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+      );
 
       // Update question state with the new image URL
       setParsedQuestion(prev => ({
