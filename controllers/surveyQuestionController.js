@@ -1,7 +1,7 @@
 const SurveyQuestion = require('../models/surveyQuestion');
 const Media = require('../models/Media');
 const SurveyQuiz = require('../models/surveyQuiz');
-
+const mongoose = require('mongoose');
 exports.createSurveyQuestion = async (req, res) => {
     const { surveyquizId } = req.params;
     const { title, description, dimension, year, imageUrl, timer, answerOptions } = req.body;
