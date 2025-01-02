@@ -2,38 +2,45 @@ import React, { useState, useEffect } from "react";
 import { X, Trash2, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 
-const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
-  const [parsedQuestion, setParsedQuestion] = useState(() => ({
-    title: question?.title || "",
-    description: question?.description || "",
-    dimension: question?.dimension || "",
-    year: question?.year || "",
-    imageUrl: question?.imageUrl || null,
-    timer: question?.timer || 30,
-    answerOptions: question?.answerOptions?.length
-      ? question.answerOptions
+const processQuestionData = (data) => {
+  return {
+    title: data.title || "",
+    description: data.description || "",
+    dimension: data.dimension || "",
+    year: data.year || "",
+    imageUrl: data.imageUrl || null,
+    timer: data.timer || 30,
+    answerOptions: Array.isArray(data.answerOptions)
+      ? data.answerOptions.map((option) => ({
+          optionText: option.optionText || "",
+        }))
       : [{ optionText: "" }],
-    imageFile: null,
-  }));
+  };
+};
 
-  const [imagePreview, setImagePreview] = useState(question?.imageUrl || null);
+const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
+  const [parsedQuestion, setParsedQuestion] = useState(() =>
+    processQuestionData({
+      title: question?.title || "",
+      description: question?.description || "",
+      dimension: question?.dimension || "",
+      year: question?.year || "",
+      imageUrl: question?.imageUrl || null,
+      timer: question?.timer || 30,
+      answerOptions: question?.answerOptions?.length
+        ? question.answerOptions
+        : [{ optionText: "" }],
+    })
+  );
+
+  const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
   useEffect(() => {
     if (question) {
-      setParsedQuestion({
-        title: question.title || "",
-        description: question.description || "",
-        dimension: question.dimension || "",
-        year: question.year || "",
-        imageUrl: question.imageUrl || null,
-        timer: question.timer || 30,
-        answerOptions: question.answerOptions?.length
-          ? question.answerOptions
-          : [{ optionText: "" }],
-        imageFile: null,
-      });
+      setParsedQuestion(processQuestionData(question));
+      // For editing: if imageUrl exists, use it directly as it's already a full URL from backend
       setImagePreview(question.imageUrl);
     }
   }, [question]);
@@ -47,7 +54,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
 
   const handleOptionChange = (index, value) => {
     const updatedOptions = parsedQuestion.answerOptions.map((opt, i) =>
-      i === index ? { ...opt, optionText: value } : opt
+      i === index ? { optionText: value } : opt
     );
 
     setParsedQuestion((prev) => ({
@@ -72,27 +79,49 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     }
   };
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setIsUploading(true);
-      setUploadError(null);
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-        setParsedQuestion((prev) => ({
-          ...prev,
-          imageFile: file,
-          imageUrl: reader.result,
-        }));
-        setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setUploadError("Error reading file");
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("media", file);
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/media/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      const data = await response.json();
+      const mediaData = data.media[0];
+
+      // Store the media ID in imageUrl
+      setParsedQuestion((prev) => ({
+        ...prev,
+        imageUrl: mediaData._id,
+      }));
+
+      // Set the preview URL using the full URL from the uploaded file
+      const previewUrl = `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`;
+      setImagePreview(previewUrl);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setUploadError("Failed to upload image");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -100,12 +129,26 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     setImagePreview(null);
     setParsedQuestion((prev) => ({
       ...prev,
-      imageFile: null,
       imageUrl: null,
     }));
   };
 
   const handleSave = () => {
+    if (!parsedQuestion.title.trim()) {
+      setUploadError("Please enter a question title");
+      return;
+    }
+
+    if (!parsedQuestion.description.trim()) {
+      setUploadError("Please enter a question description");
+      return;
+    }
+
+    if (!parsedQuestion.answerOptions.some((opt) => opt.optionText.trim())) {
+      setUploadError("Please add at least one answer option");
+      return;
+    }
+
     if (onUpdate) {
       onUpdate(parsedQuestion);
     }
@@ -130,6 +173,12 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
           <X className="w-6 h-6 text-gray-600" />
         </button>
       </div>
+
+      {uploadError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+          {uploadError}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Question Title */}
@@ -197,23 +246,36 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
               <label className="flex flex-col items-center justify-center cursor-pointer">
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
-                  Click to upload image
+                  {isUploading ? "Uploading..." : "Click to upload image"}
                 </span>
                 <input
                   type="file"
                   className="hidden"
                   accept="image/*"
                   onChange={handleImageUpload}
+                  disabled={isUploading}
                 />
               </label>
             </div>
           ) : (
             <div className="relative">
-              <img
-                src={imagePreview}
-                alt="Question"
-                className="w-full h-48 object-cover rounded-lg"
-              />
+              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
+                <div
+                  className="relative w-full"
+                  style={{ paddingBottom: "75%" }}
+                >
+                  <img
+                    src={imagePreview}
+                    alt="Question"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={handleImageRemove}
                 className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"

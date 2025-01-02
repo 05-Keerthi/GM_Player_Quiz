@@ -60,10 +60,10 @@ export const SurveySlideProvider = ({ children }) => {
     createSlide: async (surveyQuizId, slideData) => {
       dispatch({ type: SLIDE_ACTIONS.CREATE_SLIDE_START });
       try {
-        // Ensure proper slide data structure
         const processedSlideData = {
           ...slideData,
           surveyQuiz: surveyQuizId,
+          imageUrl: slideData.imageUrl === null ? null : slideData.imageUrl,
         };
 
         const response = await api.post(
@@ -71,11 +71,15 @@ export const SurveySlideProvider = ({ children }) => {
           processedSlideData
         );
 
-        // Check for both possible response structures
-        const newSlide = response.data?.slide || response.data;
+        let newSlide = response.data?.slide || response.data;
 
-        if (!newSlide || !newSlide._id) {
-          throw new Error("Invalid slide data received from server");
+        if (
+          newSlide.imageUrl &&
+          typeof newSlide.imageUrl === "string" &&
+          !newSlide.imageUrl.startsWith("http")
+        ) {
+          const baseUrl = process.env.REACT_APP_API_URL;
+          newSlide.imageUrl = `${baseUrl}/uploads/${newSlide.imageUrl}`;
         }
 
         dispatch({
@@ -98,12 +102,11 @@ export const SurveySlideProvider = ({ children }) => {
     updateSlide: async (slideId, slideData) => {
       dispatch({ type: SLIDE_ACTIONS.UPDATE_SLIDE_START });
       try {
-        // Process slide data before sending
         const processedSlideData = {
           ...slideData,
-          // Ensure consistent data structure
           surveyTitle: slideData.surveyTitle || slideData.title,
           surveyContent: slideData.surveyContent || slideData.content,
+          imageUrl: slideData.imageUrl === null ? null : slideData.imageUrl,
         };
 
         const response = await api.put(
@@ -111,12 +114,20 @@ export const SurveySlideProvider = ({ children }) => {
           processedSlideData
         );
 
-        // Handle different response structures
-        const updatedSlide = response.data?.updatedFields || response.data;
+        let updatedSlide =
+          response.data?.data || response.data?.updatedFields || response.data;
 
-        if (!updatedSlide) {
-          throw new Error("Invalid slide data received from server");
+        if (
+          updatedSlide.imageUrl &&
+          typeof updatedSlide.imageUrl === "string" &&
+          !updatedSlide.imageUrl.startsWith("http")
+        ) {
+          const baseUrl = process.env.REACT_APP_API_URL;
+          updatedSlide.imageUrl = `${baseUrl}/uploads/${updatedSlide.imageUrl}`;
         }
+
+        // Ensure the slide has the correct ID
+        updatedSlide._id = slideId;
 
         dispatch({
           type: SLIDE_ACTIONS.UPDATE_SLIDE_SUCCESS,
@@ -125,11 +136,10 @@ export const SurveySlideProvider = ({ children }) => {
 
         return updatedSlide;
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message || "Failed to update slide";
+        console.error("Error updating slide:", error);
         dispatch({
           type: SLIDE_ACTIONS.UPDATE_SLIDE_FAILURE,
-          payload: errorMessage,
+          payload: error.response?.data?.message || "Failed to update slide",
         });
         throw error;
       }
@@ -144,13 +154,9 @@ export const SurveySlideProvider = ({ children }) => {
           payload: slideId,
         });
       } catch (error) {
-        const errorPayload = {
-          message: error.response?.data?.message || "Failed to delete slide",
-          errors: error.response?.data?.errors || [],
-        };
         dispatch({
           type: SLIDE_ACTIONS.DELETE_SLIDE_FAILURE,
-          payload: errorPayload,
+          payload: error.response?.data?.message || "Failed to delete slide",
         });
         throw error;
       }
@@ -160,31 +166,29 @@ export const SurveySlideProvider = ({ children }) => {
       dispatch({ type: SLIDE_ACTIONS.FETCH_SLIDES_START });
       try {
         const response = await api.get(`/surveys/${surveyQuizId}/slides`);
+        let slides = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
 
-        // Handle potential response structures
-        let slides;
-        if (Array.isArray(response.data)) {
-          slides = response.data;
-        } else if (Array.isArray(response.data?.data)) {
-          slides = response.data.data;
-        } else {
-          slides = [];
-        }
-
-        // Process slides to ensure consistent structure
-        const processedSlides = slides.map((slide) => ({
-          ...slide,
-          surveyTitle: slide.surveyTitle || slide.title,
-          surveyContent: slide.surveyContent || slide.content,
-          surveyQuiz: slide.surveyQuiz || surveyQuizId,
-        }));
+        // Process slides to ensure consistent image URLs
+        slides = slides.map((slide) => {
+          if (
+            slide.imageUrl &&
+            typeof slide.imageUrl === "string" &&
+            !slide.imageUrl.startsWith("http")
+          ) {
+            const baseUrl = process.env.REACT_APP_API_URL;
+            slide.imageUrl = `${baseUrl}/uploads/${slide.imageUrl}`;
+          }
+          return slide;
+        });
 
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDES_SUCCESS,
-          payload: processedSlides,
+          payload: slides,
         });
 
-        return processedSlides;
+        return slides;
       } catch (error) {
         if (error.response?.status === 404) {
           dispatch({
@@ -193,13 +197,9 @@ export const SurveySlideProvider = ({ children }) => {
           });
           return [];
         }
-        const errorPayload = {
-          message: error.response?.data?.message || "Failed to fetch slides",
-          errors: error.response?.data?.errors || [],
-        };
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDES_FAILURE,
-          payload: errorPayload,
+          payload: error.response?.data?.message || "Failed to fetch slides",
         });
         throw error;
       }
@@ -209,35 +209,27 @@ export const SurveySlideProvider = ({ children }) => {
       dispatch({ type: SLIDE_ACTIONS.FETCH_SLIDE_START });
       try {
         const response = await api.get(`/surveys/slides/${slideId}`);
+        let slide = response.data?.slide || response.data;
 
-        // Handle different response structures
-        const slide = response.data?.slide || response.data;
-
-        if (!slide) {
-          throw new Error("Slide not found");
+        if (
+          slide.imageUrl &&
+          typeof slide.imageUrl === "string" &&
+          !slide.imageUrl.startsWith("http")
+        ) {
+          const baseUrl = process.env.REACT_APP_API_URL;
+          slide.imageUrl = `${baseUrl}/uploads/${slide.imageUrl}`;
         }
-
-        // Process slide to ensure consistent structure
-        const processedSlide = {
-          ...slide,
-          surveyTitle: slide.surveyTitle || slide.title,
-          surveyContent: slide.surveyContent || slide.content,
-        };
 
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDE_SUCCESS,
-          payload: processedSlide,
+          payload: slide,
         });
 
-        return processedSlide;
+        return slide;
       } catch (error) {
-        const errorPayload = {
-          message: error.response?.data?.message || "Failed to fetch slide",
-          errors: error.response?.data?.errors || [],
-        };
         dispatch({
           type: SLIDE_ACTIONS.FETCH_SLIDE_FAILURE,
-          payload: errorPayload,
+          payload: error.response?.data?.message || "Failed to fetch slide",
         });
         throw error;
       }
@@ -248,18 +240,8 @@ export const SurveySlideProvider = ({ children }) => {
     },
   };
 
-  const contextValue = {
-    state,
-    slides: state.slides,
-    currentSlide: state.currentSlide,
-    loading: state.loading,
-    error: state.error,
-    uploadImage,
-    ...actions,
-  };
-
   return (
-    <SurveySlideContext.Provider value={contextValue}>
+    <SurveySlideContext.Provider value={{ ...state, ...actions }}>
       {children}
     </SurveySlideContext.Provider>
   );

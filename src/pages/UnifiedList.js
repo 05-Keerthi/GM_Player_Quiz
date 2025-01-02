@@ -94,8 +94,10 @@ const UnifiedList = ({ contentType }) => {
 
   // Handlers
   const handleCardClick = (item) => {
-    if (item.status === 'active') {
-      navigate(`/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`);
+    if (item.status === "active") {
+      navigate(
+        `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+      );
     }
   };
 
@@ -135,7 +137,7 @@ const UnifiedList = ({ contentType }) => {
     const allowedTransitions = {
       active: ["draft", "closed"],
       draft: ["active"],
-      closed: ["draft","active"],
+      closed: ["draft", "active"],
     };
 
     if (
@@ -182,7 +184,9 @@ const UnifiedList = ({ contentType }) => {
         if (updatedItem) {
           toast.success("Survey published successfully!");
           await getAllItems();
-          navigate(`/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`);
+          navigate(
+            `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+          );
         }
       } else {
         await updateItemFunc(item._id, { ...item, status: newStatus });
@@ -190,7 +194,9 @@ const UnifiedList = ({ contentType }) => {
         await getAllItems();
 
         if (newStatus === "active" && isQuiz) {
-            navigate(`/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`);
+          navigate(
+            `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+          );
         }
       }
     } catch (error) {
@@ -420,21 +426,28 @@ const UnifiedList = ({ contentType }) => {
                                   </p>
 
                                   <div className="flex justify-between items-center mt-4">
-  <div className="flex items-center gap-2 text-gray-700">
-    <ListChecks className="w-5 h-5" />
-    <span>{item.questions?.length || 0} Questions</span>
-    {isQuiz ? (
-      <>
-        <ListChecks className="w-5 h-5" />
-        <span>{item.slides?.length || 0} Slides</span>
-      </>
-    ) : (
-      <>
-        <ListChecks className="w-5 h-5" />
-        <span>{item.surveySlides?.length || 0} Slides</span>
-      </>
-    )}
-  </div>
+                                    <div className="flex items-center gap-2 text-gray-700">
+                                      <ListChecks className="w-5 h-5" />
+                                      <span>
+                                        {item.questions?.length || 0} Questions
+                                      </span>
+                                      {isQuiz ? (
+                                        <>
+                                          <ListChecks className="w-5 h-5" />
+                                          <span>
+                                            {item.slides?.length || 0} Slides
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ListChecks className="w-5 h-5" />
+                                          <span>
+                                            {item.surveySlides?.length || 0}{" "}
+                                            Slides
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
                                     <div className="flex gap-2">
                                       <button
                                         onClick={(e) => handleEdit(e, item._id)}
