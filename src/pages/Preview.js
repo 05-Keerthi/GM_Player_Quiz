@@ -4,6 +4,19 @@ import axios from "axios";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Utility function for text contrast
+const getContrastColor = (hexColor) => {
+  if (!hexColor || hexColor === '#') return '#000000';
+  
+  const color = hexColor.replace("#", "");
+  const r = parseInt(color.substring(0, 2), 16);
+  const g = parseInt(color.substring(2, 4), 16);
+  const b = parseInt(color.substring(4, 6), 16);
+
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+};
 
 const PreviewPage = () => {
   const [orderedItems, setOrderedItems] = useState([]);
@@ -105,17 +118,16 @@ const PreviewPage = () => {
     setPresentationMode(false);
   };
 
-// Update navigation functions
-const navigatePresentation = (direction) => {
-  const newIndex = direction === 'next' 
-    ? currentIndex + 1 
-    : currentIndex - 1;
-    
-  if (newIndex >= 0 && newIndex < orderedItems.length) {
-    setSlideDirection(direction === 'next' ? 1 : -1);
-    setCurrentIndex(newIndex);
-  }
-};
+  const navigatePresentation = (direction) => {
+    const newIndex = direction === 'next' 
+      ? currentIndex + 1 
+      : currentIndex - 1;
+      
+    if (newIndex >= 0 && newIndex < orderedItems.length) {
+      setSlideDirection(direction === 'next' ? 1 : -1);
+      setCurrentIndex(newIndex);
+    }
+  };
 
   const renderContent = (item) => {
     if (!item?.data) return null;
@@ -151,11 +163,11 @@ const navigatePresentation = (direction) => {
                 {content.options.map((option, idx) => (
                   <div
                     key={idx}
-                    className={`p-3 rounded-lg border ${
-                      option.isCorrect
-                        ? "bg-green-50 border-green-200"
-                        : "bg-white border-gray-200"
-                    }`}
+                    style={{
+                      backgroundColor: option.color || '#ffffff',
+                      color: getContrastColor(option.color)
+                    }}
+                    className="p-3 rounded-lg border transition-all hover:opacity-90"
                   >
                     <label className="flex items-center">
                       <input
@@ -180,10 +192,8 @@ const navigatePresentation = (direction) => {
     );
   };
 
-  // Update the renderPresentationMode function
   const renderPresentationMode = () => (
     <div className="fixed inset-0 bg-[#262626] z-50">
-      {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
         <span className="text-gray-300 font-medium">
           {orderedItems[currentIndex]?.type === "question"
@@ -204,9 +214,7 @@ const navigatePresentation = (direction) => {
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="h-full flex flex-col pt-16">
-        {/* Main Content */}
         <div className="flex-1 flex items-center justify-center p-8 relative">
           <motion.div
             key={currentIndex}
@@ -216,9 +224,7 @@ const navigatePresentation = (direction) => {
             transition={{ duration: 0.3 }}
             className="w-full max-w-5xl aspect-[16/9] bg-white rounded-lg shadow-2xl overflow-hidden"
           >
-            {/* Content Wrapper */}
             <div className="h-full flex flex-col">
-              {/* Title Bar */}
               {orderedItems[currentIndex]?.data?.title && (
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4">
                   <h2 className="text-2xl font-semibold text-white">
@@ -227,7 +233,6 @@ const navigatePresentation = (direction) => {
                 </div>
               )}
 
-              {/* Content */}
               <div className="flex-1 p-8 overflow-auto">
                 {orderedItems[currentIndex]?.data?.imageUrl && (
                   <div className="mb-6 flex justify-center">
@@ -246,8 +251,7 @@ const navigatePresentation = (direction) => {
                 )}
 
                 {orderedItems[currentIndex]?.type === "question" &&
-                  orderedItems[currentIndex]?.data?.type ===
-                    "multiple_choice" && (
+                  orderedItems[currentIndex]?.data?.type === "multiple_choice" && (
                     <div className="space-y-4">
                       {orderedItems[currentIndex].data.options?.map(
                         (option, idx) => (
@@ -256,31 +260,28 @@ const navigatePresentation = (direction) => {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className={`
-                        p-4 rounded-lg border-2 transition-all transform hover:scale-[1.01]
-                        ${
-                          option.isCorrect
-                            ? "border-green-200 bg-green-50"
-                            : "border-gray-200 bg-gray-50"
-                        }
-                      `}
+                            style={{
+                              backgroundColor: option.color || '#ffffff',
+                              color: getContrastColor(option.color)
+                            }}
+                            className="p-4 rounded-lg border-2 transition-all transform hover:scale-[1.01]"
                           >
                             <label className="flex items-center gap-3">
                               <div
                                 className={`
-                          w-6 h-6 rounded-full border-2 flex items-center justify-center
-                          ${
-                            option.isCorrect
-                              ? "border-green-500 text-green-500"
-                              : "border-gray-400 text-gray-400"
-                          }
-                        `}
+                                  w-6 h-6 rounded-full border-2 flex items-center justify-center
+                                  ${option.isCorrect
+                                    ? "border-green-500 text-green-500"
+                                    : "border-gray-400 text-gray-400"
+                                  }
+                                `}
                               >
                                 {option.isCorrect && "✓"}
                               </div>
                               <span className="text-lg">{option.text}</span>
                               {option.isCorrect && (
-                                <span className="text-sm text-green-600 font-medium ml-2">
+                                <span className="text-sm font-medium ml-2" 
+                                      style={{ color: option.isCorrect ? '#22c55e' : 'inherit' }}>
                                   (Correct Answer)
                                 </span>
                               )}
@@ -294,19 +295,18 @@ const navigatePresentation = (direction) => {
             </div>
           </motion.div>
 
-          {/* Navigation Buttons */}
           <div className="absolute left-4">
             <button
               onClick={() => navigatePresentation("prev")}
               disabled={currentIndex === 0}
               className={`
-              p-3 rounded-full transition-all
-              ${
-                currentIndex === 0
-                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-white hover:bg-gray-700"
-              }
-            `}
+                p-3 rounded-full transition-all
+                ${
+                  currentIndex === 0
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-800 text-white hover:bg-gray-700"
+                }
+              `}
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -317,20 +317,19 @@ const navigatePresentation = (direction) => {
               onClick={() => navigatePresentation("next")}
               disabled={currentIndex === orderedItems.length - 1}
               className={`
-              p-3 rounded-full transition-all
-              ${
-                currentIndex === orderedItems.length - 1
-                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-white hover:bg-gray-700"
-              }
-            `}
+                p-3 rounded-full transition-all
+                ${
+                  currentIndex === orderedItems.length - 1
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-800 text-white hover:bg-gray-700"
+                }
+              `}
             >
               <ChevronRight className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        {/* Bottom Progress Bar */}
         <div className="bg-[#1a1a1a] p-4">
           <div className="w-full bg-gray-700 rounded-full h-1">
             <div
@@ -347,7 +346,6 @@ const navigatePresentation = (direction) => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header */}
       <div className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="text-xl font-semibold">Preview</h1>
         <div className="flex items-center gap-3">
@@ -374,7 +372,6 @@ const navigatePresentation = (direction) => {
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden">
-          {/* Thumbnails Sidebar */}
           <div className="w-64 bg-gray-50 border-r overflow-y-auto p-4">
             <div className="space-y-3">
               {orderedItems.map((item, index) => (
@@ -409,7 +406,6 @@ const navigatePresentation = (direction) => {
             </div>
           </div>
 
-          {/* Main Preview Area */}
           <div className="flex-1 bg-white">
             <div className="h-full border-l">
               {orderedItems[currentIndex] &&
@@ -419,7 +415,21 @@ const navigatePresentation = (direction) => {
         </div>
       )}
 
+      {/* Render presentation mode overlay when active */}
       {presentationMode && renderPresentationMode()}
+
+      {/* Box Animation for presentation mode transition */}
+      <AnimatePresence>
+        {showBoxAnimation && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 bg-black z-40"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

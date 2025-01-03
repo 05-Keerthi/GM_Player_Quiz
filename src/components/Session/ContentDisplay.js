@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
+const getContrastColor = (hexColor) => {
+  if (!hexColor || hexColor === '#') return '#000000';
+  
+  const color = hexColor.replace("#", "");
+  const r = parseInt(color.substring(0, 2), 16);
+  const g = parseInt(color.substring(2, 4), 16);
+  const b = parseInt(color.substring(4, 6), 16);
+
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+};
+
 const ContentDisplay = ({
   item,
   isAdmin,
@@ -51,7 +64,6 @@ const ContentDisplay = ({
     }
   }, [timeLeft]);
 
-  // Update counts when passed props change in admin view
   useEffect(() => {
     if (isAdmin && item?.type === "poll") {
       setOptionCounts(passedOptionCounts || {});
@@ -59,7 +71,6 @@ const ContentDisplay = ({
     }
   }, [isAdmin, passedOptionCounts, passedTotalVotes, item]);
 
-  // Socket event listener for poll updates (user view only)
   useEffect(() => {
     if (socket && item?._id && item?.type === "poll" && !isAdmin) {
       const handleAnswerSubmitted = ({ answerDetails }) => {
@@ -83,21 +94,7 @@ const ContentDisplay = ({
     }
   }, [socket, item, isAdmin]);
 
-  const bgColors = [
-    "bg-red-300",
-    "bg-green-200",
-    "bg-yellow-200",
-    "bg-blue-200",
-    "bg-purple-200",
-    "bg-pink-200",
-    "bg-indigo-200",
-    "bg-orange-200",
-  ];
-
-  const isSlide =
-    item?.type === "bullet_points" ||
-    item?.type === "slide" ||
-    item?.type === "classic";
+  const isSlide = item?.type === "bullet_points" || item?.type === "slide" || item?.type === "classic";
   const isOpenEnded = item?.type === "open_ended";
   const isMultipleSelect = item?.type === "multiple_select";
 
@@ -186,21 +183,16 @@ const ContentDisplay = ({
             disabled={isTimeUp || isAnswerSubmitted}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
-                // Prevent default Enter key behavior (new line)
-                e.preventDefault(); // This stops the newline
-                handleOpenEndedSubmit(); // Call the submit function
+                e.preventDefault();
+                handleOpenEndedSubmit();
               }
             }}
           />
           <button
             onClick={handleOpenEndedSubmit}
             className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
-      ${
-        isTimeUp || isAnswerSubmitted
-          ? "opacity-50 cursor-not-allowed"
-          : "hover:bg-blue-700"
-      }
-    `}
+              ${isTimeUp || isAnswerSubmitted ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}
+            `}
             disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
           >
             Submit Answer
@@ -217,12 +209,10 @@ const ContentDisplay = ({
 
   const renderSlide = () => (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white">
-      {/* Title Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 rounded-t-lg">
         <h3 className="text-2xl font-bold text-white">{item?.title}</h3>
       </div>
 
-      {/* Content Section */}
       <div className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
         {item?.imageUrl && (
           <div className="flex justify-center">
@@ -267,49 +257,56 @@ const ContentDisplay = ({
           />
         )}
         <div className="grid grid-cols-2 gap-4">
-          {item?.options?.map((option, index) => (
-            <button
-              key={option._id}
-              onClick={() => handleOptionSelect(option)}
-              className={`p-4 text-lg rounded-lg border transition-all
-                ${bgColors[index % bgColors.length]} 
-                ${
-                  !isAdmin &&
-                  (isMultipleSelect
-                    ? selectedOptions.some((opt) => opt._id === option._id)
-                    : selectedOption === option)
-                    ? "border-blue-500 ring-2 ring-blue-500"
-                    : "hover:brightness-95"
+          {item?.options?.map((option, index) => {
+            const backgroundColor = option.color || '#ffffff';
+            const textColor = getContrastColor(backgroundColor);
+            
+            return (
+              <button
+                key={option._id}
+                onClick={() => handleOptionSelect(option)}
+                style={{
+                  backgroundColor,
+                  color: textColor,
+                }}
+                className={`p-4 text-lg rounded-lg border transition-all
+                  ${
+                    !isAdmin &&
+                    (isMultipleSelect
+                      ? selectedOptions.some((opt) => opt._id === option._id)
+                      : selectedOption === option)
+                      ? "border-blue-500 ring-2 ring-blue-500"
+                      : "hover:opacity-90"
+                  }
+                  ${
+                    isAdmin && option.isCorrect
+                      ? "ring-2 ring-green-500 border-green-500"
+                      : ""
+                  }
+                  ${
+                    (timeLeft === 0 ||
+                      (!isMultipleSelect && selectedOption) ||
+                      isTimeUp ||
+                      isAnswerSubmitted) &&
+                    !isMultipleSelect
+                      ? "opacity-60 cursor-not-allowed"
+                      : ""
+                  }
+                `}
+                disabled={
+                  isAdmin ||
+                  timeLeft === 0 ||
+                  (!isMultipleSelect && selectedOption) ||
+                  isTimeUp ||
+                  isAnswerSubmitted
                 }
-                ${
-                  isAdmin && option.isCorrect
-                    ? "ring-2 ring-green-500 border-green-500"
-                    : ""
-                }
-                ${
-                  (timeLeft === 0 ||
-                    (!isMultipleSelect && selectedOption) ||
-                    isTimeUp ||
-                    isAnswerSubmitted) &&
-                  !isMultipleSelect
-                    ? "opacity-60 cursor-not-allowed"
-                    : ""
-                }
-              `}
-              disabled={
-                isAdmin ||
-                timeLeft === 0 ||
-                (!isMultipleSelect && selectedOption) ||
-                isTimeUp ||
-                isAnswerSubmitted
-              }
-            >
-              {option.text}
-            </button>
-          ))}
+              >
+                {option.text}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Submit button for multiple select */}
         {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
           <div className="flex justify-center mt-4">
             <button
@@ -334,28 +331,30 @@ const ContentDisplay = ({
           </p>
         )}
 
-        {/* Progress bars for poll questions */}
         {isPoll && (isAdmin || isAnswerSubmitted) && (
           <div className="mt-8">
             <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
               {item.options.map((option, index) => {
                 const count = optionCounts[index] || 0;
                 const percentage = getPercentage(count);
+                const backgroundColor = option.color || '#ffffff';
+                const textColor = getContrastColor(backgroundColor);
 
                 return (
                   <div key={`progress-${index}`} className="relative">
                     <div className="h-12 w-full bg-gray-100 rounded-full relative">
                       <div
-                        className={`h-full ${
-                          bgColors[index % bgColors.length]
-                        } transition-all duration-500 rounded-full absolute top-0 left-0`}
-                        style={{ width: `${percentage}%` }}
+                        className="h-full transition-all duration-500 rounded-full absolute top-0 left-0"
+                        style={{ 
+                          width: `${percentage}%`,
+                          backgroundColor,
+                        }}
                       />
                       <div className="absolute inset-0 px-4 flex items-center justify-between">
-                        <span className="text-gray-800 font-medium z-10">
+                        <span style={{ color: percentage > 50 ? textColor : '#1f2937' }} className="font-medium z-10">
                           {option.text}
                         </span>
-                        <span className="text-gray-800 font-medium z-10">
+                        <span style={{ color: percentage > 50 ? textColor : '#1f2937' }} className="font-medium z-10">
                           {percentage}% ({count})
                         </span>
                       </div>
@@ -387,17 +386,13 @@ const ContentDisplay = ({
   }
 
   return (
-    <div
-      className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}
-    >
+    <div className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}>
       {!isSlide && (
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Question</h2>
           <div className="flex items-center gap-2 text-lg">
             <Timer className="w-6 h-6" />
-            <span
-              className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
-            >
+            <span className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}>
               {timeLeft}s
             </span>
           </div>
@@ -410,7 +405,7 @@ const ContentDisplay = ({
         ? renderOpenEndedQuestion()
         : renderQuestion()}
 
-      {isAdmin && (
+        {isAdmin && (
         <div className="flex justify-end mt-6">
           <button
             onClick={onNext}
