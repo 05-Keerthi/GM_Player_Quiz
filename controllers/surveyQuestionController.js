@@ -54,6 +54,7 @@ exports.createSurveyQuestion = async (req, res) => {
     // Format answer options (extracting text if needed)
     const formattedAnswerOptions = answerOptions.map((option) => ({
       optionText: option.optionText,
+      color: option.color,
     }));
 
     // Create a new survey question
