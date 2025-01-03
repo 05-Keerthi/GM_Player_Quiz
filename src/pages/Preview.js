@@ -4,27 +4,107 @@ import axios from "axios";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Utility function for text contrast
-const getContrastColor = (hexColor) => {
-  if (!hexColor || hexColor === '#') return '#000000';
-  
-  const color = hexColor.replace("#", "");
-  const r = parseInt(color.substring(0, 2), 16);
-  const g = parseInt(color.substring(2, 4), 16);
-  const b = parseInt(color.substring(4, 6), 16);
+// QuizContent Component
+const QuizContent = ({ item, inPresentation = false }) => {
+  const getContrastColor = (hexColor) => {
+    if (!hexColor || hexColor === '#') return '#000000';
+    
+    const color = hexColor.replace("#", "");
+    const r = parseInt(color.substring(0, 2), 16);
+    const g = parseInt(color.substring(2, 4), 16);
+    const b = parseInt(color.substring(4, 6), 16);
 
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? "#000000" : "#ffffff";
+  };
 
-  return luminance > 0.5 ? "#000000" : "#ffffff";
+  const renderOptions = () => {
+    const options = item.data.options || item.data.answerOptions;
+    
+    if (!options) return null;
+
+    return (
+      <div className="space-y-4">
+        {options.map((option, idx) => {
+          const OptionWrapper = inPresentation ? motion.div : 'div';
+          const optionProps = inPresentation ? {
+            initial: { opacity: 0, x: -20 },
+            animate: { opacity: 1, x: 0 },
+            transition: { delay: idx * 0.1 }
+          } : {};
+
+          return (
+            <OptionWrapper
+              key={idx}
+              {...optionProps}
+              style={{
+                backgroundColor: option.color || option.backgroundColor || '#ffffff',
+                color: getContrastColor(option.color || option.backgroundColor)
+              }}
+              className="p-4 rounded-lg border-2 transition-all hover:scale-[1.01]"
+            >
+              <label className="flex items-center gap-3">
+                <div className={`
+                  w-6 h-6 rounded-full border-2 flex items-center justify-center
+                  ${option.isCorrect ? "border-green-500 text-green-500" : "border-gray-400 text-gray-400"}
+                `}>
+                  {option.isCorrect && "✓"}
+                </div>
+                <span className="text-lg">{option.text || option.optionText}</span>
+                {option.isCorrect && (
+                  <span 
+                    className="text-sm font-medium ml-2" 
+                    style={{ color: option.isCorrect ? '#22c55e' : 'inherit' }}
+                  >
+                    (Correct Answer)
+                  </span>
+                )}
+              </label>
+            </OptionWrapper>
+          );
+        })}
+      </div>
+    );
+  };
+
+  if (!item?.data) return null;
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-6 flex-grow overflow-auto">
+        {item.data.title && (
+          <h2 className="text-2xl font-bold mb-4">{item.data.title}</h2>
+        )}
+
+        {item.data.imageUrl && (
+          <div className="mb-6 flex justify-center">
+            <img
+              src={item.data.imageUrl}
+              alt={item.data.title || "Content"}
+              className="max-h-[50vh] w-auto object-contain rounded-lg shadow-md"
+            />
+          </div>
+        )}
+
+        {(item.data.content || item.data.description) && (
+          <div className="text-lg text-gray-700 leading-relaxed mb-6">
+            {item.data.content || item.data.description}
+          </div>
+        )}
+
+        {item.type === "question" && renderOptions()}
+      </div>
+    </div>
+  );
 };
 
+// Main Preview Page Component
 const PreviewPage = () => {
   const [orderedItems, setOrderedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [presentationMode, setPresentationMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showBoxAnimation, setShowBoxAnimation] = useState(false);
-  const [slideDirection, setSlideDirection] = useState(0);
   const { quizId } = useParams();
   const token = localStorage.getItem("token");
 
@@ -124,72 +204,8 @@ const PreviewPage = () => {
       : currentIndex - 1;
       
     if (newIndex >= 0 && newIndex < orderedItems.length) {
-      setSlideDirection(direction === 'next' ? 1 : -1);
       setCurrentIndex(newIndex);
     }
-  };
-
-  const renderContent = (item) => {
-    if (!item?.data) return null;
-    const content = item.data;
-
-    return (
-      <div className="h-full flex flex-col">
-        <div className="p-6 flex-grow overflow-auto">
-          {content.title && (
-            <h2 className="text-2xl font-bold mb-4">{content.title}</h2>
-          )}
-
-          {content.imageUrl && (
-            <div className="mb-4 flex justify-center">
-              <img
-                src={content.imageUrl}
-                alt={content.title || "Content"}
-                className="max-w-full max-h-[40vh] object-contain rounded-lg shadow-md"
-              />
-            </div>
-          )}
-
-          {content.content && (
-            <div className="mb-4">
-              <p className="text-lg text-gray-700">{content.content}</p>
-            </div>
-          )}
-
-          {item.type === "question" &&
-            content.type === "multiple_choice" &&
-            content.options && (
-              <div className="space-y-3">
-                {content.options.map((option, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      backgroundColor: option.color || '#ffffff',
-                      color: getContrastColor(option.color)
-                    }}
-                    className="p-3 rounded-lg border transition-all hover:opacity-90"
-                  >
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="options"
-                        className="mr-3"
-                        disabled
-                      />
-                      <span>{option.text}</span>
-                      {option.isCorrect && (
-                        <span className="ml-2 text-green-600 text-sm">
-                          (Correct)
-                        </span>
-                      )}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            )}
-        </div>
-      </div>
-    );
   };
 
   const renderPresentationMode = () => (
@@ -226,71 +242,22 @@ const PreviewPage = () => {
           >
             <div className="h-full flex flex-col">
               {orderedItems[currentIndex]?.data?.title && (
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4">
+                <div className={`px-8 py-4 ${
+                  orderedItems[currentIndex].type === "question"
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700"
+                    : "bg-gradient-to-r from-purple-600 to-purple-700"
+                }`}>
                   <h2 className="text-2xl font-semibold text-white">
                     {orderedItems[currentIndex].data.title}
                   </h2>
                 </div>
               )}
 
-              <div className="flex-1 p-8 overflow-auto">
-                {orderedItems[currentIndex]?.data?.imageUrl && (
-                  <div className="mb-6 flex justify-center">
-                    <img
-                      src={orderedItems[currentIndex].data.imageUrl}
-                      alt="Content"
-                      className="max-h-[50vh] w-auto object-contain rounded-lg shadow-md"
-                    />
-                  </div>
-                )}
-
-                {orderedItems[currentIndex]?.data?.content && (
-                  <div className="text-lg text-gray-700 leading-relaxed mb-6">
-                    {orderedItems[currentIndex].data.content}
-                  </div>
-                )}
-
-                {orderedItems[currentIndex]?.type === "question" &&
-                  orderedItems[currentIndex]?.data?.type === "multiple_choice" && (
-                    <div className="space-y-4">
-                      {orderedItems[currentIndex].data.options?.map(
-                        (option, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            style={{
-                              backgroundColor: option.color || '#ffffff',
-                              color: getContrastColor(option.color)
-                            }}
-                            className="p-4 rounded-lg border-2 transition-all transform hover:scale-[1.01]"
-                          >
-                            <label className="flex items-center gap-3">
-                              <div
-                                className={`
-                                  w-6 h-6 rounded-full border-2 flex items-center justify-center
-                                  ${option.isCorrect
-                                    ? "border-green-500 text-green-500"
-                                    : "border-gray-400 text-gray-400"
-                                  }
-                                `}
-                              >
-                                {option.isCorrect && "✓"}
-                              </div>
-                              <span className="text-lg">{option.text}</span>
-                              {option.isCorrect && (
-                                <span className="text-sm font-medium ml-2" 
-                                      style={{ color: option.isCorrect ? '#22c55e' : 'inherit' }}>
-                                  (Correct Answer)
-                                </span>
-                              )}
-                            </label>
-                          </motion.div>
-                        )
-                      )}
-                    </div>
-                  )}
+              <div className="flex-1 overflow-auto">
+                <QuizContent 
+                  item={orderedItems[currentIndex]} 
+                  inPresentation={true}
+                />
               </div>
             </div>
           </motion.div>
@@ -408,17 +375,19 @@ const PreviewPage = () => {
 
           <div className="flex-1 bg-white">
             <div className="h-full border-l">
-              {orderedItems[currentIndex] &&
-                renderContent(orderedItems[currentIndex])}
+              {orderedItems[currentIndex] && (
+                <QuizContent 
+                  item={orderedItems[currentIndex]} 
+                  inPresentation={false}
+                />
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Render presentation mode overlay when active */}
       {presentationMode && renderPresentationMode()}
 
-      {/* Box Animation for presentation mode transition */}
       <AnimatePresence>
         {showBoxAnimation && (
           <motion.div

@@ -17,8 +17,8 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     ) {
       const initialCounts = {};
       if (currentItem.type === "true_false") {
-        initialCounts[0] = 0; // False
-        initialCounts[1] = 0; // True
+        initialCounts["false"] = 0; // False
+        initialCounts["true"] = 0; // True
       } else if (currentItem.options) {
         currentItem.options.forEach((_, index) => {
           initialCounts[index] = 0;
@@ -68,23 +68,23 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
             return newCounts;
           });
           setTotalVotes((prev) => prev + 1);
-        } else if (
-          currentItem.type === "poll" ||
-          currentItem.type === "multiple_choice" ||
-          currentItem.type === "true_false"
-        ) {
+        } else if (currentItem.type === "true_false") {
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
-            if (currentItem.type === "true_false") {
-              const optionIndex = answerDetails.answer === "true" ? 1 : 0;
+            // Directly use the answer value as the key
+            const answer = answerDetails.answer.toLowerCase();
+            newCounts[answer] = (newCounts[answer] || 0) + 1;
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
+        } else if (currentItem.type === "poll" || currentItem.type === "multiple_choice") {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = currentItem.options.findIndex(
+              (opt) => opt.text === answerDetails.answer
+            );
+            if (optionIndex !== -1) {
               newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-            } else if (currentItem.options) {
-              const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === answerDetails.answer
-              );
-              if (optionIndex !== -1) {
-                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-              }
             }
             return newCounts;
           });
@@ -97,21 +97,23 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     return () => socket.off("answer-submitted", handleAnswerSubmitted);
   }, [socket, currentItem]);
 
+  // Function to get contrast color for text
+  const getContrastColor = (backgroundColor) => {
+    if (!backgroundColor) return "text-gray-800";
+    
+    const hex = backgroundColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? "text-gray-800" : "text-white";
+  };
+
   // Early return if no currentItem or if it's a slide
   if (!currentItem || currentItem.type === "slide") {
     return null;
   }
-
-  const bgColors = [
-    "bg-red-300",
-    "bg-green-200",
-    "bg-yellow-200",
-    "bg-blue-200",
-    "bg-purple-200",
-    "bg-pink-200",
-    "bg-indigo-200",
-    "bg-orange-200",
-  ];
 
   // For open-ended questions, show a single response count
   if (currentItem.type === "open_ended") {
@@ -124,37 +126,39 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For true/false questions, show two count circles
+  // For true/false questions, show two count circles with option colors
   if (currentItem.type === "true_false") {
     return (
       <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-        <div
-          className={`${bgColors[0]} p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-        >
-          {optionCounts[0] || 0}
-        </div>
-        <div
-          className={`${bgColors[1]} p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
-        >
-          {optionCounts[1] || 0}
-        </div>
+        {currentItem.options.map((option, index) => (
+          <div
+            key={`count-${index}`}
+            className={`p-4 rounded-full w-12 h-12 flex items-center justify-center font-medium shadow-md ${getContrastColor(
+              option.color
+            )}`}
+            style={{ backgroundColor: option.color || "#ffffff" }}
+          >
+            {optionCounts[option.text.toLowerCase()] || 0}
+          </div>
+        ))}
       </div>
     );
   }
 
-  // For multiple choice, multiple select or poll questions, show count circles
+  // For multiple choice, multiple select or poll questions, show count circles with option colors
   if (!currentItem.options) {
     return null;
   }
 
   return (
     <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-      {currentItem.options.map((_, index) => (
+      {currentItem.options.map((option, index) => (
         <div
           key={`count-${index}`}
-          className={`${
-            bgColors[index % bgColors.length]
-          } p-4 rounded-full w-12 h-12 flex items-center justify-center text-gray-800 font-medium shadow-md`}
+          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center font-medium shadow-md ${getContrastColor(
+            option.color
+          )}`}
+          style={{ backgroundColor: option.color || "#ffffff" }}
         >
           {optionCounts[index] || 0}
         </div>

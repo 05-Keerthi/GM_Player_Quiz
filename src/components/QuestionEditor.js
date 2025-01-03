@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import ColorPicker from "../components/ColorPicker"; // ColorPicker integrated
 import {
   X,
   CheckSquare,
@@ -27,9 +28,9 @@ function parseQuestionData(question) {
     title: question?.title || "",
     type: question?.type || "multiple_choice",
     options: question?.options?.length
-      ? question.options.map(opt => ({
+      ? question.options.map((opt) => ({
           ...opt,
-          color: opt.color || "#ffffff"
+          color: opt.color || "#ffffff",
         }))
       : [
           { text: "", isCorrect: false, color: "#ffffff" },
@@ -103,15 +104,14 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
     }));
   };
 
-  // Add option functionality
-  const handleaddoption = () => {
+  const handleAddOption = () => {
     setParsedQuestion((prev) => ({
       ...prev,
       options: [...prev.options, { text: "", isCorrect: false, color: "#ffffff" }],
     }));
   };
 
-  const handleremoveOption = (index) => {
+  const handleRemoveOption = (index) => {
     setParsedQuestion((prev) => ({
       ...prev,
       options: prev.options.filter((_, i) => i !== index),
@@ -165,9 +165,9 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
         );
 
-        setParsedQuestion(prev => ({
+        setParsedQuestion((prev) => ({
           ...prev,
-          imageUrl: mediaData._id
+          imageUrl: mediaData._id,
         }));
       } catch (error) {
         console.error("Image upload error:", error);
@@ -180,18 +180,18 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
 
   const handleImageRemove = () => {
     setImagePreview(null);
-    setParsedQuestion(prev => ({
+    setParsedQuestion((prev) => ({
       ...prev,
-      imageUrl: null
+      imageUrl: null,
     }));
   };
 
   const handleSave = () => {
     const updatedQuestion = {
       ...parsedQuestion,
-      imageUrl: parsedQuestion.imageUrl
+      imageUrl: parsedQuestion.imageUrl,
     };
-    
+
     if (onUpdate) {
       onUpdate(updatedQuestion);
     }
@@ -233,6 +233,60 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
             className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300"
             placeholder="Enter your question here"
           />
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-sm font-semibold text-gray-700">
+            Answer Options
+          </label>
+          {parsedQuestion.options.map((option, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+            >
+              <input
+                type={
+                  parsedQuestion.type === "multiple_select"
+                    ? "checkbox"
+                    : "radio"
+                }
+                checked={option.isCorrect || false}
+                onChange={() => handleCorrectAnswerChange(index)}
+                className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <input
+                type="text"
+                value={option.text || ""}
+                onChange={(e) => handleOptionChange(index, e.target.value)}
+                className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors rounded-lg"
+                placeholder={`Option ${index + 1}`}
+                style={{
+                  backgroundColor: option.color,
+                  color: getContrastColor(option.color),
+                }}
+              />
+              <ColorPicker
+                color={option.color}
+                onChange={(color) => handleOptionColorChange(index, color)}
+              />
+              {parsedQuestion.options.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveOption(index)}
+                  className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={handleAddOption}
+            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+          >
+            Add Option
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -290,83 +344,6 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
             </div>
           )}
         </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Question Type
-          </label>
-          <select
-            value={parsedQuestion.type}
-            onChange={(e) => handleInputChange("type", e.target.value)}
-            className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="multiple_choice">Multiple Choice</option>
-            <option value="multiple_select">Multiple Select</option>
-            <option value="true_false">True/False</option>
-            <option value="open_ended">Open Ended</option>
-            <option value="poll">Poll</option>
-          </select>
-        </div>
-
-        {parsedQuestion.type !== "open_ended" && (
-          <div className="space-y-4">
-            <label className="block text-sm font-semibold text-gray-700">
-              Answer Options
-            </label>
-            {parsedQuestion.options.map((option, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-3 bg-white p-3 rounded-lg border"
-              >
-                <input
-                  type={
-                    parsedQuestion.type === "multiple_select"
-                      ? "checkbox"
-                      : "radio"
-                  }
-                  checked={option.isCorrect || false}
-                  onChange={() => handleCorrectAnswerChange(index)}
-                  className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <input
-                  type="text"
-                  value={option.text || ""}
-                  onChange={(e) => handleOptionChange(index, e.target.value)}
-                  className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors rounded-lg"
-                  placeholder={`Option ${index + 1}`}
-                  style={{
-                    backgroundColor: option.color,
-                    color: getContrastColor(option.color)
-                  }}
-                />
-                <input
-                  type="color"
-                  value={option.color || "#ffffff"}
-                  onChange={(e) => handleOptionColorChange(index, e.target.value)}
-                  className="w-8 h-8 border rounded-lg cursor-pointer"
-                />
-                {parsedQuestion.options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleremoveOption(index)}
-                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-            {parsedQuestion.type !== "true_false" && (
-              <button
-                type="button"
-                onClick={handleaddoption}
-                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-              >
-                Add Option
-              </button>
-            )}
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-6">
           <div>
