@@ -145,16 +145,19 @@ const QuizCreator = () => {
       const cleanSlides = slides.filter((slide) => slide._id); // Filter out malformed slides
       const cleanQuestions = questions.filter((question) => question._id); // Filter out malformed questions
 
-      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: quiz.title,
-          description: quiz.description,
-          questions: cleanQuestions,
-          slides: cleanSlides,
-          order,
-        }),
-      });
+      await authenticatedFetch(
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            title: quiz.title,
+            description: quiz.description,
+            questions: cleanQuestions,
+            slides: cleanSlides,
+            order,
+          }),
+        }
+      );
 
       showAlert("Quiz saved successfully", "success");
     } catch (err) {
@@ -167,8 +170,8 @@ const QuizCreator = () => {
   const handleAddSlide = async (slideData) => {
     try {
       setLoading(true);
-      console.log('Sending slide data:', slideData);
-  
+      console.log("Sending slide data:", slideData);
+
       const response = await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
         {
@@ -179,14 +182,14 @@ const QuizCreator = () => {
           body: JSON.stringify(slideData),
         }
       );
-  
+
       if (!response.ok) {
         throw new Error(`Failed to add slide: ${response.statusText}`);
       }
-  
+
       const newSlide = await response.json();
-      console.log('Received slide response:', newSlide);
-  
+      console.log("Received slide response:", newSlide);
+
       // Ensure the slide data is in the correct format for our UI
       const formattedSlide = {
         _id: newSlide._id,
@@ -195,28 +198,45 @@ const QuizCreator = () => {
         type: newSlide.type,
         imageUrl: newSlide.imageUrl, // This will be the full URL from the response
         position: newSlide.position || 0,
-        quiz: newSlide.quiz
+        quiz: newSlide.quiz,
       };
-  
+
       // Update slides array
-      setSlides(prevSlides => [...prevSlides, formattedSlide]);
-  
+      setSlides((prevSlides) => [...prevSlides, formattedSlide]);
+
       // Create new ordered item
       const newOrderedItem = {
         id: formattedSlide._id,
         type: "slide",
-        data: formattedSlide
+        data: formattedSlide,
       };
-  
+
       // Update ordered items
-      setOrderedItems(prevItems => [...prevItems, newOrderedItem]);
-  
+
+      const updatedOrderedItems = [...orderedItems, newOrderedItem];
+      setOrderedItems(updatedOrderedItems);
+      // Save the updated quiz state to backend
+      await authenticatedFetch(
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            title: quiz.title,
+            description: quiz.description,
+            questions: questions,
+            slides: slides,
+            order: updatedOrderedItems.map((item) => ({
+              id: item.id,
+              type: item.type,
+            })),
+          }),
+        }
+      );
       setCurrentSlide(formattedSlide);
       setIsAddSlideOpen(false);
       showAlert("Slide added successfully", "success");
-  
     } catch (err) {
-      console.error('Error adding slide:', err);
+      console.error("Error adding slide:", err);
       handleApiError(err);
     } finally {
       setLoading(false);
@@ -372,19 +392,22 @@ const QuizCreator = () => {
       setOrderedItems(updatedOrderedItems);
 
       // Save the updated quiz state to backend
-      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: quiz.title,
-          description: quiz.description,
-          questions: updatedQuestions,
-          slides: slides,
-          order: updatedOrderedItems.map((item) => ({
-            id: item.id,
-            type: item.type,
-          })),
-        }),
-      });
+      await authenticatedFetch(
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            title: quiz.title,
+            description: quiz.description,
+            questions: updatedQuestions,
+            slides: slides,
+            order: updatedOrderedItems.map((item) => ({
+              id: item.id,
+              type: item.type,
+            })),
+          }),
+        }
+      );
 
       setCurrentQuestion(newQuestion);
       setIsAddQuestionOpen(false);
@@ -480,13 +503,16 @@ const QuizCreator = () => {
       const formData = new FormData();
       formData.append("media", file);
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/media/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/media/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Image upload failed");
@@ -554,9 +580,9 @@ const QuizCreator = () => {
 
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/media/byFilename/${encodeURIComponent(
-          filename
-        )}`,
+        `${
+          process.env.REACT_APP_API_URL
+        }/api/media/byFilename/${encodeURIComponent(filename)}`,
         {
           method: "DELETE",
           headers: {
@@ -648,16 +674,19 @@ const QuizCreator = () => {
         type: item.type,
       }));
 
-      await authenticatedFetch(`${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: quiz.title,
-          description: quiz.description,
-          questions: newQuestions,
-          slides: newSlides,
-          order,
-        }),
-      });
+      await authenticatedFetch(
+        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            title: quiz.title,
+            description: quiz.description,
+            questions: newQuestions,
+            slides: newSlides,
+            order,
+          }),
+        }
+      );
 
       showAlert("Order updated successfully", "success");
     } catch (err) {
