@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Timer } from "lucide-react";
 
 const getContrastColor = (hexColor) => {
-  if (!hexColor || hexColor === '#') return '#000000';
-  
+  if (!hexColor || hexColor === "#") return "#000000";
+
   const color = hexColor.replace("#", "");
   const r = parseInt(color.substring(0, 2), 16);
   const g = parseInt(color.substring(2, 4), 16);
@@ -94,7 +94,10 @@ const ContentDisplay = ({
     }
   }, [socket, item, isAdmin]);
 
-  const isSlide = item?.type === "bullet_points" || item?.type === "slide" || item?.type === "classic";
+  const isSlide =
+    item?.type === "bullet_points" ||
+    item?.type === "slide" ||
+    item?.type === "classic";
   const isOpenEnded = item?.type === "open_ended";
   const isMultipleSelect = item?.type === "multiple_select";
 
@@ -191,7 +194,11 @@ const ContentDisplay = ({
           <button
             onClick={handleOpenEndedSubmit}
             className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
-              ${isTimeUp || isAnswerSubmitted ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}
+              ${
+                isTimeUp || isAnswerSubmitted
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }
             `}
             disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
           >
@@ -258,9 +265,9 @@ const ContentDisplay = ({
         )}
         <div className="grid grid-cols-2 gap-4">
           {item?.options?.map((option, index) => {
-            const backgroundColor = option.color || '#ffffff';
+            const backgroundColor = option.color || "#ffffff";
             const textColor = getContrastColor(backgroundColor);
-            
+
             return (
               <button
                 key={option._id}
@@ -337,7 +344,7 @@ const ContentDisplay = ({
               {item.options.map((option, index) => {
                 const count = optionCounts[index] || 0;
                 const percentage = getPercentage(count);
-                const backgroundColor = option.color || '#ffffff';
+                const backgroundColor = option.color || "#ffffff";
                 const textColor = getContrastColor(backgroundColor);
 
                 return (
@@ -345,16 +352,26 @@ const ContentDisplay = ({
                     <div className="h-12 w-full bg-gray-100 rounded-full relative">
                       <div
                         className="h-full transition-all duration-500 rounded-full absolute top-0 left-0"
-                        style={{ 
+                        style={{
                           width: `${percentage}%`,
                           backgroundColor,
                         }}
                       />
                       <div className="absolute inset-0 px-4 flex items-center justify-between">
-                        <span style={{ color: percentage > 50 ? textColor : '#1f2937' }} className="font-medium z-10">
+                        <span
+                          style={{
+                            color: percentage > 50 ? textColor : "#1f2937",
+                          }}
+                          className="font-medium z-10"
+                        >
                           {option.text}
                         </span>
-                        <span style={{ color: percentage > 50 ? textColor : '#1f2937' }} className="font-medium z-10">
+                        <span
+                          style={{
+                            color: percentage > 50 ? textColor : "#1f2937",
+                          }}
+                          className="font-medium z-10"
+                        >
                           {percentage}% ({count})
                         </span>
                       </div>
@@ -386,13 +403,19 @@ const ContentDisplay = ({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}>
+    <div
+      className={`bg-white rounded-lg shadow-lg ${
+        isSlide ? "relative" : "p-6"
+      } mb-6`}
+    >
       {!isSlide && (
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Question</h2>
           <div className="flex items-center gap-2 text-lg">
             <Timer className="w-6 h-6" />
-            <span className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}>
+            <span
+              className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
+            >
               {timeLeft}s
             </span>
           </div>
@@ -405,8 +428,12 @@ const ContentDisplay = ({
         ? renderOpenEndedQuestion()
         : renderQuestion()}
 
-        {isAdmin && (
-        <div className="flex justify-end mt-6">
+      {isAdmin && (
+        <div
+          className={`flex justify-end ${
+            isSlide ? "absolute bottom-6 right-6" : "mt-6"
+          }`}
+        >
           <button
             onClick={onNext}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
