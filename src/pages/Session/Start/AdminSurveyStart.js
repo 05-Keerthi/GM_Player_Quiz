@@ -20,10 +20,47 @@ const AdminSurveyStart = () => {
   const [timerInterval, setTimerInterval] = useState(null);
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [optionCounts, setOptionCounts] = useState({});
 
   const surveyId = searchParams.get("surveyId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
+
+  // Reset option counts when question changes
+  useEffect(() => {
+    if (currentItem?.answerOptions) {
+      const initialCounts = {};
+      currentItem.answerOptions.forEach((_, index) => {
+        initialCounts[index] = 0;
+      });
+      setOptionCounts(initialCounts);
+      setSubmittedAnswers([]);
+    }
+  }, [currentItem]);
+
+  // Socket event listeners for answer updates
+  useEffect(() => {
+    if (socket && currentItem?._id) {
+      const handleAnswerSubmitted = (data) => {
+        if (data.questionId === currentItem._id) {
+          // Update option counts
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = currentItem.answerOptions.findIndex(
+              (opt) => opt.optionText === data.answer
+            );
+            if (optionIndex !== -1) {
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            }
+            return newCounts;
+          });
+        }
+      };
+
+      socket.on("survey-answer-submitted", handleAnswerSubmitted);
+      return () => socket.off("survey-answer-submitted", handleAnswerSubmitted);
+    }
+  }, [socket, currentItem]);
 
   // Initialize socket and first question
   useEffect(() => {
@@ -55,6 +92,7 @@ const AdminSurveyStart = () => {
                     imageUrl: item.imageUrl,
                     description: item.description,
                     dimension: item.dimension,
+                    year: item.year,
                     timer: item.timer,
                     type: "question",
                     answerOptions: item.answerOptions?.map((option) => ({
@@ -98,29 +136,6 @@ const AdminSurveyStart = () => {
     };
   }, [sessionId, joinCode]);
 
-  // Socket event listeners
-  useEffect(() => {
-    if (socket) {
-      socket.on("survey-answer-submitted", (data) => {
-        if (currentItem && data.questionId === currentItem._id) {
-          setSubmittedAnswers((prev) => [
-            ...prev,
-            {
-              questionId: data.questionId,
-              answer: data.answer,
-              userId: data.userId,
-              timeTaken: data.timeTaken,
-            },
-          ]);
-        }
-      });
-
-      return () => {
-        socket.off("survey-answer-submitted");
-      };
-    }
-  }, [socket, currentItem]);
-
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -160,9 +175,7 @@ const AdminSurveyStart = () => {
       }
 
       const response = await nextSurveyQuestion(joinCode, sessionId);
-      console.log("Next question response:", response);
 
-      // Check if we're at the end or it's the last item
       if (
         isLastItem ||
         response.message === "No more items left in the survey session" ||
@@ -171,13 +184,6 @@ const AdminSurveyStart = () => {
         if (socket) {
           socket.emit("survey-completed", { sessionId });
         }
-
-        // Clear any existing timer
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          setTimerInterval(null);
-        }
-
         setIsSurveyEnded(true);
         navigate(`/results/${sessionId}?joinCode=${joinCode}`);
         return;
@@ -203,6 +209,7 @@ const AdminSurveyStart = () => {
                 imageUrl: item.imageUrl,
                 description: item.description,
                 dimension: item.dimension,
+                year: item.year,
                 timer: item.timer,
                 type: "question",
                 answerOptions: item.answerOptions?.map((option) => ({
@@ -274,6 +281,18 @@ const AdminSurveyStart = () => {
     }
   };
 
+  const getTextColor = (backgroundColor) => {
+    if (!backgroundColor) return "text-gray-700";
+
+    const hex = backgroundColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? "text-gray-700" : "text-white";
+  };
+
   // Show results component if showResults is true
   if (showResults) {
     return (
@@ -285,7 +304,6 @@ const AdminSurveyStart = () => {
     );
   }
 
-  // Main render
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
@@ -295,16 +313,49 @@ const AdminSurveyStart = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : (
-            <SurveyContentDisplay
-              item={currentItem}
-              isAdmin={true}
-              onNext={handleNext}
-              timeLeft={timeLeft}
-              isLastItem={isLastItem}
-              onEndSurvey={handleEndSurvey}
-              isSurveyEnded={isSurveyEnded}
-              submittedAnswers={submittedAnswers}
-            />
+            <>
+              {/* Live Response Counter */}
+              {currentItem?.answerOptions && (
+                <div className="mb-2 flex justify-end rounded-full">
+                  <div className="flex flex-wrap gap-2">
+                    {currentItem.answerOptions.map((option, index) => {
+                      const count = optionCounts[index] || 0;
+                      const backgroundColor = option.color || "#FFFFFF";
+                      const textColor = getTextColor(backgroundColor);
+
+                      return (
+                        <div
+                          key={option._id}
+                          className="flex flex-col items-center"
+                        >
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-semibold shadow-md border border-gray-200"
+                            style={{
+                              backgroundColor,
+                              color: textColor,
+                            }}
+                          >
+                            {count}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Survey Content */}
+              <SurveyContentDisplay
+                item={currentItem}
+                isAdmin={true}
+                onNext={handleNext}
+                timeLeft={timeLeft}
+                isLastItem={isLastItem}
+                onEndSurvey={handleEndSurvey}
+                isSurveyEnded={isSurveyEnded}
+                submittedAnswers={submittedAnswers}
+              />
+            </>
           )}
         </div>
       </div>

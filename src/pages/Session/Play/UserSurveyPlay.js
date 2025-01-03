@@ -170,7 +170,7 @@ const UserSurveyPlay = () => {
       // Submit to backend
       await submitSurveyAnswer(sessionId, currentItem._id, answerData);
 
-      // Emit to socket
+      // Emit to socket for real-time updates
       if (socket) {
         socket.emit("survey-submit-answer", {
           sessionId,
@@ -180,6 +180,8 @@ const UserSurveyPlay = () => {
           timeTaken,
         });
       }
+
+      setHasSubmitted(true);
     } catch (error) {
       console.error("Error submitting answer:", error);
     }
