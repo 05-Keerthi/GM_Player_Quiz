@@ -1,84 +1,103 @@
 import React, { useState, useEffect } from "react";
-import { X, Trash2, Upload } from "lucide-react";
-import { motion } from "framer-motion";
+import { X, Trash2, Upload, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import ColorPicker from "../components/ColorPicker";
 
-const processQuestionData = (data) => {
-  return {
-    title: data.title || "",
-    description: data.description || "",
-    dimension: data.dimension || "",
-    year: data.year || "",
-    imageUrl: data.imageUrl || null,
-    timer: data.timer || 30,
-    answerOptions: Array.isArray(data.answerOptions)
-      ? data.answerOptions.map((option) => ({
-          optionText: option.optionText || "",
-          color: option.color || "#ffffff",
-        }))
-      : [{ optionText: "", color: "#ffffff" }],
-  };
-};
+const processQuestionData = (data = {}) => ({
+  title: data.title || "",
+  description: data.description || "",
+  dimension: data.dimension || "",
+  year: data.year || "",
+  imageUrl: data.imageUrl || null,
+  timer: data.timer || 30,
+  answerOptions:
+    Array.isArray(data.answerOptions) && data.answerOptions.length > 0
+      ? data.answerOptions
+      : [{ optionText: "", color: "#FFFFFF" }],
+});
 
 const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
-  const [parsedQuestion, setParsedQuestion] = useState(() =>
-    processQuestionData({
-      title: question?.title || "",
-      description: question?.description || "",
-      dimension: question?.dimension || "",
-      year: question?.year || "",
-      imageUrl: question?.imageUrl || null,
-      timer: question?.timer || 30,
-      answerOptions: question?.answerOptions?.length
-        ? question.answerOptions
-        : [{ optionText: "", color: "#ffffff" }],
-    })
-  );
-
-  const [imagePreview, setImagePreview] = useState(null);
+  const [formData, setFormData] = useState(processQuestionData(question));
+  const [errors, setErrors] = useState({});
+  const [imagePreview, setImagePreview] = useState(question?.imageUrl || null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (question) {
-      setParsedQuestion(processQuestionData(question));
+      setFormData(processQuestionData(question));
       setImagePreview(question.imageUrl);
     }
   }, [question]);
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Question title is required";
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Question description is required";
+    }
+
+    const validOptions = formData.answerOptions.filter((opt) =>
+      opt.optionText.trim()
+    );
+    if (validOptions.length < 2) {
+      newErrors.options = "At least two valid answer options are required";
+    }
+
+    formData.answerOptions.forEach((option, index) => {
+      if (!option.optionText.trim()) {
+        newErrors[`option${index}`] = "Option text is required";
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleInputChange = (field, value) => {
-    setParsedQuestion((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+    setIsDirty(true);
   };
 
   const handleOptionChange = (index, field, value) => {
-    const updatedOptions = parsedQuestion.answerOptions.map((opt, i) =>
+    const updatedOptions = formData.answerOptions.map((opt, i) =>
       i === index ? { ...opt, [field]: value } : opt
     );
 
-    setParsedQuestion((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       answerOptions: updatedOptions,
     }));
+    setErrors((prev) => ({ ...prev, [`option${index}`]: "", options: "" }));
+    setIsDirty(true);
   };
 
   const handleAddOption = () => {
-    setParsedQuestion((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       answerOptions: [
         ...prev.answerOptions,
-        { optionText: "", color: "#ffffff" },
+        { optionText: "", color: "#FFFFFF" },
       ],
     }));
+    setIsDirty(true);
   };
 
   const handleRemoveOption = (index) => {
-    if (parsedQuestion.answerOptions.length > 1) {
-      setParsedQuestion((prev) => ({
+    if (formData.answerOptions.length > 1) {
+      setFormData((prev) => ({
         ...prev,
         answerOptions: prev.answerOptions.filter((_, i) => i !== index),
       }));
+      setIsDirty(true);
     }
   };
 
@@ -87,7 +106,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     if (!file) return;
 
     setIsUploading(true);
-    setUploadError(null);
+    setErrors((prev) => ({ ...prev, image: "" }));
 
     try {
       const formData = new FormData();
@@ -111,18 +130,17 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
       const data = await response.json();
       const mediaData = data.media[0];
 
-      // Store the media ID in imageUrl
-      setParsedQuestion((prev) => ({
+      setFormData((prev) => ({
         ...prev,
         imageUrl: mediaData._id,
       }));
 
-      // Set the preview URL using the full URL from the uploaded file
-      const previewUrl = `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`;
-      setImagePreview(previewUrl);
+      setImagePreview(
+        `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+      );
+      setIsDirty(true);
     } catch (error) {
-      console.error("Error uploading image:", error);
-      setUploadError("Failed to upload image");
+      setErrors((prev) => ({ ...prev, image: "Failed to upload image" }));
     } finally {
       setIsUploading(false);
     }
@@ -130,32 +148,31 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
 
   const handleImageRemove = () => {
     setImagePreview(null);
-    setParsedQuestion((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       imageUrl: null,
     }));
+    setIsDirty(true);
   };
 
-  const handleSave = () => {
-    if (!parsedQuestion.title.trim()) {
-      setUploadError("Please enter a question title");
-      return;
+  const handleSubmit = () => {
+    if (validateForm()) {
+      onUpdate(formData);
     }
+  };
 
-    if (!parsedQuestion.description.trim()) {
-      setUploadError("Please enter a question description");
-      return;
+  const handleClose = () => {
+    if (isDirty) {
+      if (
+        window.confirm(
+          "You have unsaved changes. Are you sure you want to close?"
+        )
+      ) {
+        onClose();
+      }
+    } else {
+      onClose();
     }
-
-    if (!parsedQuestion.answerOptions.some((opt) => opt.optionText.trim())) {
-      setUploadError("Please add at least one answer option");
-      return;
-    }
-
-    if (onUpdate) {
-      onUpdate(parsedQuestion);
-    }
-    onClose();
   };
 
   return (
@@ -163,208 +180,242 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-auto"
+      className="bg-white rounded-lg shadow-lg p-6"
     >
-      <div className="flex items-center justify-between mb-6 border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {question ? "Edit Question" : "Add Question"}
+      {/* Header */}
+      <div className="flex items-center justify-between border-b pb-4 mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">
+          {question ? "Edit Question" : "Add New Question"}
         </h2>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
         >
           <X className="w-6 h-6 text-gray-600" />
         </button>
       </div>
 
-      {uploadError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-          {uploadError}
-        </div>
-      )}
-
       <div className="space-y-6">
-        {/* Question Title */}
+        {/* Title Field */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Question Title
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Question Title <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            value={parsedQuestion.title}
+            value={formData.title}
             onChange={(e) => handleInputChange("title", e.target.value)}
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter question title"
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+              errors.title ? "border-red-500" : "border-gray-300"
+            }`}
+            placeholder="Enter your question title"
           />
+          {errors.title && (
+            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {errors.title}
+            </p>
+          )}
         </div>
 
-        {/* Description */}
+        {/* Description Field */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description <span className="text-red-500">*</span>
           </label>
           <textarea
-            value={parsedQuestion.description}
+            value={formData.description}
             onChange={(e) => handleInputChange("description", e.target.value)}
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px] ${
+              errors.description ? "border-red-500" : "border-gray-300"
+            }`}
             placeholder="Enter question description"
           />
+          {errors.description && (
+            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {errors.description}
+            </p>
+          )}
         </div>
 
-        {/* Dimension and Year */}
+        {/* Metadata Fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Dimension
             </label>
             <input
               type="text"
-              value={parsedQuestion.dimension}
+              value={formData.dimension}
               onChange={(e) => handleInputChange("dimension", e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Enter dimension"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Year
             </label>
             <input
               type="text"
-              value={parsedQuestion.year}
+              value={formData.year}
               onChange={(e) => handleInputChange("year", e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Enter year"
             />
           </div>
         </div>
 
         {/* Image Upload */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Question Image (Optional)
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Question Image
           </label>
           {!imagePreview ? (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <label className="flex flex-col items-center justify-center cursor-pointer">
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 ${
+                errors.image ? "border-red-500 bg-red-50" : "border-gray-300"
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+                disabled={isUploading}
+              />
+              <label
+                htmlFor="image-upload"
+                className="cursor-pointer flex flex-col items-center"
+              >
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <span className="text-sm text-gray-500">
                   {isUploading ? "Uploading..." : "Click to upload image"}
                 </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                />
               </label>
             </div>
           ) : (
-            <div className="relative">
-              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                <div
-                  className="relative w-full"
-                  style={{ paddingBottom: "75%" }}
-                >
-                  <img
-                    src={imagePreview}
-                    alt="Question"
-                    className="absolute inset-0 w-full h-full object-contain"
-                  />
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="relative rounded-lg overflow-hidden">
+              <img
+                src={imagePreview}
+                alt="Question"
+                className="w-full h-48 object-cover"
+              />
               <button
                 onClick={handleImageRemove}
-                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
           )}
+          {errors.image && (
+            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {errors.image}
+            </p>
+          )}
         </div>
 
         {/* Answer Options */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
+        <div>
+          <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700">
-              Answer Options
+              Answer Options <span className="text-red-500">*</span>
             </label>
             <button
               onClick={handleAddOption}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               Add Option
             </button>
           </div>
-          {parsedQuestion.answerOptions.map((option, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <div
-                className="flex-1 p-3 rounded-lg focus-within:ring-2 focus-within:ring-blue-500"
-                style={{ backgroundColor: option.color }}
+          {errors.options && (
+            <p className="mb-2 text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {errors.options}
+            </p>
+          )}
+          <AnimatePresence>
+            {formData.answerOptions.map((option, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center gap-3 mb-3"
               >
-                <input
-                  type="text"
-                  value={option.optionText}
-                  onChange={(e) =>
-                    handleOptionChange(index, "optionText", e.target.value)
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={option.optionText}
+                    onChange={(e) =>
+                      handleOptionChange(index, "optionText", e.target.value)
+                    }
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      errors[`option${index}`]
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder={`Option ${index + 1}`}
+                    style={{ backgroundColor: option.color }}
+                  />
+                  {errors[`option${index}`] && (
+                    <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors[`option${index}`]}
+                    </p>
+                  )}
+                </div>
+                <ColorPicker
+                  color={option.color}
+                  onChange={(color) =>
+                    handleOptionChange(index, "color", color)
                   }
-                  className="w-full bg-transparent focus:outline-none"
-                  placeholder={`Option ${index + 1}`}
                 />
-              </div>
-              <input
-                type="color"
-                value={option.color}
-                onChange={(e) =>
-                  handleOptionChange(index, "color", e.target.value)
-                }
-                className="w-10 h-10 border rounded-lg"
-              />
-              {parsedQuestion.answerOptions.length > 1 && (
-                <button
-                  onClick={() => handleRemoveOption(index)}
-                  className="p-2 text-red-500 hover:bg-red-100 rounded-full"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          ))}
+                {formData.answerOptions.length > 1 && (
+                  <button
+                    onClick={() => handleRemoveOption(index)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
-        {/* Timer */}
+        {/* Timer Field */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Timer (seconds)
           </label>
           <input
             type="number"
-            value={parsedQuestion.timer}
+            value={formData.timer}
             onChange={(e) =>
-              handleInputChange("timer", parseInt(e.target.value))
+              handleInputChange("timer", parseInt(e.target.value, 10))
             }
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             min="0"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-4 mt-6">
+        <div className="flex justify-end gap-4 pt-6 border-t">
           <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={handleSubmit}
+            disabled={isUploading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {question ? "Update Question" : "Add Question"}
           </button>
           <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            onClick={handleClose}
+            className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
             Cancel
           </button>

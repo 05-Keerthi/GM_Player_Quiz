@@ -92,15 +92,15 @@ const SurveyContentDisplay = ({
               <h3 className="text-xl font-semibold mb-4">{item?.title}</h3>
               <div className="space-y-4">
                 <div>
-                  <p className="text-gray-600">Description</p>
+                  <p className="text-gray-600 font-bold">Description</p>
                   <p className="text-gray-800">{item?.description}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Dimension</p>
+                  <p className="text-gray-600 font-bold">Dimension</p>
                   <p className="text-gray-800">{item?.dimension}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Year</p>
+                  <p className="text-gray-600 font-bold">Year</p>
                   <p className="text-gray-800">{item?.year}</p>
                 </div>
               </div>
