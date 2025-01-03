@@ -66,8 +66,8 @@ const UserSurveyPlay = () => {
             ? {
                 _id: questionData._id,
                 type: "slide",
-                title: questionData.surveyTitle || questionData.title, // Check both field names
-                content: questionData.surveyContent || questionData.content, // Check both field names
+                title: questionData.surveyTitle || questionData.title,
+                content: questionData.surveyContent || questionData.content,
                 imageUrl: questionData.imageUrl,
                 surveyQuiz: questionData.surveyQuiz,
               }
@@ -83,6 +83,7 @@ const UserSurveyPlay = () => {
                   (option) => ({
                     _id: option._id,
                     optionText: option.optionText || option.text,
+                    color: option.color, // Include the color property
                   })
                 ),
               };

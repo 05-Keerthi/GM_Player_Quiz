@@ -138,12 +138,12 @@ const SurveyResults = () => {
                     <th className="text-left p-3 border border-gray-200">
                       Question
                     </th>
-                    <th className="text-left p-3 border border-gray-200">
+                    {/* <th className="text-left p-3 border border-gray-200">
                       Dimension
                     </th>
                     <th className="text-left p-3 border border-gray-200">
                       Description
-                    </th>
+                    </th> */}
                     <th className="text-center p-3 border border-gray-200">
                       Total Responses
                     </th>
@@ -159,12 +159,12 @@ const SurveyResults = () => {
                       <td className="p-3 border border-gray-200">
                         {question.title}
                       </td>
-                      <td className="p-3 border border-gray-200">
+                      {/* <td className="p-3 border border-gray-200">
                         {question.dimension}
                       </td>
                       <td className="p-3 border border-gray-200">
                         {question.description}
-                      </td>
+                      </td> */}
                       <td className="text-center p-3 border border-gray-200">
                         {getTotalResponses(question._id)}
                       </td>

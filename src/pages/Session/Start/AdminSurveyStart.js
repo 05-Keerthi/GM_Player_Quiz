@@ -60,6 +60,7 @@ const AdminSurveyStart = () => {
                     answerOptions: item.answerOptions?.map((option) => ({
                       _id: option._id,
                       optionText: option.optionText,
+                      color: option.color,
                       isCorrect: false,
                     })),
                   };
@@ -207,6 +208,7 @@ const AdminSurveyStart = () => {
                 answerOptions: item.answerOptions?.map((option) => ({
                   _id: option._id,
                   optionText: option.optionText,
+                  color: option.color,
                   isCorrect: false,
                 })),
               };

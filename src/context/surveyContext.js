@@ -228,7 +228,7 @@ export const SurveyProvider = ({ children }) => {
       }
     },
 
-
+    // Update the publishSurvey function in surveyContext.js
     publishSurvey: async (id) => {
       dispatch({ type: SURVEY_ACTIONS.PUBLISH_SURVEY_START });
       try {
@@ -236,7 +236,9 @@ export const SurveyProvider = ({ children }) => {
         const processedSurvey = {
           ...survey,
           surveySlides: survey.slides || [],
-          questions: survey.questions || []
+          questions: survey.questions || [],
+          // Preserve the order array from the original survey data
+          order: Array.isArray(survey.order) ? survey.order : [],
         };
         dispatch({
           type: SURVEY_ACTIONS.PUBLISH_SURVEY_SUCCESS,
@@ -263,7 +265,7 @@ export const SurveyProvider = ({ children }) => {
         const processedSurvey = {
           ...survey,
           surveySlides: survey.slides || [],
-          questions: survey.questions || []
+          questions: survey.questions || [],
         };
         dispatch({
           type: SURVEY_ACTIONS.CLOSE_SURVEY_SUCCESS,

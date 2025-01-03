@@ -13,8 +13,9 @@ const processQuestionData = (data) => {
     answerOptions: Array.isArray(data.answerOptions)
       ? data.answerOptions.map((option) => ({
           optionText: option.optionText || "",
+          color: option.color || "#ffffff",
         }))
-      : [{ optionText: "" }],
+      : [{ optionText: "", color: "#ffffff" }],
   };
 };
 
@@ -29,7 +30,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
       timer: question?.timer || 30,
       answerOptions: question?.answerOptions?.length
         ? question.answerOptions
-        : [{ optionText: "" }],
+        : [{ optionText: "", color: "#ffffff" }],
     })
   );
 
@@ -40,7 +41,6 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
   useEffect(() => {
     if (question) {
       setParsedQuestion(processQuestionData(question));
-      // For editing: if imageUrl exists, use it directly as it's already a full URL from backend
       setImagePreview(question.imageUrl);
     }
   }, [question]);
@@ -52,9 +52,9 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     }));
   };
 
-  const handleOptionChange = (index, value) => {
+  const handleOptionChange = (index, field, value) => {
     const updatedOptions = parsedQuestion.answerOptions.map((opt, i) =>
-      i === index ? { optionText: value } : opt
+      i === index ? { ...opt, [field]: value } : opt
     );
 
     setParsedQuestion((prev) => ({
@@ -66,7 +66,10 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
   const handleAddOption = () => {
     setParsedQuestion((prev) => ({
       ...prev,
-      answerOptions: [...prev.answerOptions, { optionText: "" }],
+      answerOptions: [
+        ...prev.answerOptions,
+        { optionText: "", color: "#ffffff" },
+      ],
     }));
   };
 
@@ -301,12 +304,27 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
           </div>
           {parsedQuestion.answerOptions.map((option, index) => (
             <div key={index} className="flex items-center gap-3">
+              <div
+                className="flex-1 p-3 rounded-lg focus-within:ring-2 focus-within:ring-blue-500"
+                style={{ backgroundColor: option.color }}
+              >
+                <input
+                  type="text"
+                  value={option.optionText}
+                  onChange={(e) =>
+                    handleOptionChange(index, "optionText", e.target.value)
+                  }
+                  className="w-full bg-transparent focus:outline-none"
+                  placeholder={`Option ${index + 1}`}
+                />
+              </div>
               <input
-                type="text"
-                value={option.optionText}
-                onChange={(e) => handleOptionChange(index, e.target.value)}
-                className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder={`Option ${index + 1}`}
+                type="color"
+                value={option.color}
+                onChange={(e) =>
+                  handleOptionChange(index, "color", e.target.value)
+                }
+                className="w-10 h-10 border rounded-lg"
               />
               {parsedQuestion.answerOptions.length > 1 && (
                 <button

@@ -119,20 +119,36 @@ const SurveyPreviewPage = () => {
         {question.answerOptions?.map((option, index) => (
           <div 
             key={index}
-            className="p-4 border rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+            style={{ backgroundColor: option.color || '#ffffff' }}
+            className={`p-4 rounded-lg transition-colors cursor-pointer border hover:opacity-90`}
           >
-            {option.optionText}
+            <span className={`${getTextColor(option.color)}`}>
+              {option.optionText}
+            </span>
           </div>
         ))}
       </div>
-
-      {/* {question.timer && (
-        <div className="mt-4 text-sm text-gray-500">
-          Time limit: {question.timer} seconds
-        </div>
-      )} */}
     </div>
   );
+
+
+
+  const getTextColor = (backgroundColor) => {
+    // If no background color is provided, return default dark text
+    if (!backgroundColor) return 'text-gray-700';
+
+    // Convert hex to RGB
+    const hex = backgroundColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Calculate relative luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return white text for dark backgrounds, dark text for light backgrounds
+    return luminance > 0.5 ? 'text-gray-700' : 'text-white';
+  };
 
   const renderContent = (slide) => {
     if (!slide) return null;

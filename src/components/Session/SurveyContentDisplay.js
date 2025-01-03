@@ -234,39 +234,45 @@ const SurveyContentDisplay = ({
     </div>
   );
 
-  const renderQuestion = () => {
-    const isPoll = item?.type === "poll";
-    const options = item?.answerOptions || [];
+// In SurveyContentDisplay.js
 
-    return (
-      <div className="space-y-4">
-        <h3 className="text-xl mb-4">{item?.title}</h3>
-        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
-          <p className="text-gray-600 mb-4">
-            Select multiple options and click Submit when done
-          </p>
-        )}
-        {item?.imageUrl && (
-          <img
-            src={item.imageUrl}
-            alt="Question"
-            className="w-full max-h-64 object-contain rounded-lg mb-4"
-          />
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {options.map((option, index) => (
+const renderQuestion = () => {
+  const isPoll = item?.type === "poll";
+  const options = item?.answerOptions || [];
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xl mb-4">{item?.title}</h3>
+      {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+        <p className="text-gray-600 mb-4">
+          Select multiple options and click Submit when done
+        </p>
+      )}
+      {item?.imageUrl && (
+        <img
+          src={item.imageUrl}
+          alt="Question"
+          className="w-full max-h-64 object-contain rounded-lg mb-4"
+        />
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {options.map((option, index) => {
+          const backgroundColor = option.color || '#ffffff';
+          const textColor = getTextColor(backgroundColor);
+          
+          return (
             <button
               key={option._id}
               onClick={() => handleOptionSelect(option)}
-              className={`p-4 text-lg rounded-lg border transition-all
-                ${bgColors[index % bgColors.length]} 
+              style={{ backgroundColor }}
+              className={`p-4 text-lg rounded-lg border transition-all ${textColor}
                 ${
                   !isAdmin &&
                   (isMultipleSelect
                     ? selectedOptions.some((opt) => opt._id === option._id)
                     : selectedOption?._id === option._id)
                     ? "border-blue-500 ring-2 ring-blue-500"
-                    : "hover:brightness-95"
+                    : "hover:opacity-90"
                 }
                 ${
                   (isTimeUp || isAnswerSubmitted) && !isMultipleSelect
@@ -280,66 +286,90 @@ const SurveyContentDisplay = ({
             >
               {option.optionText}
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={handleMultipleSelectSubmit}
+            disabled={selectedOptions.length === 0 || isTimeUp}
+            className={`px-6 py-2 bg-blue-600 text-white rounded-lg
+              ${
+                selectedOptions.length === 0 || isTimeUp
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }
+            `}
+          >
+            Submit Selections
+          </button>
         </div>
+      )}
 
-        {isMultipleSelect && !isAdmin && !isAnswerSubmitted && (
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={handleMultipleSelectSubmit}
-              disabled={selectedOptions.length === 0 || isTimeUp}
-              className={`px-6 py-2 bg-blue-600 text-white rounded-lg
-                ${
-                  selectedOptions.length === 0 || isTimeUp
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-blue-700"
-                }
-              `}
-            >
-              Submit Selections
-            </button>
-          </div>
-        )}
+      {!isAdmin && isAnswerSubmitted && (
+        <p className="text-green-600 font-medium text-center mt-4">
+          Answer submitted successfully!
+        </p>
+      )}
 
-        {!isAdmin && isAnswerSubmitted && (
-          <p className="text-green-600 font-medium text-center mt-4">
-            Answer submitted successfully!
-          </p>
-        )}
+      {isPoll && (isAdmin || isAnswerSubmitted) && (
+        <div className="mt-8">
+          <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
+            {options.map((option, index) => {
+              const count = optionCounts[index] || 0;
+              const percentage = getPercentage(count);
+              const backgroundColor = option.color || '#ffffff';
+              const textColor = getTextColor(backgroundColor);
 
-        {isPoll && (isAdmin || isAnswerSubmitted) && (
-          <div className="mt-8">
-            <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
-              {options.map((option, index) => {
-                const count = optionCounts[index] || 0;
-                const percentage = getPercentage(count);
-
-                return (
-                  <div key={`progress-${index}`} className="relative">
-                    <div className="h-12 w-full bg-gray-100 rounded-full relative">
-                      <div
-                        className={`h-full ${bgColors[index % bgColors.length]} 
-                          transition-all duration-500 rounded-full absolute top-0 left-0`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                      <div className="absolute inset-0 px-4 flex items-center justify-between">
-                        <span className="text-gray-800 font-medium z-10">
-                          {option.optionText}
-                        </span>
-                        <span className="text-gray-800 font-medium z-10">
-                          {percentage}% ({count})
-                        </span>
-                      </div>
+              return (
+                <div key={`progress-${index}`} className="relative">
+                  <div className="h-12 w-full bg-gray-100 rounded-full relative">
+                    <div
+                      className={`h-full transition-all duration-500 rounded-full absolute top-0 left-0`}
+                      style={{ 
+                        width: `${percentage}%`,
+                        backgroundColor: option.color || '#ffffff'
+                      }}
+                    />
+                    <div className="absolute inset-0 px-4 flex items-center justify-between">
+                      <span className={`font-medium z-10 ${textColor}`}>
+                        {option.optionText}
+                      </span>
+                      <span className={`font-medium z-10 ${textColor}`}>
+                        {percentage}% ({count})
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
-    );
-  };
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Add getTextColor helper function at the component level
+const getTextColor = (backgroundColor) => {
+  // Default to dark text if no background color is provided
+  if (!backgroundColor) return 'text-gray-700';
+
+  // Convert hex to RGB
+  const hex = backgroundColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // Calculate relative luminance (perceived brightness)
+  // Using the formula: (0.299 * R + 0.587 * G + 0.114 * B)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Return white text for dark backgrounds, dark text for light backgrounds
+  return luminance > 0.5 ? 'text-gray-700' : 'text-white';
+};
 
   if (isSurveyEnded) {
     return (
