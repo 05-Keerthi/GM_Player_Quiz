@@ -228,23 +228,16 @@ export const SurveyProvider = ({ children }) => {
       }
     },
 
-    // Update the publishSurvey function in surveyContext.js
+    // Update the publishSurvey function to match quiz context style
     publishSurvey: async (id) => {
       dispatch({ type: SURVEY_ACTIONS.PUBLISH_SURVEY_START });
       try {
         const { data: survey } = await api.post(`/survey-quiz/${id}/publish`);
-        const processedSurvey = {
-          ...survey,
-          surveySlides: survey.slides || [],
-          questions: survey.questions || [],
-          // Preserve the order array from the original survey data
-          order: Array.isArray(survey.order) ? survey.order : [],
-        };
         dispatch({
           type: SURVEY_ACTIONS.PUBLISH_SURVEY_SUCCESS,
-          payload: processedSurvey,
+          payload: survey,
         });
-        return processedSurvey;
+        return survey;
       } catch (error) {
         const errorPayload = {
           message: error.response?.data?.message || "Failed to publish survey",
@@ -258,20 +251,16 @@ export const SurveyProvider = ({ children }) => {
       }
     },
 
+    // Update the closeSurvey function to match the same pattern
     closeSurvey: async (id) => {
       dispatch({ type: SURVEY_ACTIONS.CLOSE_SURVEY_START });
       try {
         const { data: survey } = await api.post(`/survey-quiz/${id}/close`);
-        const processedSurvey = {
-          ...survey,
-          surveySlides: survey.slides || [],
-          questions: survey.questions || [],
-        };
         dispatch({
           type: SURVEY_ACTIONS.CLOSE_SURVEY_SUCCESS,
-          payload: processedSurvey,
+          payload: survey,
         });
-        return processedSurvey;
+        return survey;
       } catch (error) {
         const errorPayload = {
           message: error.response?.data?.message || "Failed to close survey",
