@@ -32,7 +32,6 @@ const SurveyContentDisplay = ({
 
   const handleOptionSelect = (option) => {
     if (isAdmin || isTimeUp || isAnswerSubmitted) return;
-
     setSelectedOption(option);
     onSubmitAnswer?.({
       type: "single_select",
@@ -44,40 +43,40 @@ const SurveyContentDisplay = ({
 
   const getTextColor = (backgroundColor) => {
     if (!backgroundColor) return "text-gray-700";
-
     const hex = backgroundColor.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
-
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance > 0.5 ? "text-gray-700" : "text-white";
   };
 
   const renderSlide = () => (
-    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 rounded-t-lg">
+    <div className="flex flex-col h-full rounded-lg overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4">
         <h3 className="text-2xl font-bold text-white">{item?.title}</h3>
       </div>
-      <div className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
-        {item?.imageUrl && (
-          <div className="flex justify-center">
-            <img
-              src={item.imageUrl}
-              alt="Slide"
-              className="max-h-[40vh] object-contain rounded-lg shadow-md"
-            />
-          </div>
-        )}
-        <div className="prose max-w-none flex-1">
-          {item?.content?.split("\n").map(
-            (paragraph, index) =>
-              paragraph.trim() && (
-                <p key={index} className="text-lg mb-4">
-                  {paragraph}
-                </p>
-              )
+      <div className="flex-1 bg-white p-8 overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          {item?.imageUrl && (
+            <div className="flex justify-center mb-8">
+              <img
+                src={item.imageUrl}
+                alt="Slide"
+                className="max-h-96 object-contain rounded-lg shadow-md"
+              />
+            </div>
           )}
+          <div className="prose max-w-none">
+            {item?.content?.split("\n").map(
+              (paragraph, index) =>
+                paragraph.trim() && (
+                  <p key={index} className="text-lg mb-6 text-gray-700">
+                    {paragraph}
+                  </p>
+                )
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -188,27 +187,30 @@ const SurveyContentDisplay = ({
   }
 
   return (
-    <div
-      className={`bg-white rounded-lg shadow-lg ${isSlide ? "" : "p-6"} mb-6`}
-    >
-      {!isSlide && (
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Question</h2>
-          <div className="flex items-center gap-2 text-lg">
-            <Timer className="w-6 h-6" />
-            <span
-              className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
-            >
-              {timeLeft}s
-            </span>
+    <div className="flex flex-col min-h-[calc(100vh-16rem)]">
+      <div
+        className={`bg-white rounded-lg shadow-lg mb-4 flex-1 ${
+          !isSlide && "p-6"
+        }`}
+      >
+        {!isSlide && (
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Question</h2>
+            <div className="flex items-center gap-2 text-lg">
+              <Timer className="w-6 h-6" />
+              <span
+                className={`font-medium ${timeLeft <= 5 ? "text-red-600" : ""}`}
+              >
+                {timeLeft}s
+              </span>
+            </div>
           </div>
-        </div>
-      )}
-
-      {isSlide ? renderSlide() : renderQuestion()}
+        )}
+        {isSlide ? renderSlide() : renderQuestion()}
+      </div>
 
       {isAdmin && (
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end">
           <button
             onClick={onNext}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
