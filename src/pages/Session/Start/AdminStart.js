@@ -1,4 +1,3 @@
-// AdminStart.js
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -48,7 +47,6 @@ const AdminStart = () => {
             setTimerActive(response.item.type !== "bullet_points");
             setIsLastItem(response.isLastItem || false);
 
-            // Initialize option counts for poll questions
             if (response.item.type === "poll") {
               const initialCounts = {};
               response.item.options?.forEach((_, index) => {
@@ -58,7 +56,6 @@ const AdminStart = () => {
               setTotalVotes(0);
             }
 
-            // Emit both the item and initial timer value
             newSocket.emit("next-item", {
               sessionId,
               type: response.type,
@@ -67,7 +64,6 @@ const AdminStart = () => {
               initialTime: initialTime,
             });
 
-            // Start timer immediately for first question
             if (response.item.type !== "bullet_points") {
               startTimer(newSocket, sessionId, initialTime);
             }
@@ -86,55 +82,67 @@ const AdminStart = () => {
     };
   }, [sessionId, joinCode]);
 
-  // Socket event listener for answers
-  // Socket event listener for answers
-useEffect(() => {
-  if (socket && currentItem) {
-    const handleAnswerSubmitted = (data) => {
-      if (data.answerDetails.questionId === currentItem._id) {
-        if (currentItem.type === "open_ended") {
-          setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
-        } else if (currentItem.type === "multiple_select") {
-          // Handle multiple select answers
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            let selectedAnswers = Array.isArray(data.answerDetails.answer) 
-              ? data.answerDetails.answer 
-              : [data.answerDetails.answer];
+  useEffect(() => {
+    if (socket && currentItem) {
+      const handleAnswerSubmitted = (data) => {
+        if (data.answerDetails.questionId === currentItem._id) {
+          if (currentItem.type === "open_ended") {
+            setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
+          } else if (currentItem.type === "multiple_select") {
+            setOptionCounts((prev) => {
+              const newCounts = { ...prev };
+              let selectedAnswers = [];
 
-            selectedAnswers.forEach((answer) => {
+              if (typeof data.answerDetails.answer === "string") {
+                try {
+                  selectedAnswers = JSON.parse(data.answerDetails.answer);
+                  if (!Array.isArray(selectedAnswers)) {
+                    selectedAnswers = [selectedAnswers];
+                  }
+                } catch {
+                  selectedAnswers = [data.answerDetails.answer];
+                }
+              } else if (Array.isArray(data.answerDetails.answer)) {
+                selectedAnswers = data.answerDetails.answer;
+              } else {
+                selectedAnswers = [data.answerDetails.answer];
+              }
+
+              selectedAnswers.forEach((answer) => {
+                const optionIndex = currentItem.options.findIndex(
+                  (opt) => opt.text === answer
+                );
+                if (optionIndex !== -1) {
+                  newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+                }
+              });
+              return newCounts;
+            });
+            setTotalVotes((prev) => prev + 1);
+          } else if (
+            currentItem.type === "poll" ||
+            currentItem.type === "multiple_choice"
+          ) {
+            setOptionCounts((prev) => {
+              const newCounts = { ...prev };
               const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === answer
+                (opt) => opt.text === data.answerDetails.answer
               );
               if (optionIndex !== -1) {
                 newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
               }
+              return newCounts;
             });
-            return newCounts;
-          });
-          setTotalVotes((prev) => prev + 1);
-        } else if (currentItem.type === "poll" || currentItem.type === "multiple_choice") {
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            const optionIndex = currentItem.options.findIndex(
-              (opt) => opt.text === data.answerDetails.answer
-            );
-            if (optionIndex !== -1) {
-              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-            }
-            return newCounts;
-          });
-          setTotalVotes((prev) => prev + 1);
+            setTotalVotes((prev) => prev + 1);
+          }
         }
-      }
-    };
+      };
 
-    socket.on("answer-submitted", handleAnswerSubmitted);
-    return () => socket.off("answer-submitted", handleAnswerSubmitted);
-  }
-}, [socket, currentItem]);
+      socket.on("answer-submitted", handleAnswerSubmitted);
+      return () => socket.off("answer-submitted", handleAnswerSubmitted);
+    }
+  }, [socket, currentItem]);
 
-  // Function to start timer
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -168,7 +176,6 @@ useEffect(() => {
         return;
       }
 
-      // Clear existing timer if any
       if (timerInterval) {
         clearInterval(timerInterval);
         setTimerInterval(null);
@@ -186,7 +193,6 @@ useEffect(() => {
         setTimerActive(response.item.type !== "bullet_points");
         setIsLastItem(response.isLastItem || false);
 
-        // Reset option counts for new poll questions
         if (response.item.type === "poll") {
           const initialCounts = {};
           response.item.options?.forEach((_, index) => {
@@ -205,7 +211,6 @@ useEffect(() => {
             initialTime: newTime,
           });
 
-          // Start timer for new question
           if (response.item.type !== "bullet_points") {
             startTimer(socket, sessionId, newTime);
           }
@@ -255,18 +260,6 @@ useEffect(() => {
       console.error("Error ending quiz:", error);
     }
   };
-  const getTextColor = (backgroundColor) => {
-    if (!backgroundColor) return "text-gray-700";
-
-    const hex = backgroundColor.replace("#", "");
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? "text-gray-700" : "text-white";
-  };
-
 
   if (showFinalLeaderboard) {
     return (
@@ -292,7 +285,6 @@ useEffect(() => {
             </div>
           ) : (
             <>
-              {/* Answer count display at the top */}
               <div className="mb-2">
                 <AdminAnswerCounts
                   sessionId={sessionId}
@@ -300,8 +292,6 @@ useEffect(() => {
                   socket={socket}
                 />
               </div>
-
-              {/* Main content display */}
               <div>
                 <ContentDisplay
                   item={currentItem}

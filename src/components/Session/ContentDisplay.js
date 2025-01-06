@@ -133,12 +133,23 @@ const ContentDisplay = ({
 
   const handleMultipleSelectSubmit = () => {
     if (selectedOptions.length === 0 || isTimeUp || isAnswerSubmitted) return;
-
-    const answers = selectedOptions.map((opt) => opt.text);
+  
+    console.log('Selected options:', selectedOptions);
+    
+    // For multiple select, send both indices and text
+    const selectedIndices = selectedOptions.map((opt) => 
+      item.options.findIndex((itemOpt) => itemOpt._id === opt._id)
+    );
+    
+    const selectedTexts = selectedOptions.map(opt => opt.text);
+    
+    console.log('Selected indices:', selectedIndices);
+    console.log('Selected texts:', selectedTexts);
+    
     onSubmitAnswer?.({
       type: "multiple_select",
-      answer: answers,
-      text: JSON.stringify(answers),
+      answer: selectedIndices,
+      text: selectedTexts.join(', ')
     });
     setIsAnswerSubmitted(true);
   };
@@ -423,7 +434,8 @@ const ContentDisplay = ({
       {isAdmin && (
         <div
           className={`flex justify-end ${
-            isSlide ? "absolute bottom-6 right-6" : "mt-6"}`}
+            isSlide ? "absolute bottom-6 right-6" : "mt-6"
+          }`}
         >
           <button
             onClick={onNext}

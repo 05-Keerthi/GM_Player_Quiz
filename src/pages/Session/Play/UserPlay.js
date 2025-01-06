@@ -1,4 +1,3 @@
-// UserPlay.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAnswerContext } from "../../../context/answerContext";
@@ -52,13 +51,11 @@ const UserPlay = () => {
   useEffect(() => {
     if (socket) {
       socket.on("next-item", (data) => {
-        console.log("Received next-item data:", data);
         const { type, item, isLastItem: lastItem, initialTime } = data;
 
-        // Create a complete item object combining both item data and type
         const completeItem = {
           ...item,
-          type: type === "slide" ? "classic" : item.type, // Handle slide type
+          type: type === "slide" ? "classic" : item.type,
         };
 
         setCurrentItem(completeItem);
@@ -121,7 +118,12 @@ const UserPlay = () => {
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
 
       const answerData = {
-        answer: currentItem.type === "open_ended" ? answer.answer : answer.text,
+        answer:
+          currentItem.type === "multiple_select"
+            ? answer.answer
+            : currentItem.type === "open_ended"
+            ? answer.answer
+            : answer.text,
         userId: user._id,
         timeTaken,
       };
@@ -134,7 +136,11 @@ const UserPlay = () => {
           questionId: currentItem._id,
           userId: user.id,
           answer:
-            currentItem.type === "open_ended" ? answer.answer : answer.text,
+            currentItem.type === "multiple_select"
+              ? answer.answer
+              : currentItem.type === "open_ended"
+              ? answer.answer
+              : answer.text,
           timeTaken,
           type: currentItem.type,
         };

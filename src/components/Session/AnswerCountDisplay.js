@@ -17,8 +17,8 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     ) {
       const initialCounts = {};
       if (currentItem.type === "true_false") {
-        initialCounts["false"] = 0; // False
-        initialCounts["true"] = 0; // True
+        initialCounts["true"] = 0;
+        initialCounts["false"] = 0;
       } else if (currentItem.options) {
         currentItem.options.forEach((_, index) => {
           initialCounts[index] = 0;
@@ -40,44 +40,47 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
         if (currentItem.type === "open_ended") {
           setOpenEndedCount((prev) => prev + 1);
         } else if (currentItem.type === "multiple_select") {
-          // Handle multiple select answers
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
-            let selectedAnswers = [];
+            let selectedIndices = answerDetails.answer;
 
-            // Parse the answer based on its type
-            if (Array.isArray(answerDetails.answer)) {
-              selectedAnswers = answerDetails.answer;
-            } else if (typeof answerDetails.answer === "string") {
+            if (typeof selectedIndices === "string") {
               try {
-                selectedAnswers = JSON.parse(answerDetails.answer);
+                selectedIndices = JSON.parse(selectedIndices);
               } catch {
-                selectedAnswers = [answerDetails.answer];
+                selectedIndices = [selectedIndices];
               }
             }
 
-            // Update counts for each selected option
-            selectedAnswers.forEach((answer) => {
-              const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === answer
-              );
-              if (optionIndex !== -1) {
-                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            if (!Array.isArray(selectedIndices)) {
+              selectedIndices = [selectedIndices];
+            }
+
+            selectedIndices = selectedIndices
+              .map(Number)
+              .filter((i) => !isNaN(i));
+
+            selectedIndices.forEach((index) => {
+              if (index >= 0 && index < currentItem.options.length) {
+                newCounts[index] = (newCounts[index] || 0) + 1;
               }
             });
+
             return newCounts;
           });
           setTotalVotes((prev) => prev + 1);
         } else if (currentItem.type === "true_false") {
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
-            // Directly use the answer value as the key
-            const answer = answerDetails.answer.toLowerCase();
+            const answer = String(answerDetails.answer).toLowerCase();
             newCounts[answer] = (newCounts[answer] || 0) + 1;
             return newCounts;
           });
           setTotalVotes((prev) => prev + 1);
-        } else if (currentItem.type === "poll" || currentItem.type === "multiple_choice") {
+        } else if (
+          currentItem.type === "poll" ||
+          currentItem.type === "multiple_choice"
+        ) {
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
             const optionIndex = currentItem.options.findIndex(
@@ -97,10 +100,10 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     return () => socket.off("answer-submitted", handleAnswerSubmitted);
   }, [socket, currentItem]);
 
-  // Function to get contrast color for text
+  // Get contrast color for text
   const getContrastColor = (backgroundColor) => {
     if (!backgroundColor) return "text-gray-800";
-    
+
     const hex = backgroundColor.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
@@ -110,12 +113,10 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     return luminance > 0.5 ? "text-gray-800" : "text-white";
   };
 
-  // Early return if no currentItem or if it's a slide
   if (!currentItem || currentItem.type === "slide") {
     return null;
   }
 
-  // For open-ended questions, show a single response count
   if (currentItem.type === "open_ended") {
     return (
       <div className="flex flex-row justify-end mb-2 pr-2">
@@ -126,7 +127,6 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For true/false questions, show two count circles with option colors
   if (currentItem.type === "true_false") {
     return (
       <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
@@ -145,24 +145,27 @@ const AdminAnswerCounts = ({ sessionId, currentItem, socket }) => {
     );
   }
 
-  // For multiple choice, multiple select or poll questions, show count circles with option colors
   if (!currentItem.options) {
     return null;
   }
 
   return (
     <div className="flex flex-row justify-end gap-4 mb-2 pr-2">
-      {currentItem.options.map((option, index) => (
-        <div
-          key={`count-${index}`}
-          className={`p-4 rounded-full w-12 h-12 flex items-center justify-center font-medium shadow-md ${getContrastColor(
-            option.color
-          )}`}
-          style={{ backgroundColor: option.color || "#ffffff" }}
-        >
-          {optionCounts[index] || 0}
-        </div>
-      ))}
+      {currentItem.options.map((option, index) => {
+        const backgroundColor =
+          option.color || (option.isCorrect ? "#4ade80" : "#ffffff");
+        return (
+          <div
+            key={`count-${index}`}
+            className={`p-4 rounded-full w-12 h-12 flex items-center justify-center font-medium shadow-md ${getContrastColor(
+              backgroundColor
+            )}`}
+            style={{ backgroundColor }}
+          >
+            {optionCounts[index] || 0}
+          </div>
+        );
+      })}
     </div>
   );
 };
