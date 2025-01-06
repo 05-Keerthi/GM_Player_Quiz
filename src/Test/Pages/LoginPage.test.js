@@ -1,5 +1,4 @@
 // src/Test/Auth/LoginPage.test.js
-
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -173,19 +172,77 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText(/remember me/i)).toBeChecked();
   });
 
-  test("handles login errors", async () => {
+  test("handles password-specific error message", async () => {
     render(<LoginPage />);
-
     await fillLoginForm();
-    const errorMessage = "Invalid credentials";
+
     mockLogin.mockRejectedValueOnce({
-      message: JSON.stringify({ general: errorMessage }),
+      response: {
+        data: {
+          message: "Invalid Password.",
+        },
+      },
     });
 
     await userEvent.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      expect(screen.getByText("Invalid Password.")).toBeInTheDocument();
+    });
+  });
+
+  test("handles email-specific error message", async () => {
+    render(<LoginPage />);
+    await fillLoginForm();
+
+    mockLogin.mockRejectedValueOnce({
+      response: {
+        data: {
+          message: "Email not found.",
+        },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Email not found.")).toBeInTheDocument();
+    });
+  });
+
+  test("handles general error message", async () => {
+    render(<LoginPage />);
+    await fillLoginForm();
+
+    mockLogin.mockRejectedValueOnce({
+      response: {
+        data: {
+          message: "An unexpected error occurred.",
+        },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("An unexpected error occurred.")
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("handles unexpected error format", async () => {
+    render(<LoginPage />);
+    await fillLoginForm();
+
+    mockLogin.mockRejectedValueOnce({});
+
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("An unexpected error occurred. Please try again.")
+      ).toBeInTheDocument();
     });
   });
 
@@ -201,19 +258,15 @@ describe("LoginPage", () => {
   test("opens password reset modal when forgot password is clicked", async () => {
     render(<LoginPage />);
 
-    // Click forgot password link to open modal
     await userEvent.click(screen.getByText(/forgot password/i));
 
-    // Verify modal is displayed
     const modal = screen.getByRole("dialog");
     expect(modal).toBeInTheDocument();
 
-    // Verify initial email is passed to modal
     const emailInput = screen.getByLabelText(/email/i);
     await userEvent.type(emailInput, "test@example.com");
     await userEvent.click(screen.getByText(/forgot password/i));
 
-    // Test modal closing
     await userEvent.click(screen.getByText("Close"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -236,7 +289,6 @@ describe("LoginPage", () => {
     await userEvent.type(screen.getByLabelText(/email/i), "a");
     expect(screen.queryByText(/enter email/i)).not.toBeInTheDocument();
   });
-
 
   test("displays success message after password reset", () => {
     usePasswordReset.mockReturnValue({
