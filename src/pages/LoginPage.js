@@ -30,13 +30,12 @@ const LoginPage = () => {
     }
   }, []);
 
-  // Reset all errors when modal closes
   useEffect(() => {
     if (!showForgotPasswordModal) {
       setEmailError("");
       setPasswordError("");
       setGeneralError("");
-      passwordResetActions.reset(); // Reset password reset state when modal closes
+      passwordResetActions.reset();
     }
   }, [showForgotPasswordModal, passwordResetActions]);
 
@@ -69,12 +68,17 @@ const LoginPage = () => {
         await login(email, password, rememberMe);
         navigate("/");
       } catch (error) {
-        try {
-          const errorObj = JSON.parse(error.message);
-          if (errorObj.email) setEmailError(errorObj.email);
-          if (errorObj.password) setPasswordError(errorObj.password);
-          if (errorObj.general) setGeneralError(errorObj.general);
-        } catch (parseError) {
+        const errorResponse = error.response?.data;
+
+        if (errorResponse?.message) {
+          if (errorResponse.message.toLowerCase().includes("password")) {
+            setPasswordError(errorResponse.message);
+          } else if (errorResponse.message.toLowerCase().includes("email")) {
+            setEmailError(errorResponse.message);
+          } else {
+            setGeneralError(errorResponse.message);
+          }
+        } else {
           setGeneralError("An unexpected error occurred. Please try again.");
         }
       }
