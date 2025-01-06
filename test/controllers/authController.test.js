@@ -1,6 +1,4 @@
-const request = require("supertest");
 const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
 const User = require("../../models/User");
 const RefreshToken = require("../../models/RefreshToken");
 const BlacklistedToken = require("../../models/BlacklistedToken");
@@ -12,7 +10,7 @@ const {
   verifyToken,
 } = require("../../services/authService");
 
-// Mock the dependencies
+// Mock all dependencies
 jest.mock("../../services/mailService");
 jest.mock("bcryptjs");
 jest.mock("../../models/User");
@@ -64,19 +62,27 @@ describe("Auth Controller", () => {
       // Mock User.findOne to return null (no existing user)
       User.findOne.mockResolvedValue(null);
 
-      // Create mock user instance with save method
+      // Create mock user instance
       const mockUserInstance = {
         _id: "user123",
         ...mockUserData,
         save: jest.fn().mockResolvedValue(undefined),
       };
 
-      // Mock the User constructor to return our mock instance
+      // Mock User constructor
       User.mockImplementation(() => mockUserInstance);
 
+      // Mock token generation
       generateAccessToken.mockReturnValue("mock-access-token");
       generateRefreshToken.mockReturnValue("mock-refresh-token");
-      RefreshToken.prototype.save.mockResolvedValue({});
+
+      // Mock RefreshToken
+      const mockRefreshTokenSave = jest.fn().mockResolvedValue({});
+      RefreshToken.mockImplementation(() => ({
+        save: mockRefreshTokenSave,
+      }));
+
+      // Mock email service
       sendWelcomeEmail.mockResolvedValue();
 
       // Execute
@@ -90,6 +96,7 @@ describe("Auth Controller", () => {
         user: mockUserInstance,
       });
       expect(mockUserInstance.save).toHaveBeenCalled();
+      expect(mockRefreshTokenSave).toHaveBeenCalled();
       expect(sendWelcomeEmail).toHaveBeenCalledWith(
         mockUserData.email,
         mockUserData.username
@@ -97,14 +104,11 @@ describe("Auth Controller", () => {
     });
 
     it("should return error if username already exists", async () => {
-      // Setup
       req.body = mockUserData;
       User.findOne.mockResolvedValueOnce({ username: mockUserData.username });
 
-      // Execute
       await register(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         field: "username",
@@ -112,15 +116,43 @@ describe("Auth Controller", () => {
       });
     });
 
+    it("should return error if email already exists", async () => {
+      req.body = mockUserData;
+      User.findOne
+        .mockResolvedValueOnce(null) // username check
+        .mockResolvedValueOnce({ email: mockUserData.email }); // email check
+
+      await register(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        field: "email",
+        message: "Email is already registered",
+      });
+    });
+
+    it("should return error if mobile already exists", async () => {
+      req.body = mockUserData;
+      User.findOne
+        .mockResolvedValueOnce(null) // username check
+        .mockResolvedValueOnce(null) // email check
+        .mockResolvedValueOnce({ mobile: mockUserData.mobile }); // mobile check
+
+      await register(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        field: "mobile",
+        message: "Phone number is already registered",
+      });
+    });
+
     it("should handle server errors during registration", async () => {
-      // Setup
       req.body = mockUserData;
       User.findOne.mockRejectedValue(new Error("Database error"));
 
-      // Execute
       await register(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         field: "general",
@@ -146,7 +178,6 @@ describe("Auth Controller", () => {
     };
 
     it("should login user successfully", async () => {
-      // Setup
       req.body = mockCredentials;
       User.findOne.mockReturnValue({
         populate: jest.fn().mockResolvedValue(mockUser),
@@ -157,10 +188,8 @@ describe("Auth Controller", () => {
       RefreshToken.prototype.save.mockResolvedValue({});
       ActivityLog.prototype.save.mockResolvedValue({});
 
-      // Execute
       await login(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         token: "mock-access-token",
@@ -177,16 +206,13 @@ describe("Auth Controller", () => {
     });
 
     it("should return error for invalid email", async () => {
-      // Setup
       req.body = mockCredentials;
       User.findOne.mockReturnValue({
         populate: jest.fn().mockResolvedValue(null),
       });
 
-      // Execute
       await login(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         message: "Invalid Email.",
@@ -194,17 +220,14 @@ describe("Auth Controller", () => {
     });
 
     it("should return error for invalid password", async () => {
-      // Setup
       req.body = mockCredentials;
       User.findOne.mockReturnValue({
         populate: jest.fn().mockResolvedValue(mockUser),
       });
       bcrypt.compare.mockResolvedValue(false);
 
-      // Execute
       await login(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         message: "Invalid Password.",
@@ -226,7 +249,6 @@ describe("Auth Controller", () => {
     };
 
     it("should refresh token successfully", async () => {
-      // Setup
       req.body = mockRefreshTokenPayload;
       verifyToken.mockReturnValue({ id: mockUser._id });
       RefreshToken.findOne.mockResolvedValue({
@@ -236,10 +258,8 @@ describe("Auth Controller", () => {
       User.findById.mockResolvedValue(mockUser);
       generateAccessToken.mockReturnValue("new-access-token");
 
-      // Execute
       await refreshToken(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         token: "new-access-token",
@@ -254,13 +274,9 @@ describe("Auth Controller", () => {
     });
 
     it("should return error for missing refresh token", async () => {
-      // Setup
       req.body = {};
-
-      // Execute
       await refreshToken(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         message: "Refresh token is required.",
@@ -270,7 +286,6 @@ describe("Auth Controller", () => {
 
   describe("getProfile", () => {
     it("should return user profile successfully", async () => {
-      // Setup
       const mockUser = {
         _id: "user123",
         username: "testuser",
@@ -281,25 +296,20 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValue(mockUser),
       });
 
-      // Execute
       await getProfile(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockUser);
     });
 
     it("should handle errors when fetching profile", async () => {
-      // Setup
       req.user = { id: "user123" };
       User.findById.mockReturnValue({
         select: jest.fn().mockRejectedValue(new Error("Database error")),
       });
 
-      // Execute
       await getProfile(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         message: "Database error",
@@ -309,13 +319,10 @@ describe("Auth Controller", () => {
 
   describe("logout", () => {
     it("should logout successfully", async () => {
-      // Setup
       BlacklistedToken.prototype.save.mockResolvedValue({});
 
-      // Execute
       await logout(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Successfully logged out.",
@@ -324,15 +331,12 @@ describe("Auth Controller", () => {
     });
 
     it("should handle errors during logout", async () => {
-      // Setup
       BlacklistedToken.prototype.save.mockRejectedValue(
         new Error("Database error")
       );
 
-      // Execute
       await logout(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         message: "Database error",
@@ -342,7 +346,6 @@ describe("Auth Controller", () => {
 
   describe("listUsers", () => {
     it("should list all users successfully", async () => {
-      // Setup
       const mockUsers = [
         { _id: "user1", username: "user1", email: "user1@example.com" },
         { _id: "user2", username: "user2", email: "user2@example.com" },
@@ -353,26 +356,21 @@ describe("Auth Controller", () => {
         }),
       });
 
-      // Execute
       await listUsers(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockUsers);
     });
 
     it("should handle errors when listing users", async () => {
-      // Setup
       User.find.mockReturnValue({
         select: jest.fn().mockReturnValue({
           populate: jest.fn().mockRejectedValue(new Error("Database error")),
         }),
       });
 
-      // Execute
       await listUsers(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         message: "Database error",
