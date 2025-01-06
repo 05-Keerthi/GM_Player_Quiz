@@ -159,20 +159,12 @@ const ContentDisplay = ({
         />
       )}
       {isAdmin ? (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-medium mb-2">Submitted Answers:</h4>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {submittedAnswers.map((answer, index) => (
-              <div
-                key={index}
-                className="p-3 bg-white rounded border border-gray-200"
-              >
-                {answer}
-              </div>
-            ))}
-            {submittedAnswers.length === 0 && (
-              <p className="text-gray-500 italic">No answers submitted yet</p>
-            )}
+        <div className="space-y-4">
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <h4 className="font-medium text-green-800 mb-2">Correct Answer:</h4>
+            <div className="p-3 bg-white rounded border border-green-300">
+              {item?.correctAnswer || "No correct answer provided"}
+            </div>
           </div>
         </div>
       ) : (
@@ -431,8 +423,7 @@ const ContentDisplay = ({
       {isAdmin && (
         <div
           className={`flex justify-end ${
-            isSlide ? "absolute bottom-6 right-6" : "mt-6"
-          }`}
+            isSlide ? "absolute bottom-6 right-6" : "mt-6"}`}
         >
           <button
             onClick={onNext}

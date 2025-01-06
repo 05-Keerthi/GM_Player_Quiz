@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import ColorPicker from "../components/ColorPicker"; // ColorPicker integrated
+import ColorPicker from "../components/ColorPicker";
 import {
   X,
   CheckSquare,
@@ -32,10 +32,13 @@ function parseQuestionData(question) {
           ...opt,
           color: opt.color || "#ffffff",
         }))
-      : [
-          { text: "", isCorrect: false, color: "#ffffff" },
-          { text: "", isCorrect: false, color: "#ffffff" },
-        ],
+      : question?.type === "true_false" 
+        ? [
+            { text: "True", isCorrect: false, color: "#ffffff" },
+            { text: "False", isCorrect: false, color: "#ffffff" },
+          ]
+        : [{ text: "", isCorrect: false, color: "#ffffff" }],
+    correctAnswer: question?.correctAnswer || "",
     points: question?.points ?? 1,
     timer: question?.timer ?? 30,
     imageUrl: question?.imageUrl || null,
@@ -235,59 +238,76 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           />
         </div>
 
-        <div className="space-y-4">
-          <label className="block text-sm font-semibold text-gray-700">
-            Answer Options
-          </label>
-          {parsedQuestion.options.map((option, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-3 bg-white p-3 rounded-lg border"
-            >
-              <input
-                type={
-                  parsedQuestion.type === "multiple_select"
-                    ? "checkbox"
-                    : "radio"
-                }
-                checked={option.isCorrect || false}
-                onChange={() => handleCorrectAnswerChange(index)}
-                className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <input
-                type="text"
-                value={option.text || ""}
-                onChange={(e) => handleOptionChange(index, e.target.value)}
-                className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors rounded-lg"
-                placeholder={`Option ${index + 1}`}
-                style={{
-                  backgroundColor: option.color,
-                  color: getContrastColor(option.color),
-                }}
-              />
-              <ColorPicker
-                color={option.color}
-                onChange={(color) => handleOptionColorChange(index, color)}
-              />
-              {parsedQuestion.options.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveOption(index)}
-                  className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={handleAddOption}
-            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-          >
-            Add Option
-          </button>
-        </div>
+        {parsedQuestion.type === "open_ended" ? (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Correct Answer
+            </label>
+            <input
+              type="text"
+              value={parsedQuestion.correctAnswer}
+              onChange={(e) => handleInputChange("correctAnswer", e.target.value)}
+              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300"
+              placeholder="Enter the correct answer"
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <label className="block text-sm font-semibold text-gray-700">
+              Answer Options
+            </label>
+            {parsedQuestion.options.map((option, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+              >
+                <input
+                  type={
+                    parsedQuestion.type === "multiple_select"
+                      ? "checkbox"
+                      : "radio"
+                  }
+                  checked={option.isCorrect || false}
+                  onChange={() => handleCorrectAnswerChange(index)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <input
+                  type="text"
+                  value={option.text || ""}
+                  onChange={(e) => handleOptionChange(index, e.target.value)}
+                  className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors rounded-lg"
+                  placeholder={`Option ${index + 1}`}
+                  style={{
+                    backgroundColor: option.color,
+                    color: getContrastColor(option.color),
+                  }}
+                />
+                <ColorPicker
+                  color={option.color}
+                  onChange={(color) => handleOptionColorChange(index, color)}
+                />
+                {parsedQuestion.options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveOption(index)}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {parsedQuestion.type !== "true_false" && (
+              <button
+                type="button"
+                onClick={handleAddOption}
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+              >
+                Add Option
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="space-y-4">
           <label className="block text-sm font-semibold text-gray-700">

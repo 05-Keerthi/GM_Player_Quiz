@@ -87,32 +87,52 @@ const AdminStart = () => {
   }, [sessionId, joinCode]);
 
   // Socket event listener for answers
-  useEffect(() => {
-    if (socket && currentItem) {
-      const handleAnswerSubmitted = (data) => {
-        if (data.answerDetails.questionId === currentItem._id) {
-          if (currentItem.type === "open_ended") {
-            setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
-          } else if (currentItem.type === "poll") {
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
+  // Socket event listener for answers
+useEffect(() => {
+  if (socket && currentItem) {
+    const handleAnswerSubmitted = (data) => {
+      if (data.answerDetails.questionId === currentItem._id) {
+        if (currentItem.type === "open_ended") {
+          setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
+        } else if (currentItem.type === "multiple_select") {
+          // Handle multiple select answers
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            let selectedAnswers = Array.isArray(data.answerDetails.answer) 
+              ? data.answerDetails.answer 
+              : [data.answerDetails.answer];
+
+            selectedAnswers.forEach((answer) => {
               const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === data.answerDetails.answer
+                (opt) => opt.text === answer
               );
               if (optionIndex !== -1) {
                 newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
               }
-              return newCounts;
             });
-            setTotalVotes((prev) => prev + 1);
-          }
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
+        } else if (currentItem.type === "poll" || currentItem.type === "multiple_choice") {
+          setOptionCounts((prev) => {
+            const newCounts = { ...prev };
+            const optionIndex = currentItem.options.findIndex(
+              (opt) => opt.text === data.answerDetails.answer
+            );
+            if (optionIndex !== -1) {
+              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            }
+            return newCounts;
+          });
+          setTotalVotes((prev) => prev + 1);
         }
-      };
+      }
+    };
 
-      socket.on("answer-submitted", handleAnswerSubmitted);
-      return () => socket.off("answer-submitted", handleAnswerSubmitted);
-    }
-  }, [socket, currentItem]);
+    socket.on("answer-submitted", handleAnswerSubmitted);
+    return () => socket.off("answer-submitted", handleAnswerSubmitted);
+  }
+}, [socket, currentItem]);
 
   // Function to start timer
   const startTimer = (socketInstance, sessionId, initialTime) => {

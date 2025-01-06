@@ -10,7 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import ColorPicker from "../components/ColorPicker";
-// Helper function to determine text color based on background
+
 const getContrastColor = (hexColor) => {
   const color = hexColor.replace("#", "");
   const r = parseInt(color.substring(0, 2), 16);
@@ -20,32 +20,23 @@ const getContrastColor = (hexColor) => {
   return luminance > 0.5 ? "#000000" : "#ffffff";
 };
 
-// const ColorPicker = ({ color, onChange }) => (
-//   <input
-//     type="color"
-//     value={color}
-//     onChange={(e) => onChange(e.target.value)}
-//     className="w-8 h-8 rounded-lg cursor-pointer border-none p-0 bg-transparent"
-//   />
-// );
-
 const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const { quizId } = useParams();
   const [selectedType, setSelectedType] = useState(null);
   const [step, setStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [error, setError] = useState(null);
   const [question, setQuestion] = useState({
     title: "",
     type: "",
     options: [],
-    correctAnswer: [],
+    correctAnswer: "",
     points: 10,
     timer: 10,
     imageUrl: null,
     quizId: quizId,
   });
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,12 +47,13 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         title: "",
         type: "",
         options: [],
-        correctAnswer: [],
+        correctAnswer: "",
         points: 10,
         timer: 10,
         imageUrl: null,
         quizId: quizId,
       });
+      setError(null);
     }
   }, [isOpen, quizId]);
 
@@ -97,6 +89,27 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
       description: "Poll response question",
     },
   ];
+
+  const handleTypeSelect = (type) => {
+    setSelectedType(type);
+    setQuestion((prev) => ({
+      ...prev,
+      type: type,
+      options: type === "open_ended" 
+        ? []
+        : type === "true_false"
+          ? [
+              { text: "True", isCorrect: false, color: "#ffffff" },
+              { text: "False", isCorrect: false, color: "#ffffff" },
+            ]
+          : [
+              { text: "", isCorrect: false, color: "#ffffff" },
+              { text: "", isCorrect: false, color: "#ffffff" },
+            ],
+      correctAnswer: "",
+    }));
+    setStep(2);
+  };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -152,27 +165,6 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     }));
   };
 
-  const handleTypeSelect = (type) => {
-    setSelectedType(type);
-    setQuestion((prev) => ({
-      ...prev,
-      type: type,
-      options:
-        type === "true_false"
-          ? [
-              { text: "True", isCorrect: false, color: "#ffffff" },
-              { text: "False", isCorrect: false, color: "#ffffff" },
-            ]
-          : type === "multiple_choice" || type === "multiple_select" || type === "poll"
-          ? [
-              { text: "", isCorrect: false, color: "#ffffff" },
-              { text: "", isCorrect: false, color: "#ffffff" },
-            ]
-          : [],
-    }));
-    setStep(2);
-  };
-
   const handleOptionChange = (index, value) => {
     setQuestion((prev) => ({
       ...prev,
@@ -199,12 +191,13 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
           isCorrect: i === index,
         }));
         return { ...prev, options: newOptions };
-      } else {
+      } else if (prev.type === "multiple_select") {
         const newOptions = prev.options.map((opt, i) =>
           i === index ? { ...opt, isCorrect: !opt.isCorrect } : opt
         );
         return { ...prev, options: newOptions };
       }
+      return prev;
     });
   };
 
@@ -228,15 +221,23 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         throw new Error("Question title is required");
       }
 
+      if (question.type === "open_ended" && !question.correctAnswer) {
+        throw new Error("Correct answer is required for open-ended questions");
+      }
+
+      if (question.type !== "open_ended" && question.options.some(opt => !opt.text)) {
+        throw new Error("All options must have text");
+      }
+
       const payload = {
         title: question.title,
         type: question.type,
-        options: question.options.map((opt) => ({
+        options: question.type === "open_ended" ? [] : question.options.map((opt) => ({
           text: opt.text,
           isCorrect: opt.isCorrect,
           color: opt.color,
         })),
-        correctAnswer: question.correctAnswer,
+        correctAnswer: question.type === "open_ended" ? question.correctAnswer : "",
         points: question.points,
         timer: question.timer,
         imageUrl: question.imageUrl,
@@ -244,9 +245,6 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
       };
 
       await onAddQuestion(payload);
-      setSelectedType(null);
-      setStep(1);
-      setImagePreview(null);
       onClose();
     } catch (error) {
       setError(error.message);
@@ -264,6 +262,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
             {error}
           </div>
         )}
+        
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
             {step === 1 ? "Select Question Type" : "Create Question"}
@@ -371,7 +370,22 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
               )}
             </div>
 
-            {selectedType !== "open_ended" && (
+            {selectedType === "open_ended" ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Correct Answer
+                </label>
+                <input
+                  type="text"
+                  value={question.correctAnswer}
+                  onChange={(e) =>
+                    setQuestion({ ...question, correctAnswer: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter the correct answer..."
+                />
+              </div>
+            ) : (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="block text-sm font-medium text-gray-700">
@@ -422,28 +436,11 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
-                      )}
-                  </div>
+                      )}</div>
                 ))}
               </div>
             )}
 
-            {selectedType === "open_ended" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Correct Answer
-                </label>
-                <input
-                  type="text"
-                  value={question.correctAnswer}
-                  onChange={(e) =>
-                    setQuestion({ ...question, correctAnswer: e.target.value })
-                  }
-                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter the correct answer..."
-                />
-              </div>
-            )}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -481,11 +478,12 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 mt-6">
               <button
                 onClick={handleSubmit}
                 disabled={
                   !question.title ||
+                  (selectedType === "open_ended" && !question.correctAnswer) ||
                   (selectedType !== "open_ended" &&
                     question.options.some((opt) => !opt.text))
                 }
