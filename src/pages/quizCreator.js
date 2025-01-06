@@ -420,12 +420,16 @@ const QuizCreator = () => {
     }
   };
 
+  const validateOptions = (options) => {
+    if (!Array.isArray(options)) return [];
+    return options.filter((option) => option.text && option.text.trim() !== "");
+  };
+  
   const handleUpdateQuestion = async (questionId, updatedData) => {
     try {
       setLoading(true);
-      console.log("Updating question with data:", updatedData); // Debug log
-
-      // Handle image deletion if needed
+  
+      // Handle image deletion
       if (updatedData.deleteImage) {
         const currentQuestion = questions.find((q) => q._id === questionId);
         if (currentQuestion?.imageUrl) {
@@ -438,19 +442,20 @@ const QuizCreator = () => {
         const imageId = await handleImageUpload(updatedData.imageFile);
         updatedData.imageUrl = imageId;
       }
-
+  
+      // Validate and sanitize options
+      const validatedOptions = validateOptions(updatedData.options);
+  
       const updatePayload = {
         title: updatedData.title,
         type: updatedData.type,
         imageUrl: updatedData.imageUrl,
-        options: updatedData.options || [],
+        options: validatedOptions,
         correctAnswer: updatedData.correctAnswer,
         points: updatedData.points || 0,
         timer: updatedData.timer || 0,
       };
-
-      console.log("Question update payload:", updatePayload); // Debug log
-
+  
       const response = await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/questions/${questionId}`,
         {
@@ -459,27 +464,23 @@ const QuizCreator = () => {
           body: JSON.stringify(updatePayload),
         }
       );
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to update question");
       }
-
+  
       const { question: updatedQuestion } = await response.json();
-
+  
       if (!updatedQuestion || !updatedQuestion._id) {
         throw new Error("Invalid question data received from server");
       }
-
-      // Update questions state
+  
+      // Update state
       setQuestions((prevQuestions) =>
         prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
       );
-
-      // Update current question
       setCurrentQuestion(updatedQuestion);
-
-      // Update in ordered items
       setOrderedItems((prevItems) =>
         prevItems.map((item) =>
           item.id === questionId && item.type === "question"
@@ -487,7 +488,7 @@ const QuizCreator = () => {
             : item
         )
       );
-
+  
       showAlert("Question updated successfully", "success");
     } catch (err) {
       console.error("Error updating question:", err);
@@ -496,7 +497,7 @@ const QuizCreator = () => {
       setLoading(false);
     }
   };
-
+  
   // Helper function for image upload
   const handleImageUpload = async (file) => {
     try {
