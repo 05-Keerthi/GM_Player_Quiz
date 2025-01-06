@@ -1,177 +1,382 @@
-const mongoose = require("mongoose");
 const request = require("supertest");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const app = require("../../app"); // Your Express app
+const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const User = require("../../models/User");
-const { generateAccessToken, generateRefreshToken } = require("../../services/authService");
-require("dotenv").config({ path: ".env.test" });
+const RefreshToken = require("../../models/RefreshToken");
+const BlacklistedToken = require("../../models/BlacklistedToken");
+const ActivityLog = require("../../models/ActivityLog");
+const { sendWelcomeEmail } = require("../../services/mailService");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+} = require("../../services/authService");
 
-// Increase timeout for database operations
-jest.setTimeout(50000);
+// Mock the dependencies
+jest.mock("../../services/mailService");
+jest.mock("bcryptjs");
+jest.mock("../../models/User");
+jest.mock("../../models/RefreshToken");
+jest.mock("../../models/BlacklistedToken");
+jest.mock("../../models/ActivityLog");
+jest.mock("../../services/authService");
 
-// Connect to the database before running tests
-beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URI)
-});
-
-// Disconnect from the database after tests
-afterAll(async () => {
-  await mongoose.disconnect();
-});
+const {
+  register,
+  login,
+  refreshToken,
+  getProfile,
+  logout,
+  listUsers,
+} = require("../../controllers/authController");
 
 describe("Auth Controller", () => {
-  describe("POST /api/auth/register", () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    req = {
+      body: {},
+      user: {},
+      token: "test-token",
+    };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    jest.clearAllMocks();
+  });
+
+  describe("register", () => {
+    const mockUserData = {
+      username: "testuser",
+      email: "test@example.com",
+      password: "password123",
+      tenantId: "tenant123",
+      mobile: "1234567890",
+      role: "user",
+    };
+
     it("should register a new user successfully", async () => {
-      const newUser = {
-        username: "Akash",
-        email: "Akash@example.com",
-        password: "password123",
-        mobile: "9876543210",
-        role: "user",
-      };
-  
-      const response = await request(app).post("/api/auth/register").send(newUser);
-  
-      // Log response for debugging
-      console.log("Response body:", response.body);
-  
-      expect(response.status).toBe(200);
-      expect(response.body.user).toHaveProperty("username", "Akash");
-      expect(response.body).toHaveProperty("token");
-      expect(response.body).toHaveProperty("refresh_token");
-  
-      const userInDb = await User.findOne({ email: "Akash@example.com" });
-      expect(userInDb).not.toBeNull();
-    });
+      // Setup
+      req.body = mockUserData;
 
-    it("should return an error if the username is already registered", async () => {
-      // const existingUser = new User({
-      //   username: "ashok",
-      //   email: "ashok@example.com",
-      //   password: await bcrypt.hash("password123", 10),
-      //   mobile: "9876543210",
-      //   role: "user",
-      // });
-      // await existingUser.save();
+      // Mock User.findOne to return null (no existing user)
+      User.findOne.mockResolvedValue(null);
 
-      const newUser = {
-        username: "ashok",
-        email: "ashokkumar@example.com",
-        password: "Ashok@12345",
-        mobile: "8876543200",
-        role: "user",
+      // Create mock user instance with save method
+      const mockUserInstance = {
+        _id: "user123",
+        ...mockUserData,
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
-      const response = await request(app).post("/api/auth/register").send(newUser);
+      // Mock the User constructor to return our mock instance
+      User.mockImplementation(() => mockUserInstance);
 
-    // Assert that the status is 400 and the error message is correct
-    expect(response.status).toBe(400);
-    expect(response.body.message).toBe("Username is already registered");
-    });
-  });
+      generateAccessToken.mockReturnValue("mock-access-token");
+      generateRefreshToken.mockReturnValue("mock-refresh-token");
+      RefreshToken.prototype.save.mockResolvedValue({});
+      sendWelcomeEmail.mockResolvedValue();
 
-  describe("POST /api/auth/login", () => {
-    beforeEach(async () => {
-      const hashedPassword = await bcrypt.hash("password123", 10);
-      // await User.create({
-      //   username: "Akash",
-      //   email: "Akash@example.com",
-      //   password: "Akash@12345",
-      //   mobile: "9876093210",
-      //   role: "user",
-      // });
-    });
+      // Execute
+      await register(req, res);
 
-    it("should log in a user successfully and return tokens", async () => {
-      const loginData = {
-        email: "Akash@example.com",
-        password: "password123",
-      };
-    
-      const response = await request(app).post("/api/auth/login").send(loginData);
-    
-      // Log response for debugging
-      console.log("Response status:", response.status);
-      console.log("Response body:", response.body);
-    
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("token");
-      expect(response.body).toHaveProperty("refresh_token");
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        token: "mock-access-token",
+        refresh_token: "mock-refresh-token",
+        user: mockUserInstance,
+      });
+      expect(mockUserInstance.save).toHaveBeenCalled();
+      expect(sendWelcomeEmail).toHaveBeenCalledWith(
+        mockUserData.email,
+        mockUserData.username
+      );
     });
 
-    it("should return an error for incorrect password", async () => {
-      const loginData = {
-        email: "Akash@example.com",
-        password: "Ashok@12345",
-      };
+    it("should return error if username already exists", async () => {
+      // Setup
+      req.body = mockUserData;
+      User.findOne.mockResolvedValueOnce({ username: mockUserData.username });
 
-      const response = await request(app).post("/api/auth/login").send(loginData);
+      // Execute
+      await register(req, res);
 
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe("Invalid Password.");
-    });
-  });
-
-  describe("POST /api/auth/refresh-token", () => {
-    it("should refresh the access token successfully", async () => {
-      const user = await User.findOne({ email: "Akash@example.com" });
-      const refreshToken = generateRefreshToken(user);
-
-      const response = await request(app)
-        .post("/api/auth/refresh-token")
-        .send({ refresh_token: refreshToken });
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("token");
-    });
-
-    it("should return an error for an invalid refresh token", async () => {
-      const response = await request(app)
-        .post("/api/auth/refresh-token")
-        .send({ refresh_token: "invalid_token" });
-    
-      console.log("Response body:", response.body); // Log for debugging
-    
-      expect(response.status).toBe(401);
-      expect(response.body.message).toBe("Token validation failed."); // Updated
-    });
-  });
-
-  describe("GET /api/auth/me", () => {
-    let token;
-    const userId = "existingUserId"; // Replace with an actual user ID from your database
-  
-    beforeAll(() => {
-      // Generate a JWT token for the existing user
-      token = jwt.sign({ user: { id: userId } }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        field: "username",
+        message: "Username is already registered",
       });
     });
-  
-    it("should retrieve the user profile", async () => {
-      const response = await request(app)
-        .get("/api/auth/me")
-        .set("Authorization", `Bearer ${token}`);
-  
-      console.log("Response body:", response.body); // For debugging
-  
-    expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("username", "Akash");
+
+    it("should handle server errors during registration", async () => {
+      // Setup
+      req.body = mockUserData;
+      User.findOne.mockRejectedValue(new Error("Database error"));
+
+      // Execute
+      await register(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        field: "general",
+        message: "Database error",
+      });
     });
   });
 
-  describe("POST /api/auth/logout", () => {
-    it("should log out the user successfully", async () => {
-      const user = await User.findOne({ email: "Akash@example.com" });
-      const token = generateAccessToken(user);
+  describe("login", () => {
+    const mockCredentials = {
+      email: "test@example.com",
+      password: "password123",
+    };
 
-      const response = await request(app)
-        .post("/api/auth/logout")
-        .set("Authorization", `Bearer ${token}`);
+    const mockUser = {
+      _id: "user123",
+      username: "testuser",
+      email: "test@example.com",
+      password: "hashedPassword",
+      role: "user",
+      mobile: "1234567890",
+      tenantId: { _id: "tenant123" },
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe("Successfully logged out.");
+    it("should login user successfully", async () => {
+      // Setup
+      req.body = mockCredentials;
+      User.findOne.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockUser),
+      });
+      bcrypt.compare.mockResolvedValue(true);
+      generateAccessToken.mockReturnValue("mock-access-token");
+      generateRefreshToken.mockReturnValue("mock-refresh-token");
+      RefreshToken.prototype.save.mockResolvedValue({});
+      ActivityLog.prototype.save.mockResolvedValue({});
+
+      // Execute
+      await login(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        token: "mock-access-token",
+        refresh_token: "mock-refresh-token",
+        user: {
+          id: mockUser._id,
+          username: mockUser.username,
+          email: mockUser.email,
+          role: mockUser.role,
+          mobile: mockUser.mobile,
+          tenantId: mockUser.tenantId,
+        },
+      });
+    });
+
+    it("should return error for invalid email", async () => {
+      // Setup
+      req.body = mockCredentials;
+      User.findOne.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(null),
+      });
+
+      // Execute
+      await login(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Invalid Email.",
+      });
+    });
+
+    it("should return error for invalid password", async () => {
+      // Setup
+      req.body = mockCredentials;
+      User.findOne.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockUser),
+      });
+      bcrypt.compare.mockResolvedValue(false);
+
+      // Execute
+      await login(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Invalid Password.",
+      });
+    });
+  });
+
+  describe("refreshToken", () => {
+    const mockRefreshTokenPayload = {
+      refresh_token: "valid-refresh-token",
+    };
+
+    const mockUser = {
+      _id: "user123",
+      username: "testuser",
+      email: "test@example.com",
+      role: "user",
+      tenantId: "tenant123",
+    };
+
+    it("should refresh token successfully", async () => {
+      // Setup
+      req.body = mockRefreshTokenPayload;
+      verifyToken.mockReturnValue({ id: mockUser._id });
+      RefreshToken.findOne.mockResolvedValue({
+        expiresAt: new Date(),
+        save: jest.fn().mockResolvedValue({}),
+      });
+      User.findById.mockResolvedValue(mockUser);
+      generateAccessToken.mockReturnValue("new-access-token");
+
+      // Execute
+      await refreshToken(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        token: "new-access-token",
+        user: {
+          id: mockUser._id,
+          username: mockUser.username,
+          email: mockUser.email,
+          role: mockUser.role,
+          tenantId: mockUser.tenantId,
+        },
+      });
+    });
+
+    it("should return error for missing refresh token", async () => {
+      // Setup
+      req.body = {};
+
+      // Execute
+      await refreshToken(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Refresh token is required.",
+      });
+    });
+  });
+
+  describe("getProfile", () => {
+    it("should return user profile successfully", async () => {
+      // Setup
+      const mockUser = {
+        _id: "user123",
+        username: "testuser",
+        email: "test@example.com",
+      };
+      req.user = { id: mockUser._id };
+      User.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUser),
+      });
+
+      // Execute
+      await getProfile(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockUser);
+    });
+
+    it("should handle errors when fetching profile", async () => {
+      // Setup
+      req.user = { id: "user123" };
+      User.findById.mockReturnValue({
+        select: jest.fn().mockRejectedValue(new Error("Database error")),
+      });
+
+      // Execute
+      await getProfile(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Database error",
+      });
+    });
+  });
+
+  describe("logout", () => {
+    it("should logout successfully", async () => {
+      // Setup
+      BlacklistedToken.prototype.save.mockResolvedValue({});
+
+      // Execute
+      await logout(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Successfully logged out.",
+      });
+      expect(BlacklistedToken.prototype.save).toHaveBeenCalled();
+    });
+
+    it("should handle errors during logout", async () => {
+      // Setup
+      BlacklistedToken.prototype.save.mockRejectedValue(
+        new Error("Database error")
+      );
+
+      // Execute
+      await logout(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Database error",
+      });
+    });
+  });
+
+  describe("listUsers", () => {
+    it("should list all users successfully", async () => {
+      // Setup
+      const mockUsers = [
+        { _id: "user1", username: "user1", email: "user1@example.com" },
+        { _id: "user2", username: "user2", email: "user2@example.com" },
+      ];
+      User.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockUsers),
+        }),
+      });
+
+      // Execute
+      await listUsers(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockUsers);
+    });
+
+    it("should handle errors when listing users", async () => {
+      // Setup
+      User.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          populate: jest.fn().mockRejectedValue(new Error("Database error")),
+        }),
+      });
+
+      // Execute
+      await listUsers(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Database error",
+      });
     });
   });
 });
