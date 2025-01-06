@@ -22,25 +22,28 @@ export default function HomePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleNavigation = (path) => {
-    if (path.includes("/join-quiz") || path.includes("-plan")) {
-      if (!isAuthenticated) {
-        navigate("/login");
-        return;
-      }
-    }
     navigate(path);
   };
 
   const handleAction = (action) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
     if (action.modalAction) {
-      if (!isAuthenticated) {
-        navigate("/login");
-        return;
-      }
       setIsCreateModalOpen(true);
     } else if (action.path) {
       handleNavigation(action.path);
     }
+  };
+
+  const handlePlanSelection = (path) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    handleNavigation(path);
   };
 
   const getRoleBasedActions = () => {
@@ -76,7 +79,7 @@ export default function HomePage() {
             icon: <LayoutGrid className="text-blue-600" size={48} />,
             title: "Create Quiz",
             description: "Design and launch new quizzes",
-            buttonText: "Create Now",
+            buttonText: "Create Quiz",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
             path: "/selectQuizCategory",
           },
@@ -92,7 +95,7 @@ export default function HomePage() {
             icon: <LayoutGrid className="text-blue-600" size={48} />,
             title: "Create Survey",
             description: "Create and launch new surveys",
-            buttonText: "Create Now",
+            buttonText: "Create Survey",
             buttonColor: "bg-green-500 hover:bg-blue-600",
             path: "/selectSurveyCategory",
           },
@@ -141,11 +144,11 @@ export default function HomePage() {
           },
           {
             icon: <Rocket className="text-orange-600" size={48} />,
-            title: "View Reports", // Added for user role
+            title: "View Reports",
             description: "View reports and your quiz performance",
             buttonText: "View Reports",
             buttonColor: "bg-orange-500 hover:bg-orange-600",
-            path: `/userreports/${user?.id}`, // Path to reports page
+            path: `/userreports/${user?.id}`,
           },
         ];
       default:
@@ -218,7 +221,7 @@ export default function HomePage() {
               <Card
                 key={index}
                 {...plan}
-                onClick={() => handleNavigation(plan.path)}
+                onClick={() => handlePlanSelection(plan.path)}
               />
             ))}
           </div>
@@ -258,7 +261,7 @@ export default function HomePage() {
                 <Card
                   key={index}
                   {...plan}
-                  onClick={() => handleNavigation(plan.path)}
+                  onClick={() => handlePlanSelection(plan.path)}
                 />
               ))}
             </div>
@@ -290,6 +293,7 @@ export default function HomePage() {
                   </h2>
                   <p className="text-gray-500">{action.description}</p>
                   <button
+                    data-testid="create-quiz-button"
                     onClick={() => handleAction(action)}
                     className={`mt-4 px-4 py-2 text-white rounded-lg transition-colors ${action.buttonColor}`}
                   >

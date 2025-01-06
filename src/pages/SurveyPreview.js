@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 const SurveyPreviewPage = () => {
   const [slides, setSlides] = useState([]);
@@ -26,29 +26,38 @@ const SurveyPreviewPage = () => {
       // Combine slides and questions based on the order field
       let orderedContent = [];
       if (response.data.order && response.data.order.length > 0) {
-        orderedContent = response.data.order.map(item => {
-          if (item.type === 'slide') {
+        orderedContent = response.data.order.map((item) => {
+          if (item.type === "slide") {
             return {
-              ...response.data.slides.find(slide => slide._id === item.id),
-              type: 'slide'
+              ...response.data.slides.find((slide) => slide._id === item.id),
+              type: "slide",
             };
           } else {
             return {
-              ...response.data.questions.find(question => question._id === item.id),
-              type: 'question',
-              surveyTitle: response.data.questions.find(q => q._id === item.id)?.title,
-              surveyContent: response.data.questions.find(q => q._id === item.id)?.description
+              ...response.data.questions.find(
+                (question) => question._id === item.id
+              ),
+              type: "question",
+              surveyTitle: response.data.questions.find(
+                (q) => q._id === item.id
+              )?.title,
+              surveyContent: response.data.questions.find(
+                (q) => q._id === item.id
+              )?.description,
             };
           }
         });
       } else {
         // Fallback if no order is specified
-        const slidesWithType = response.data.slides.map(slide => ({ ...slide, type: 'slide' }));
-        const questionsWithType = response.data.questions.map(question => ({
+        const slidesWithType = response.data.slides.map((slide) => ({
+          ...slide,
+          type: "slide",
+        }));
+        const questionsWithType = response.data.questions.map((question) => ({
           ...question,
-          type: 'question',
+          type: "question",
           surveyTitle: question.title,
-          surveyContent: question.description
+          surveyContent: question.description,
         }));
         orderedContent = [...slidesWithType, ...questionsWithType];
       }
@@ -75,10 +84,8 @@ const SurveyPreviewPage = () => {
   };
 
   const navigatePresentation = (direction) => {
-    const newIndex = direction === 'next' 
-      ? currentIndex + 1 
-      : currentIndex - 1;
-      
+    const newIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
+
     if (newIndex >= 0 && newIndex < slides.length) {
       setCurrentIndex(newIndex);
     }
@@ -114,12 +121,12 @@ const SurveyPreviewPage = () => {
       <div className="text-lg text-gray-700 leading-relaxed">
         {question.description}
       </div>
-      
+
       <div className="space-y-4">
         {question.answerOptions?.map((option, index) => (
-          <div 
+          <div
             key={index}
-            style={{ backgroundColor: option.color || '#ffffff' }}
+            style={{ backgroundColor: option.color || "#ffffff" }}
             className={`p-4 rounded-lg transition-colors cursor-pointer border hover:opacity-90`}
           >
             <span className={`${getTextColor(option.color)}`}>
@@ -131,14 +138,12 @@ const SurveyPreviewPage = () => {
     </div>
   );
 
-
-
   const getTextColor = (backgroundColor) => {
     // If no background color is provided, return default dark text
-    if (!backgroundColor) return 'text-gray-700';
+    if (!backgroundColor) return "text-gray-700";
 
     // Convert hex to RGB
-    const hex = backgroundColor.replace('#', '');
+    const hex = backgroundColor.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
@@ -147,7 +152,7 @@ const SurveyPreviewPage = () => {
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
     // Return white text for dark backgrounds, dark text for light backgrounds
-    return luminance > 0.5 ? 'text-gray-700' : 'text-white';
+    return luminance > 0.5 ? "text-gray-700" : "text-white";
   };
 
   const renderContent = (slide) => {
@@ -170,15 +175,13 @@ const SurveyPreviewPage = () => {
             </div>
           )}
 
-          {slide.type === 'question' ? (
-            renderQuestionContent(slide)
-          ) : (
-            slide.surveyContent && (
-              <div className="mb-4">
-                <p className="text-lg text-gray-700">{slide.surveyContent}</p>
-              </div>
-            )
-          )}
+          {slide.type === "question"
+            ? renderQuestionContent(slide)
+            : slide.surveyContent && (
+                <div className="mb-4">
+                  <p className="text-lg text-gray-700">{slide.surveyContent}</p>
+                </div>
+              )}
         </div>
       </div>
     );
@@ -188,7 +191,8 @@ const SurveyPreviewPage = () => {
     <div className="fixed inset-0 bg-[#262626] z-50">
       <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
         <span className="text-gray-300 font-medium">
-          {slides[currentIndex]?.type === 'question' ? 'Question' : 'Slide'} {currentIndex + 1}
+          {slides[currentIndex]?.type === "question" ? "Question" : "Slide"}{" "}
+          {currentIndex + 1}
         </span>
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">
@@ -214,11 +218,13 @@ const SurveyPreviewPage = () => {
             className="w-full max-w-5xl aspect-[16/9] bg-white rounded-lg shadow-2xl overflow-hidden"
           >
             <div className="h-full flex flex-col">
-              <div className={`px-8 py-4 ${
-                slides[currentIndex]?.type === 'question' 
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700'
-                  : 'bg-gradient-to-r from-purple-600 to-purple-700'
-              }`}>
+              <div
+                className={`px-8 py-4 ${
+                  slides[currentIndex]?.type === "question"
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700"
+                    : "bg-gradient-to-r from-purple-600 to-purple-700"
+                }`}
+              >
                 <h2 className="text-2xl font-semibold text-white">
                   {slides[currentIndex]?.surveyTitle}
                 </h2>
@@ -314,7 +320,8 @@ const SurveyPreviewPage = () => {
                   }`}
                 >
                   <div className="text-sm font-medium">
-                    {slide.type === 'question' ? 'Question' : 'Slide'} {index + 1}
+                    {slide.type === "question" ? "Question" : "Slide"}{" "}
+                    {index + 1}
                   </div>
                   <div className="text-xs text-gray-500 truncate mt-1">
                     {slide.surveyTitle}
