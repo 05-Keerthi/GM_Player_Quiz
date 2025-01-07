@@ -221,7 +221,7 @@ describe('Survey Slide Controller', () => {
     const mockUpdateData = {
       surveyTitle: 'Updated Slide',
       surveyContent: 'Updated Content',
-      imageUrl: 'http://localhost:3000/uploads/new-image.jpg',
+      imageUrl: 'http://localhost:5000/uploads/new-image.jpg',
       position: 2
     };
 
