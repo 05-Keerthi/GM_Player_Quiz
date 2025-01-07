@@ -64,6 +64,9 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(axios|other-esm-modules)/)",
       "node_modules/(?!(react-phone-number-input)/)"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^axios$": "<rootDir>/node_modules/axios/dist/axios.js"
+    }
   }
 }
