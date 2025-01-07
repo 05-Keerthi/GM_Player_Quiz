@@ -51,7 +51,6 @@ export const ProfilePage = () => {
             navigate("/login");
             return;
           }
-          console.error("Profile fetch error:", error);
           setError(error.message || "Network error");
         }
       } finally {
@@ -66,7 +65,7 @@ export const ProfilePage = () => {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -90,7 +89,6 @@ export const ProfilePage = () => {
       const updatedUser = await updateUser(profileData._id, updateData);
       setProfileData(updatedUser);
     } catch (error) {
-      console.error("Update profile error:", error);
       setUpdateError("Failed to update profile");
     } finally {
       setIsUpdating(false);
