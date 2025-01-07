@@ -25,7 +25,7 @@ describe('Slide Controller', () => {
       params: {},
       body: {},
       protocol: 'http',
-      get: jest.fn().mockReturnValue('localhost:3000')
+      get: jest.fn().mockReturnValue('localhost:5000')
     };
     res = {
       status: jest.fn().mockReturnThis(),
