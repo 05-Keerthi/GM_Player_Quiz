@@ -21,6 +21,7 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 
   return (
     <div
+      data-testid="alert-message"
       className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in`}
     >
       <AlertCircle className="w-5 h-5" />
@@ -424,11 +425,11 @@ const QuizCreator = () => {
     if (!Array.isArray(options)) return [];
     return options.filter((option) => option.text && option.text.trim() !== "");
   };
-  
+
   const handleUpdateQuestion = async (questionId, updatedData) => {
     try {
       setLoading(true);
-  
+
       // Handle image deletion
       if (updatedData.deleteImage) {
         const currentQuestion = questions.find((q) => q._id === questionId);
@@ -442,10 +443,10 @@ const QuizCreator = () => {
         const imageId = await handleImageUpload(updatedData.imageFile);
         updatedData.imageUrl = imageId;
       }
-  
+
       // Validate and sanitize options
       const validatedOptions = validateOptions(updatedData.options);
-  
+
       const updatePayload = {
         title: updatedData.title,
         type: updatedData.type,
@@ -455,7 +456,7 @@ const QuizCreator = () => {
         points: updatedData.points || 0,
         timer: updatedData.timer || 0,
       };
-  
+
       const response = await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/questions/${questionId}`,
         {
@@ -464,18 +465,18 @@ const QuizCreator = () => {
           body: JSON.stringify(updatePayload),
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to update question");
       }
-  
+
       const { question: updatedQuestion } = await response.json();
-  
+
       if (!updatedQuestion || !updatedQuestion._id) {
         throw new Error("Invalid question data received from server");
       }
-  
+
       // Update state
       setQuestions((prevQuestions) =>
         prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
@@ -488,7 +489,7 @@ const QuizCreator = () => {
             : item
         )
       );
-  
+
       showAlert("Question updated successfully", "success");
     } catch (err) {
       console.error("Error updating question:", err);
@@ -497,7 +498,7 @@ const QuizCreator = () => {
       setLoading(false);
     }
   };
-  
+
   // Helper function for image upload
   const handleImageUpload = async (file) => {
     try {
@@ -845,6 +846,7 @@ const QuizCreator = () => {
               <div className="relative">
                 <input
                   type="text"
+                  data-testid="quiz-title-input"
                   placeholder="Enter quiz title..."
                   value={quizTitle}
                   className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
@@ -861,12 +863,14 @@ const QuizCreator = () => {
                 Exit
               </button>
               <button
+                data-testid="preview-quiz-btn"
                 onClick={handlePreviewClick}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
               >
                 Preview
               </button>
               <button
+                data-testid="save-quiz-btn"
                 className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
                   loading
                     ? "opacity-50 cursor-not-allowed"
@@ -891,6 +895,7 @@ const QuizCreator = () => {
                 <div className="space-y-2">
                   {orderedItems.map((item, index) => (
                     <div
+                      data-testid={`content-item-${index}`}
                       key={item.id}
                       draggable
                       onDragStart={(e) => {
@@ -950,12 +955,14 @@ const QuizCreator = () => {
                 </div>
                 <div className="space-y-2 mt-4">
                   <button
+                    data-testid="add-question-sidebar-btn"
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={() => setIsAddQuestionOpen(true)}
                   >
                     Add Question
                   </button>
                   <button
+                    data-testid="add-slide-sidebar-btn"
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={() => setIsAddSlideOpen(true)}
                   >
@@ -966,7 +973,7 @@ const QuizCreator = () => {
             </div>
 
             {/* Editor Container */}
-            <div className="md:col-span-2">
+            <div data-testid="editor-container" className="md:col-span-2">
               <AnimatePresence>
                 {currentQuestion ? (
                   <QuestionEditor
