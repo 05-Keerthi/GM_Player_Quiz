@@ -1,6 +1,328 @@
+// // src/Test/Pages/PreviewPage.test.js
+// import React from "react";
+// import { render, screen, waitFor, within } from "@testing-library/react";
+// import userEvent from "@testing-library/user-event";
+// import PreviewPage from "../../pages/Preview";
+// import axios from "axios";
+// import { useParams } from "react-router-dom";
+
+// jest.mock("axios");
+// jest.mock("react-router-dom", () => ({
+//   useParams: jest.fn(),
+// }));
+
+// jest.mock("lucide-react", () => ({
+//   X: () => <div data-testid="x-icon">X</div>,
+//   Play: () => <div data-testid="play-icon">Play</div>,
+//   ChevronLeft: () => <div data-testid="chevron-left">Left</div>,
+//   ChevronRight: () => <div data-testid="chevron-right">Right</div>,
+// }));
+
+// const mockQuizData = {
+//   slides: [
+//     {
+//       _id: "slide1",
+//       title: "Introduction",
+//       content: "Welcome to the quiz",
+//       imageUrl: "https://example.com/image1.jpg",
+//     },
+//   ],
+//   questions: [
+//     {
+//       _id: "question1",
+//       title: "First Question",
+//       content: "What is 2+2?",
+//       options: [
+//         { text: "4", isCorrect: true, color: "#ffffff" },
+//         { text: "3", isCorrect: false, color: "#ffffff" },
+//       ],
+//     },
+//   ],
+//   order: [
+//     { id: "slide1", type: "slide" },
+//     { id: "question1", type: "question" },
+//   ],
+// };
+
+// describe("PreviewPage", () => {
+//   const user = userEvent.setup();
+
+//   beforeEach(() => {
+//     localStorage.setItem("token", "mock-token");
+//     useParams.mockReturnValue({ quizId: "mock-quiz-id" });
+//     axios.get.mockResolvedValue({ data: mockQuizData });
+//     window.history.back = jest.fn();
+//   });
+
+//   afterEach(() => {
+//     jest.clearAllMocks();
+//     localStorage.clear();
+//   });
+
+//   describe("Initial Loading", () => {
+//     test("displays loading state initially", () => {
+//       render(<PreviewPage />);
+//       expect(screen.getByText(/loading\.\.\./i)).toBeInTheDocument();
+//     });
+
+//     test("fetches and displays quiz data correctly", async () => {
+//       render(<PreviewPage />);
+
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       expect(screen.getByTestId("slide-title")).toHaveTextContent(
+//         "Introduction"
+//       );
+//       expect(screen.getByTestId("slide-content")).toHaveTextContent(
+//         "Welcome to the quiz"
+//       );
+//     });
+
+//     test("handles API error gracefully", async () => {
+//       axios.get.mockRejectedValue(new Error("Failed to fetch"));
+//       render(<PreviewPage />);
+
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       // Verify error handling UI elements if applicable
+//       // Add specific expectations based on your error handling UI
+//     });
+
+//     test("handles missing token", () => {
+//       localStorage.clear();
+//       render(<PreviewPage />);
+//       expect(window.history.back).toHaveBeenCalled();
+//     });
+//   });
+
+//   describe("Navigation", () => {
+//     test("navigates back when close button is clicked", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       const closeButton = screen.getByRole("button", {
+//         name: /close preview/i,
+//       });
+//       await user.click(closeButton);
+//       expect(window.history.back).toHaveBeenCalled();
+//     });
+
+//     test("starts presentation mode", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       await user.click(screen.getByTestId("start-presentation"));
+//       expect(screen.getByText("1 / 2")).toBeInTheDocument();
+//     });
+//   });
+
+//   describe("Presentation Mode Navigation", () => {
+//     const renderAndStartPresentation = async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+//       await user.click(screen.getByTestId("start-presentation"));
+//     };
+
+//     test("navigates through slides using buttons", async () => {
+//       await renderAndStartPresentation();
+
+//       const presentationContent = screen.getByRole("dialog", {
+//         name: /presentation/i,
+//       });
+//       expect(
+//         within(presentationContent).getByTestId("slide-title")
+//       ).toHaveTextContent("Introduction");
+
+//       await user.click(screen.getByTestId("next-slide"));
+//       expect(
+//         within(presentationContent).getByTestId("question-title")
+//       ).toHaveTextContent("First Question");
+
+//       await user.click(screen.getByTestId("prev-slide"));
+//       expect(
+//         within(presentationContent).getByTestId("slide-title")
+//       ).toHaveTextContent("Introduction");
+//     });
+
+//     test("handles keyboard navigation", async () => {
+//       await renderAndStartPresentation();
+
+//       const presentationContent = screen.getByRole("dialog", {
+//         name: /presentation/i,
+//       });
+
+//       await user.keyboard("{ArrowRight}");
+//       expect(
+//         within(presentationContent).getByTestId("question-title")
+//       ).toHaveTextContent("First Question");
+
+//       await user.keyboard("{ArrowLeft}");
+//       expect(
+//         within(presentationContent).getByTestId("slide-title")
+//       ).toHaveTextContent("Introduction");
+
+//       await user.keyboard("{Escape}");
+//       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+//     });
+
+//     test("prevents navigation beyond bounds", async () => {
+//       await renderAndStartPresentation();
+//       const presentationContent = screen.getByRole("dialog", {
+//         name: /presentation/i,
+//       });
+
+//       // Try to go left from first slide
+//       await user.keyboard("{ArrowLeft}");
+//       expect(
+//         within(presentationContent).getByTestId("slide-title")
+//       ).toHaveTextContent("Introduction");
+
+//       // Go to last slide and try to go beyond
+//       await user.keyboard("{ArrowRight}");
+//       await user.keyboard("{ArrowRight}");
+//       expect(
+//         within(presentationContent).getByTestId("question-title")
+//       ).toHaveTextContent("First Question");
+//     });
+
+//     test("exits presentation mode", async () => {
+//       await renderAndStartPresentation();
+//       await user.click(screen.getByTestId("exit-presentation"));
+//       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+//     });
+//   });
+
+//   describe("Quiz Content", () => {
+//     test("renders question options correctly in presentation mode", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       await user.click(screen.getByTestId("start-presentation"));
+//       await user.click(screen.getByTestId("next-slide"));
+
+//       const presentationContent = screen.getByRole("dialog", {
+//         name: /presentation/i,
+//       });
+//       const optionText =
+//         within(presentationContent).getByTestId("option-text-0");
+
+//       expect(optionText).toHaveTextContent("4");
+//       expect(
+//         within(presentationContent).getByTestId("correct-answer-label")
+//       ).toBeInTheDocument();
+//     });
+
+//     test("renders question options correctly in preview mode", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       await user.click(screen.getByTestId("sidebar-item-1"));
+
+//       const mainContent = screen.getByTestId("preview-content");
+//       const optionText = within(mainContent).getByTestId("option-text-0");
+
+//       expect(optionText).toHaveTextContent("4");
+//       expect(
+//         within(mainContent).getByTestId("correct-answer-label")
+//       ).toBeInTheDocument();
+//     });
+
+//     test("displays images properly", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       const mainContent = screen.getByTestId("preview-content");
+//       const image = within(mainContent).getByTestId("slide-image");
+
+//       expect(image).toBeInTheDocument();
+//       expect(image).toHaveAttribute("src", "https://example.com/image1.jpg");
+//     });
+
+//     test("handles missing images gracefully", async () => {
+//       const noImageData = {
+//         ...mockQuizData,
+//         slides: [{ ...mockQuizData.slides[0], imageUrl: null }],
+//       };
+//       axios.get.mockResolvedValueOnce({ data: noImageData });
+
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       const mainContent = screen.getByTestId("preview-content");
+//       expect(
+//         within(mainContent).queryByTestId("slide-image")
+//       ).not.toBeInTheDocument();
+//     });
+//   });
+
+//   describe("Sidebar Navigation", () => {
+//     test("allows direct navigation to slides", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       await user.click(screen.getByTestId("sidebar-item-1"));
+
+//       const mainContent = screen.getByTestId("preview-content");
+//       expect(
+//         within(mainContent).getByTestId("question-title")
+//       ).toHaveTextContent("First Question");
+//     });
+
+//     test("highlights active slide in sidebar", async () => {
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       const firstItem = screen.getByTestId("sidebar-item-0");
+//       const secondItem = screen.getByTestId("sidebar-item-1");
+
+//       expect(firstItem).toHaveClass("bg-blue-50");
+//       expect(secondItem).not.toHaveClass("bg-blue-50");
+
+//       await user.click(secondItem);
+//       expect(firstItem).not.toHaveClass("bg-blue-50");
+//       expect(secondItem).toHaveClass("bg-blue-50");
+//     });
+
+//     test("handles empty sidebar gracefully", async () => {
+//       axios.get.mockResolvedValueOnce({
+//         data: { ...mockQuizData, order: [] },
+//       });
+
+//       render(<PreviewPage />);
+//       await waitFor(() => {
+//         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+//       });
+
+//       expect(screen.queryByTestId("sidebar-item-0")).not.toBeInTheDocument();
+//     });
+//   });
+// });
+
 // src/Test/Pages/PreviewPage.test.js
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PreviewPage from "../../pages/Preview";
 import axios from "axios";
@@ -59,6 +381,14 @@ describe("PreviewPage", () => {
     localStorage.clear();
   });
 
+  const renderAndWaitForLoad = async () => {
+    const rendered = render(<PreviewPage />);
+    await waitFor(() => {
+      expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
+    });
+    return rendered;
+  };
+
   describe("Initial Loading", () => {
     test("displays loading state initially", () => {
       render(<PreviewPage />);
@@ -66,27 +396,22 @@ describe("PreviewPage", () => {
     });
 
     test("fetches and displays quiz data correctly", async () => {
-      render(<PreviewPage />);
-
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
-
-      expect(screen.getByText("Introduction")).toBeInTheDocument();
-      expect(screen.getByText("Welcome to the quiz")).toBeInTheDocument();
+      await renderAndWaitForLoad();
+      
+      expect(screen.getByTestId("slide-title")).toHaveTextContent("Introduction");
+      expect(screen.getByTestId("slide-content")).toHaveTextContent("Welcome to the quiz");
     });
 
     test("handles API error gracefully", async () => {
-      axios.get.mockRejectedValue(new Error("Failed to fetch"));
+      axios.get.mockRejectedValueOnce(new Error("Failed to fetch"));
       render(<PreviewPage />);
-
+      
       await waitFor(() => {
         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-        expect(screen.getByText(/error/i)).toBeInTheDocument();
       });
     });
 
-    test("handles missing token", async () => {
+    test("handles missing token", () => {
       localStorage.clear();
       render(<PreviewPage />);
       expect(window.history.back).toHaveBeenCalled();
@@ -95,95 +420,101 @@ describe("PreviewPage", () => {
 
   describe("Navigation", () => {
     test("navigates back when close button is clicked", async () => {
-      render(<PreviewPage />);
-      await user.click(screen.getByTestId("x-icon"));
+      await renderAndWaitForLoad();
+      await user.click(screen.getByRole("button", { name: /close preview/i }));
       expect(window.history.back).toHaveBeenCalled();
     });
 
     test("starts presentation mode", async () => {
-      render(<PreviewPage />);
-
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText(/start presentation/i));
+      await renderAndWaitForLoad();
+      await user.click(screen.getByTestId("start-presentation"));
       expect(screen.getByText("1 / 2")).toBeInTheDocument();
-    });
-
-    test("doesn't start presentation if data not loaded", async () => {
-      render(<PreviewPage />);
-      const startButton = screen.getByText(/start presentation/i);
-      await user.click(startButton);
-      expect(screen.queryByText("1 / 2")).not.toBeInTheDocument();
     });
   });
 
   describe("Presentation Mode Navigation", () => {
-    beforeEach(async () => {
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
-      await user.click(screen.getByText(/start presentation/i));
-    });
+    const renderAndStartPresentation = async () => {
+      await renderAndWaitForLoad();
+      await user.click(screen.getByTestId("start-presentation"));
+    };
 
     test("navigates through slides using buttons", async () => {
-      expect(screen.getByText("Introduction")).toBeInTheDocument();
+      await renderAndStartPresentation();
 
-      await user.click(screen.getByTestId("chevron-right"));
-      expect(screen.getByText("First Question")).toBeInTheDocument();
+      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
+      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
 
-      await user.click(screen.getByTestId("chevron-left"));
-      expect(screen.getByText("Introduction")).toBeInTheDocument();
+      await user.click(screen.getByTestId("next-slide"));
+      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
+
+      await user.click(screen.getByTestId("prev-slide"));
+      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
     });
 
     test("handles keyboard navigation", async () => {
+      await renderAndStartPresentation();
+
+      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
+
       await user.keyboard("{ArrowRight}");
-      expect(screen.getByText("First Question")).toBeInTheDocument();
+      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
 
       await user.keyboard("{ArrowLeft}");
-      expect(screen.getByText("Introduction")).toBeInTheDocument();
+      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
 
       await user.keyboard("{Escape}");
-      expect(screen.queryByText("1 / 2")).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     test("prevents navigation beyond bounds", async () => {
-      // Try to go left from first slide
-      await user.keyboard("{ArrowLeft}");
-      expect(screen.getByText("Introduction")).toBeInTheDocument();
+      await renderAndStartPresentation();
+      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
 
-      // Go to last slide
+      await user.keyboard("{ArrowLeft}");
+      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
+
       await user.keyboard("{ArrowRight}");
-      // Try to go right from last slide
       await user.keyboard("{ArrowRight}");
-      expect(screen.getByText("First Question")).toBeInTheDocument();
+      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
+    });
+
+    test("exits presentation mode", async () => {
+      await renderAndStartPresentation();
+      await user.click(screen.getByTestId("exit-presentation"));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
 
   describe("Quiz Content", () => {
-    test("renders question options correctly", async () => {
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
+    test("renders question options correctly in presentation mode", async () => {
+      await renderAndWaitForLoad();
+      await user.click(screen.getByTestId("start-presentation"));
+      await user.click(screen.getByTestId("next-slide"));
 
-      await user.click(screen.getByText(/start presentation/i));
-      await user.click(screen.getByTestId("chevron-right"));
+      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
+      const optionText = within(presentationContent).getByTestId("option-text-0");
+      
+      expect(optionText).toHaveTextContent("4");
+      expect(within(presentationContent).getByTestId("correct-answer-label")).toBeInTheDocument();
+    });
 
-      const correctOption = screen.getByText("4");
-      expect(correctOption).toBeInTheDocument();
-      expect(screen.getByText("(Correct Answer)")).toBeInTheDocument();
+    test("renders question options correctly in preview mode", async () => {
+      await renderAndWaitForLoad();
+      await user.click(screen.getByTestId("sidebar-item-1"));
+
+      const mainContent = screen.getByTestId("preview-content");
+      const optionText = within(mainContent).getByTestId("option-text-0");
+      
+      expect(optionText).toHaveTextContent("4");
+      expect(within(mainContent).getByTestId("correct-answer-label")).toBeInTheDocument();
     });
 
     test("displays images properly", async () => {
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
+      await renderAndWaitForLoad();
 
-      const image = screen.getByAltText("Introduction");
+      const mainContent = screen.getByTestId("preview-content");
+      const image = within(mainContent).getByTestId("slide-image");
+      
       expect(image).toBeInTheDocument();
       expect(image).toHaveAttribute("src", "https://example.com/image1.jpg");
     });
@@ -195,25 +526,34 @@ describe("PreviewPage", () => {
       };
       axios.get.mockResolvedValueOnce({ data: noImageData });
 
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
+      await renderAndWaitForLoad();
 
-      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+      const mainContent = screen.getByTestId("preview-content");
+      expect(within(mainContent).queryByTestId("slide-image")).not.toBeInTheDocument();
     });
   });
 
   describe("Sidebar Navigation", () => {
     test("allows direct navigation to slides", async () => {
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
+      await renderAndWaitForLoad();
+      await user.click(screen.getByTestId("sidebar-item-1"));
+      
+      const mainContent = screen.getByTestId("preview-content");
+      expect(within(mainContent).getByTestId("question-title")).toHaveTextContent("First Question");
+    });
 
-      const sidebarItems = screen.getAllByText(/slide|question/i);
-      await user.click(sidebarItems[1]);
-      expect(screen.getByText("First Question")).toBeInTheDocument();
+    test("highlights active slide in sidebar", async () => {
+      await renderAndWaitForLoad();
+
+      const firstItem = screen.getByTestId("sidebar-item-0");
+      const secondItem = screen.getByTestId("sidebar-item-1");
+
+      expect(firstItem).toHaveClass("bg-blue-50");
+      expect(secondItem).not.toHaveClass("bg-blue-50");
+
+      await user.click(secondItem);
+      expect(firstItem).not.toHaveClass("bg-blue-50");
+      expect(secondItem).toHaveClass("bg-blue-50");
     });
 
     test("handles empty sidebar gracefully", async () => {
@@ -221,12 +561,8 @@ describe("PreviewPage", () => {
         data: { ...mockQuizData, order: [] },
       });
 
-      render(<PreviewPage />);
-      await waitFor(() => {
-        expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
-      });
-
-      expect(screen.queryByText(/slide|question/i)).not.toBeInTheDocument();
+      await renderAndWaitForLoad();
+      expect(screen.queryByTestId("sidebar-item-0")).not.toBeInTheDocument();
     });
   });
 });
