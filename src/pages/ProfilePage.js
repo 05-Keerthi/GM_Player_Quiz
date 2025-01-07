@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -14,13 +14,13 @@ export const ProfilePage = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Password state with direct input handling
+  // Password state
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // New state for inline errors
+  // Error states
   const [updateError, setUpdateError] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
 
@@ -46,28 +46,12 @@ export const ProfilePage = () => {
         }
       } catch (error) {
         if (isMounted) {
-          console.error("Profile fetch error:", error);
-
-          if (error.response) {
-            switch (error.response.status) {
-              case 401:
-                await logout();
-                navigate("/login");
-                break;
-              case 403:
-                setError("You do not have permission to access this profile.");
-                break;
-              case 404:
-                setError("User profile not found.");
-                break;
-              default:
-                setError("An unexpected error occurred. Please try again.");
-            }
-          } else {
-            setError(
-              error.message || "Network error. Please check your connection."
-            );
+          if (error.response?.status === 401) {
+            logout();
+            navigate("/login");
+            return;
           }
+          setError(error.message || "Network error");
         }
       } finally {
         if (isMounted) {
@@ -89,7 +73,6 @@ export const ProfilePage = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear any existing update error when user starts typing
     setUpdateError(null);
   };
 
@@ -106,13 +89,7 @@ export const ProfilePage = () => {
       const updatedUser = await updateUser(profileData._id, updateData);
       setProfileData(updatedUser);
     } catch (error) {
-      console.error("Update profile error:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to update profile.";
-
-      setUpdateError(errorMessage);
+      setUpdateError("Failed to update profile");
     } finally {
       setIsUpdating(false);
     }
@@ -122,14 +99,13 @@ export const ProfilePage = () => {
     e.preventDefault();
     setPasswordError(null);
 
-    // Validate passwords
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match!");
+      setPasswordError("Passwords do not match");
       return;
     }
 
     if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters long!");
+      setPasswordError("Password must be at least 8 characters long");
       return;
     }
 
@@ -137,13 +113,11 @@ export const ProfilePage = () => {
       setIsChangingPassword(true);
       await changePassword(oldPassword, newPassword);
 
-      // Clear password fields
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setPasswordError(null);
 
-      // Add toast notification
       toast.success("Password changed successfully!", {
         position: "top-right",
         autoClose: 3000,
@@ -157,249 +131,231 @@ export const ProfilePage = () => {
     }
   };
 
-  
-  const renderContent = useMemo(() => {
-    if (isLoading) {
-      return (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 md:h-32 md:w-32 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="container mx-auto px-4 py-8 text-center">
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative max-w-md mx-auto"
-            role="alert"
-          >
-            <strong className="font-bold block mb-2">Error: </strong>
-            <span className="block mb-4">{error}</span>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (!profileData) {
-      return (
-        <div className="container mx-auto px-4 py-8 text-center">
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded max-w-md mx-auto">
-            No profile data available. Please try logging in again.
-          </div>
-        </div>
-      );
-    }
-
+  if (isLoading) {
     return (
-      <>
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center">
-              Profile Settings
-            </h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {/* User Information Section */}
-              <div className="bg-white shadow-md rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">User Information</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="username"
-                      className="block font-medium mb-2"
-                    >
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      id="username"
-                      name="username"
-                      value={profileData?.username || ""}
-                      onChange={handleInputChange}
-                      className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block font-medium mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={profileData?.email || ""}
-                      onChange={handleInputChange}
-                      className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="mobile" className="block font-medium mb-2">
-                      Mobile Number
-                    </label>
-                    <input
-                      type="tel"
-                      id="mobile"
-                      name="mobile"
-                      value={profileData?.mobile || ""}
-                      onChange={handleInputChange}
-                      className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Enter mobile number"
-                    />
-                  </div>
-                </div>
-              </div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div
+          data-testid="loading-spinner"
+          className="animate-spin rounded-full h-16 w-16 md:h-32 md:w-32 border-t-2 border-b-2 border-blue-500"
+        ></div>
+      </div>
+    );
+  }
 
-              {/* Account Details Section */}
-              <div className="bg-white shadow-md rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">Account Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="role" className="block font-medium mb-2">
-                      Role
-                    </label>
-                    <input
-                      type="text"
-                      id="role"
-                      name="role"
-                      value={profileData?.role || ""}
-                      onChange={handleInputChange}
-                      className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      disabled
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {updateError && (
-              <div className="max-w-4xl mx-auto mt-4 text-red-500 text-sm">
-                {updateError}
-              </div>
-            )}
-
-            <div className="flex justify-center md:justify-end mt-6 md:mt-8">
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="w-full md:w-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
-              >
-                {isUpdating ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </form>
-
-          {/* Password Change Form */}
-          <form
-            onSubmit={handlePasswordSubmit}
-            className="max-w-4xl mx-auto mt-8"
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative max-w-md mx-auto"
+          role="alert"
+        >
+          <strong className="font-bold block mb-2">Error: </strong>
+          <span className="block mb-4">{error}</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded max-w-md mx-auto">
+          No profile data available. Please try logging in again.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+          <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center">
+            Profile Settings
+          </h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            {/* User Information Section */}
             <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-lg font-bold mb-4">Change Password</h2>
+              <h2 className="text-lg font-bold mb-4">User Information</h2>
               <div className="space-y-4">
                 <div>
-                  <label
-                    htmlFor="oldPassword"
-                    className="block font-medium mb-2"
-                  >
-                    Current Password
+                  <label htmlFor="username" className="block font-medium mb-2">
+                    Username
                   </label>
                   <input
-                    type="password"
-                    id="oldPassword"
-                    name="oldPassword"
-                    value={oldPassword}
-                    onChange={(e) => {
-                      setOldPassword(e.target.value);
-                      setPasswordError(null);
-                    }}
+                    type="text"
+                    id="username"
+                    name="username"
+                    value={profileData?.username || ""}
+                    onChange={handleInputChange}
                     className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
+                    aria-label="username"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="newPassword"
-                    className="block font-medium mb-2"
-                  >
-                    New Password
+                  <label htmlFor="email" className="block font-medium mb-2">
+                    Email
                   </label>
                   <input
-                    type="password"
-                    id="newPassword"
-                    name="newPassword"
-                    value={newPassword}
-                    onChange={(e) => {
-                      setNewPassword(e.target.value);
-                      setPasswordError(null);
-                    }}
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={profileData?.email || ""}
+                    onChange={handleInputChange}
                     className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                    minLength={8}
+                    disabled
+                    aria-label="email"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="block font-medium mb-2"
-                  >
-                    Confirm New Password
+                  <label htmlFor="mobile" className="block font-medium mb-2">
+                    Mobile Number
                   </label>
                   <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-                      setPasswordError(null);
-                    }}
+                    type="tel"
+                    id="mobile"
+                    name="mobile"
+                    value={profileData?.mobile || ""}
+                    onChange={handleInputChange}
                     className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    required
-                    minLength={8}
+                    placeholder="Enter mobile number"
+                    aria-label="mobile"
                   />
                 </div>
-              </div>
-
-              {passwordError && (
-                <div className="text-red-500 text-sm mt-4">{passwordError}</div>
-              )}
-
-              <div className="mt-6">
-                <button
-                  type="submit"
-                  disabled={isChangingPassword}
-                  className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
-                >
-                  {isChangingPassword
-                    ? "Changing Password..."
-                    : "Change Password"}
-                </button>
               </div>
             </div>
-          </form>
-        </div>
-      </>
-    );
-  }, [
-    profileData,
-    isLoading,
-    isUpdating,
-    error,
-    oldPassword,
-    newPassword,
-    confirmPassword,
-    isChangingPassword,
-    updateError,
-    passwordError,
-  ]);
 
-  return renderContent;
+            {/* Account Details Section */}
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-lg font-bold mb-4">Account Details</h2>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="role" className="block font-medium mb-2">
+                    Role
+                  </label>
+                  <input
+                    type="text"
+                    id="role"
+                    name="role"
+                    value={profileData?.role || ""}
+                    onChange={handleInputChange}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    disabled
+                    aria-label="role"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {updateError && (
+            <div className="max-w-4xl mx-auto mt-4 text-red-500 text-sm">
+              {updateError}
+            </div>
+          )}
+
+          <div className="flex justify-center md:justify-end mt-6 md:mt-8">
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="w-full md:w-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
+            >
+              {isUpdating ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+
+        {/* Password Change Form */}
+        <form
+          onSubmit={handlePasswordSubmit}
+          className="max-w-4xl mx-auto mt-8"
+        >
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h2 className="text-lg font-bold mb-4">Change Password</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="oldPassword" className="block font-medium mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  id="oldPassword"
+                  value={oldPassword}
+                  onChange={(e) => {
+                    setOldPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                  aria-label="current password"
+                />
+              </div>
+              <div>
+                <label htmlFor="newPassword" className="block font-medium mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                  minLength={8}
+                  aria-label="New Password"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block font-medium mb-2"
+                >
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                  minLength={8}
+                  aria-label="Confirm New Password"
+                />
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="text-red-500 text-sm mt-4">{passwordError}</div>
+            )}
+
+            <div className="mt-6">
+              <button
+                type="submit"
+                disabled={isChangingPassword}
+                className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition-colors duration-300"
+              >
+                {isChangingPassword
+                  ? "Changing Password..."
+                  : "Change Password"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </>
+  );
 };

@@ -2,13 +2,12 @@ import React, { useState, useEffect } from "react";
 import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from "framer-motion";
 
-// QuizContent Component
 const QuizContent = ({ item, inPresentation = false }) => {
   const getContrastColor = (hexColor) => {
-    if (!hexColor || hexColor === '#') return '#000000';
-    
+    if (!hexColor || hexColor === "#") return "#000000";
+
     const color = hexColor.replace("#", "");
     const r = parseInt(color.substring(0, 2), 16);
     const g = parseInt(color.substring(2, 4), 16);
@@ -20,41 +19,54 @@ const QuizContent = ({ item, inPresentation = false }) => {
 
   const renderOptions = () => {
     const options = item.data.options || item.data.answerOptions;
-    
+
     if (!options) return null;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="options-container">
         {options.map((option, idx) => {
-          const OptionWrapper = inPresentation ? motion.div : 'div';
-          const optionProps = inPresentation ? {
-            initial: { opacity: 0, x: -20 },
-            animate: { opacity: 1, x: 0 },
-            transition: { delay: idx * 0.1 }
-          } : {};
+          const OptionWrapper = inPresentation ? motion.div : "div";
+          const optionProps = inPresentation
+            ? {
+                initial: { opacity: 0, x: -20 },
+                animate: { opacity: 1, x: 0 },
+                transition: { delay: idx * 0.1 },
+              }
+            : {};
 
           return (
             <OptionWrapper
               key={idx}
+              data-testid={`option-${idx}`}
               {...optionProps}
               style={{
-                backgroundColor: option.color || option.backgroundColor || '#ffffff',
-                color: getContrastColor(option.color || option.backgroundColor)
+                backgroundColor:
+                  option.color || option.backgroundColor || "#ffffff",
+                color: getContrastColor(option.color || option.backgroundColor),
               }}
               className="p-4 rounded-lg border-2 transition-all hover:scale-[1.01]"
             >
               <label className="flex items-center gap-3">
-                <div className={`
+                <div
+                  className={`
                   w-6 h-6 rounded-full border-2 flex items-center justify-center
-                  ${option.isCorrect ? "border-green-500 text-green-500" : "border-gray-400 text-gray-400"}
-                `}>
+                  ${
+                    option.isCorrect
+                      ? "border-green-500 text-green-500"
+                      : "border-gray-400 text-gray-400"
+                  }
+                `}
+                >
                   {option.isCorrect && "✓"}
                 </div>
-                <span className="text-lg">{option.text || option.optionText}</span>
+                <span className="text-lg" data-testid={`option-text-${idx}`}>
+                  {option.text || option.optionText}
+                </span>
                 {option.isCorrect && (
-                  <span 
-                    className="text-sm font-medium ml-2" 
-                    style={{ color: option.isCorrect ? '#22c55e' : 'inherit' }}
+                  <span
+                    className="text-sm font-medium ml-2"
+                    data-testid="correct-answer-label"
+                    style={{ color: option.isCorrect ? "#22c55e" : "inherit" }}
                   >
                     (Correct Answer)
                   </span>
@@ -67,13 +79,16 @@ const QuizContent = ({ item, inPresentation = false }) => {
     );
   };
 
-  if (!item?.data) return null;
-
   return (
     <div className="h-full flex flex-col">
       <div className="p-6 flex-grow overflow-auto">
         {item.data.title && (
-          <h2 className="text-2xl font-bold mb-4">{item.data.title}</h2>
+          <h2
+            className="text-2xl font-bold mb-4"
+            data-testid={`${item.type}-title`}
+          >
+            {item.data.title}
+          </h2>
         )}
 
         {item.data.imageUrl && (
@@ -81,13 +96,17 @@ const QuizContent = ({ item, inPresentation = false }) => {
             <img
               src={item.data.imageUrl}
               alt={item.data.title || "Content"}
+              data-testid={`${item.type}-image`}
               className="max-h-[50vh] w-auto object-contain rounded-lg shadow-md"
             />
           </div>
         )}
 
         {(item.data.content || item.data.description) && (
-          <div className="text-lg text-gray-700 leading-relaxed mb-6">
+          <div
+            className="text-lg text-gray-700 leading-relaxed mb-6"
+            data-testid={`${item.type}-content`}
+          >
             {item.data.content || item.data.description}
           </div>
         )}
@@ -98,7 +117,6 @@ const QuizContent = ({ item, inPresentation = false }) => {
   );
 };
 
-// Main Preview Page Component
 const PreviewPage = () => {
   const [orderedItems, setOrderedItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +176,10 @@ const PreviewPage = () => {
   };
 
   useEffect(() => {
+    if (!token) {
+      window.history.back();
+      return;
+    }
     fetchQuizData();
   }, [quizId]);
 
@@ -199,117 +221,20 @@ const PreviewPage = () => {
   };
 
   const navigatePresentation = (direction) => {
-    const newIndex = direction === 'next' 
-      ? currentIndex + 1 
-      : currentIndex - 1;
-      
+    const newIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
+
     if (newIndex >= 0 && newIndex < orderedItems.length) {
       setCurrentIndex(newIndex);
     }
   };
 
-  const renderPresentationMode = () => (
-    <div className="fixed inset-0 bg-[#262626] z-50">
-      <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
-        <span className="text-gray-300 font-medium">
-          {orderedItems[currentIndex]?.type === "question"
-            ? "Question"
-            : "Slide"}{" "}
-          {currentIndex + 1}
-        </span>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">
-            {currentIndex + 1} / {orderedItems.length}
-          </span>
-          <button
-            onClick={exitPresentation}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
       </div>
-
-      <div className="h-full flex flex-col pt-16">
-        <div className="flex-1 flex items-center justify-center p-8 relative">
-          <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="w-full max-w-5xl aspect-[16/9] bg-white rounded-lg shadow-2xl overflow-hidden"
-          >
-            <div className="h-full flex flex-col">
-              {orderedItems[currentIndex]?.data?.title && (
-                <div className={`px-8 py-4 ${
-                  orderedItems[currentIndex].type === "question"
-                    ? "bg-gradient-to-r from-blue-600 to-blue-700"
-                    : "bg-gradient-to-r from-purple-600 to-purple-700"
-                }`}>
-                  <h2 className="text-2xl font-semibold text-white">
-                    {orderedItems[currentIndex].data.title}
-                  </h2>
-                </div>
-              )}
-
-              <div className="flex-1 overflow-auto">
-                <QuizContent 
-                  item={orderedItems[currentIndex]} 
-                  inPresentation={true}
-                />
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="absolute left-4">
-            <button
-              onClick={() => navigatePresentation("prev")}
-              disabled={currentIndex === 0}
-              className={`
-                p-3 rounded-full transition-all
-                ${
-                  currentIndex === 0
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-800 text-white hover:bg-gray-700"
-                }
-              `}
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="absolute right-4">
-            <button
-              onClick={() => navigatePresentation("next")}
-              disabled={currentIndex === orderedItems.length - 1}
-              className={`
-                p-3 rounded-full transition-all
-                ${
-                  currentIndex === orderedItems.length - 1
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-800 text-white hover:bg-gray-700"
-                }
-              `}
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-[#1a1a1a] p-4">
-          <div className="w-full bg-gray-700 rounded-full h-1">
-            <div
-              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-              style={{
-                width: `${((currentIndex + 1) / orderedItems.length) * 100}%`,
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -318,6 +243,7 @@ const PreviewPage = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={startPresentation}
+            data-testid="start-presentation"
             className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
             disabled={loading || orderedItems.length === 0}
           >
@@ -327,66 +253,163 @@ const PreviewPage = () => {
           <button
             onClick={() => window.history.back()}
             className="text-gray-600 hover:text-gray-800"
+            data-testid="close-button"
+            aria-label="Close preview"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Loading...</p>
-        </div>
-      ) : (
-        <div className="flex-1 flex overflow-hidden">
-          <div className="w-64 bg-gray-50 border-r overflow-y-auto p-4">
-            <div className="space-y-3">
-              {orderedItems.map((item, index) => (
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-64 bg-gray-50 border-r overflow-y-auto p-4">
+          <div className="space-y-3">
+            {orderedItems.map((item, index) => (
+              <div
+                key={item.id}
+                data-testid={`sidebar-item-${index}`}
+                onClick={() => setCurrentIndex(index)}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  currentIndex === index
+                    ? "bg-blue-50 border-blue-300"
+                    : "border-gray-200 hover:bg-gray-100"
+                }`}
+              >
                 <div
-                  key={item.id}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    currentIndex === index
-                      ? "bg-blue-50 border-blue-300"
-                      : "border-gray-200 hover:bg-gray-100"
-                  }`}
+                  className="text-sm font-medium"
+                  data-testid={`sidebar-item-type-${index}`}
                 >
-                  <div className="text-sm font-medium">
-                    {item.type === "question"
-                      ? `Question ${index + 1}`
-                      : `Slide ${index + 1}`}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate mt-1">
-                    {item.data.title}
-                  </div>
-                  {item.data.imageUrl && (
-                    <div className="mt-2 h-20 flex items-center justify-center">
-                      <img
-                        src={item.data.imageUrl}
-                        alt=""
-                        className="max-h-full max-w-full object-contain rounded"
-                      />
-                    </div>
-                  )}
+                  {item.type === "question"
+                    ? `Question ${index + 1}`
+                    : `Slide ${index + 1}`}
                 </div>
-              ))}
+                <div
+                  className="text-xs text-gray-500 truncate mt-1"
+                  data-testid={`sidebar-item-title-${index}`}
+                >
+                  {item.data.title}
+                </div>
+                {item.data.imageUrl && (
+                  <div className="mt-2 h-20 flex items-center justify-center">
+                    <img
+                      src={item.data.imageUrl}
+                      alt=""
+                      className="max-h-full max-w-full object-contain rounded"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 bg-white">
+          <div className="h-full border-l" data-testid="preview-content">
+            {orderedItems[currentIndex] && (
+              <QuizContent
+                item={orderedItems[currentIndex]}
+                inPresentation={false}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {presentationMode && (
+        <div
+          className="fixed inset-0 bg-[#262626] z-50"
+          role="dialog"
+          aria-label="presentation"
+        >
+          <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
+            <span className="text-gray-300 font-medium">
+              {orderedItems[currentIndex]?.type === "question"
+                ? "Question"
+                : "Slide"}{" "}
+              {currentIndex + 1}
+            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-400 text-sm">
+                {currentIndex + 1} / {orderedItems.length}
+              </span>
+              <button
+                onClick={exitPresentation}
+                data-testid="exit-presentation"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
-          <div className="flex-1 bg-white">
-            <div className="h-full border-l">
-              {orderedItems[currentIndex] && (
-                <QuizContent 
-                  item={orderedItems[currentIndex]} 
-                  inPresentation={false}
+          <div className="h-full flex flex-col pt-16">
+            <div className="flex-1 flex items-center justify-center p-8 relative">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-5xl aspect-[16/9] bg-white rounded-lg shadow-2xl overflow-hidden"
+              >
+                <QuizContent
+                  item={orderedItems[currentIndex]}
+                  inPresentation={true}
                 />
-              )}
+              </motion.div>
+
+              <div className="absolute left-4">
+                <button
+                  onClick={() => navigatePresentation("prev")}
+                  data-testid="prev-slide"
+                  disabled={currentIndex === 0}
+                  className={`
+                    p-3 rounded-full transition-all
+                    ${
+                      currentIndex === 0
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-gray-800 text-white hover:bg-gray-700"
+                    }
+                  `}
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="absolute right-4">
+                <button
+                  onClick={() => navigatePresentation("next")}
+                  data-testid="next-slide"
+                  disabled={currentIndex === orderedItems.length - 1}
+                  className={`
+                    p-3 rounded-full transition-all
+                    ${
+                      currentIndex === orderedItems.length - 1
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-gray-800 text-white hover:bg-gray-700"
+                    }
+                  `}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#1a1a1a] p-4">
+              <div className="w-full bg-gray-700 rounded-full h-1">
+                <div
+                  className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      ((currentIndex + 1) / orderedItems.length) * 100
+                    }%`,
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {presentationMode && renderPresentationMode()}
 
       <AnimatePresence>
         {showBoxAnimation && (

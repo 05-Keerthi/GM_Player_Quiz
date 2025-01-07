@@ -11,6 +11,24 @@ import { useSurveySlideContext } from "../context/surveySlideContext";
 import SurveyQuestionEditor from "../models/SurveyQuestionEditor";
 import SurveySlideEditor from "../models/SurveySlideEditor";
 
+const LoadingWrapper = ({ loading, children }) => {
+  if (!loading) return children;
+
+  return (
+    <div
+      data-testid="loading-overlay"
+      className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50"
+    >
+      <div className="text-center p-4 bg-white rounded-lg shadow-xl">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+        <div data-testid="loading-text" className="text-gray-600">
+          Loading...
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Helper Components
 const CustomAlert = ({ message, type = "error", onClose }) => {
   if (!message) return null;
@@ -21,6 +39,7 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 
   return (
     <div
+      data-testid="error-alert"
       className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in z-50`}
     >
       <AlertCircle className="w-5 h-5" />
@@ -502,176 +521,199 @@ const SurveyCreator = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        <CustomAlert
-          message={alert.message}
-          type={alert.type}
-          onClose={() => setAlert({ message: "", type: "error" })}
-        />
 
-        {/* Navigation Bar */}
-        <nav className="bg-white border-b shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
-                Survey Creator
-              </span>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Enter survey title..."
-                  value={surveyTitle}
-                  className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
-                  onClick={() => setIsSettingsOpen(true)}
-                  readOnly
-                />
+      <LoadingWrapper loading={loading}>
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+          <CustomAlert
+            message={alert.message}
+            type={alert.type}
+            onClose={() => setAlert({ message: "", type: "error" })}
+          />
+
+          {/* Navigation Bar */}
+          <nav className="bg-white border-b shadow-sm">
+            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
+                  Survey Creator
+                </span>
+                <div className="relative">
+                  <input
+                    type="text"
+                    data-testid="survey-title-input"
+                    placeholder="Enter survey title..."
+                    value={surveyTitle}
+                    className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
+                    onClick={() => setIsSettingsOpen(true)}
+                    readOnly
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/selectSurveyCategory")}
+                  className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Exit
+                </button>
+                <button
+                  data-testid="preview-button"
+                  onClick={handlePreviewClick}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Preview
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/selectSurveyCategory")}
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Exit
-              </button>
-              <button
-                onClick={handlePreviewClick}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Preview
-              </button>
-            </div>
-          </div>
-        </nav>
+          </nav>
 
-        {/* Main Content Area */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Questions and Slides List */}
-            <div className="md:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h2 className="font-medium text-lg mb-4">Content</h2>
-                <div className="space-y-2">
-                  {orderedItems.map((item, index) => (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", index.toString());
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const sourceIndex = parseInt(
-                          e.dataTransfer.getData("text/plain"),
-                          10
-                        );
-                        handleReorderItems(sourceIndex, index);
-                      }}
-                      className={`p-3 rounded-lg cursor-move transition-colors ${
-                        (item.type === "question" &&
-                          currentQuestion?._id === item.id) ||
-                        (item.type === "slide" && currentSlide?._id === item.id)
-                          ? "bg-blue-50 border-2 border-blue-500"
-                          : "hover:bg-gray-50 border border-gray-200"
-                      }`}
-                      onClick={() => handleItemClick(item)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">
-                          {item.type === "question"
-                            ? `Question ${index + 1}`
-                            : `Slide ${index + 1}`}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.type === "question") {
-                              setItemToDelete(item.id);
-                              setShowDeleteModal(true);
-                            } else {
-                              setSlideToDelete(item.id);
-                              setShowSlideDeleteModal(true);
-                            }
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+          {/* Main Content Area */}
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Questions and Slides List */}
+              <div className="md:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <h2 className="font-medium text-lg mb-4">Content</h2>
+                  <div data-testid="content-list" className="space-y-2">
+                    {loading ? (
+                      <div
+                        data-testid="content-loading"
+                        className="text-center py-4"
+                      >
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                        <div className="text-gray-500">Loading content...</div>
                       </div>
-                      <p className="text-sm text-gray-500 truncate">
-                        {item.type === "question"
-                          ? item.data.title
-                          : item.data.surveyTitle}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ) : (
+                      orderedItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          data-testid={`content-item-${index}`}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(
+                              "text/plain",
+                              index.toString()
+                            );
+                          }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const sourceIndex = parseInt(
+                              e.dataTransfer.getData("text/plain"),
+                              10
+                            );
+                            handleReorderItems(sourceIndex, index);
+                          }}
+                          className={`p-3 rounded-lg cursor-move transition-colors ${
+                            (item.type === "question" &&
+                              currentQuestion?._id === item.id) ||
+                            (item.type === "slide" &&
+                              currentSlide?._id === item.id)
+                              ? "bg-blue-50 border-2 border-blue-500"
+                              : "hover:bg-gray-50 border border-gray-200"
+                          }`}
+                          onClick={() => handleItemClick(item)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">
+                              {item.type === "question"
+                                ? `Question ${index + 1}`
+                                : `Slide ${index + 1}`}
+                            </span>
+                            <button
+                              data-testid={`delete-${item.type}-${item.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item.type === "question") {
+                                  setItemToDelete(item.id);
+                                  setShowDeleteModal(true);
+                                } else {
+                                  setSlideToDelete(item.id);
+                                  setShowSlideDeleteModal(true);
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-500 truncate">
+                            {item.type === "question"
+                              ? item.data.title
+                              : item.data.surveyTitle}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
-                {/* Add Buttons */}
-                <div className="space-y-2 mt-4">
-                  <button
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    onClick={handleAddNewQuestion}
-                    disabled={loading}
-                  >
-                    Add Question
-                  </button>
-                  <button
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    onClick={handleAddNewSlide}
-                    disabled={loading}
-                  >
-                    Add Slide
-                  </button>
+                  {/* Add Buttons */}
+                  <div className="space-y-2 mt-4">
+                    <button
+                      data-testid="add-question-button"
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      onClick={handleAddNewQuestion}
+                      disabled={loading}
+                    >
+                      Add Question
+                    </button>
+                    <button
+                      data-testid="add-slide-button"
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      onClick={handleAddNewSlide}
+                      disabled={loading}
+                    >
+                      Add Slide
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Editor Area */}
-            <div className="md:col-span-2">
-              <AnimatePresence mode="wait">{renderEditor()}</AnimatePresence>
+              {/* Editor Area */}
+              <div className="md:col-span-2">
+                <AnimatePresence mode="wait">{renderEditor()}</AnimatePresence>
+              </div>
             </div>
           </div>
+
+          {/* Modals */}
+          <UnifiedSettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            onSave={handleSettingsUpdate}
+            onTitleUpdate={setSurveyTitle}
+            initialData={{
+              id: surveyId,
+              title: currentSurvey?.title || "",
+              description: currentSurvey?.description || "",
+            }}
+            type="survey"
+          />
+
+          {/* Delete Confirmation Modals */}
+          <ConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={() => handleDeleteQuestion(itemToDelete)}
+            title="Delete Question"
+            message="Are you sure you want to delete this question? This action cannot be undone."
+          />
+
+          <ConfirmationModal
+            isOpen={showSlideDeleteModal}
+            onClose={() => {
+              setShowSlideDeleteModal(false);
+              setSlideToDelete(null);
+            }}
+            onConfirm={() => handleDeleteSlide(slideToDelete)}
+            title="Delete Slide"
+            message="Are you sure you want to delete this slide? This action cannot be undone."
+          />
         </div>
-
-        {/* Modals */}
-        <UnifiedSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onSave={handleSettingsUpdate}
-          onTitleUpdate={setSurveyTitle}
-          initialData={{
-            id: surveyId,
-            title: currentSurvey?.title || "",
-            description: currentSurvey?.description || "",
-          }}
-          type="survey"
-        />
-
-        {/* Delete Confirmation Modals */}
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setItemToDelete(null);
-          }}
-          onConfirm={() => handleDeleteQuestion(itemToDelete)}
-          title="Delete Question"
-          message="Are you sure you want to delete this question? This action cannot be undone."
-        />
-
-        <ConfirmationModal
-          isOpen={showSlideDeleteModal}
-          onClose={() => {
-            setShowSlideDeleteModal(false);
-            setSlideToDelete(null);
-          }}
-          onConfirm={() => handleDeleteSlide(slideToDelete)}
-          title="Delete Slide"
-          message="Are you sure you want to delete this slide? This action cannot be undone."
-        />
-      </div>
+      </LoadingWrapper>
     </>
   );
 };
