@@ -1,5 +1,4 @@
 // src/Test/Auth/RegisterPage.test.js
-
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -8,7 +7,6 @@ import { useAuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-// Mock dependencies
 jest.mock("react-router-dom", () => ({
   useNavigate: jest.fn(),
 }));
@@ -32,8 +30,9 @@ jest.mock("react-phone-number-input", () => {
   return function PhoneInput(props) {
     return (
       <input
-        type="text"
+        type="tel"
         aria-label="Phone Number"
+        data-testid="phone-input"
         {...props}
         onChange={(e) => props.onChange && props.onChange(e.target.value)}
       />
@@ -44,6 +43,8 @@ jest.mock("react-phone-number-input", () => {
 describe("RegisterPage", () => {
   const mockNavigate = jest.fn();
   const mockRegister = jest.fn();
+  const user = userEvent.setup();
+
   const validFormData = {
     username: "testuser",
     email: "test@example.com",
@@ -57,188 +58,154 @@ describe("RegisterPage", () => {
     jest.clearAllMocks();
   });
 
-  const fillForm = async (data = validFormData) => {
-    await userEvent.type(screen.getByLabelText(/username/i), data.username);
-    await userEvent.type(screen.getByLabelText(/email/i), data.email);
-    await userEvent.type(
-      screen.getByRole("textbox", { name: /phone number/i }),
-      data.phone
-    );
-    await userEvent.type(screen.getByLabelText(/password/i), data.password);
+  const renderRegisterPage = () => {
+    return render(<RegisterPage />);
   };
 
-  test("renders registration form with all required elements", () => {
-    render(<RegisterPage />);
+  const fillForm = async (data = validFormData) => {
+    await user.type(screen.getByLabelText(/username/i), data.username);
+    await user.type(screen.getByLabelText(/email/i), data.email);
+    await user.type(screen.getByTestId("phone-input"), data.phone);
+    await user.type(screen.getByLabelText(/password/i), data.password);
+  };
 
-    // Check for form fields with better assertions
-    const usernameInput = screen.getByLabelText(/username/i);
-    const emailInput = screen.getByLabelText(/email/i);
-    const phoneLabel = screen.getByText(/phone number/i);
-    const phoneInput = screen.getByRole("textbox", { name: /phone number/i });
-    const passwordInput = screen.getByLabelText(/password/i);
-    const registerButton = screen.getByRole("button", { name: /register/i });
-    const loginLink = screen.getByText(/login here/i);
+  describe("Form Rendering", () => {
+    test("renders all form elements correctly", () => {
+      renderRegisterPage();
 
-    // Verify all form elements are present and have correct attributes
-    expect(usernameInput).toHaveAttribute("type", "text");
-    expect(emailInput).toHaveAttribute("type", "email");
-    expect(passwordInput).toHaveAttribute("type", "password");
-    expect(registerButton).toHaveAttribute("type", "submit");
-    expect(loginLink).toHaveClass("text-blue-600");
+      const usernameInput = screen.getByLabelText(/username/i);
+      const emailInput = screen.getByLabelText(/email/i);
+      const phoneInput = screen.getByTestId("phone-input");
+      const passwordInput = screen.getByLabelText(/password/i);
+      const registerButton = screen.getByRole("button", { name: /register/i });
+      const loginLink = screen.getByText(/login here/i);
+
+      expect(usernameInput).toHaveAttribute("type", "text");
+      expect(emailInput).toHaveAttribute("type", "email");
+      expect(passwordInput).toHaveAttribute("type", "password");
+      expect(registerButton).toHaveAttribute("type", "submit");
+      expect(loginLink).toHaveClass("text-blue-600");
+    });
+
+    test("toggles password visibility", async () => {
+      renderRegisterPage();
+
+      const passwordInput = screen.getByLabelText(/password/i);
+      const toggleButton = screen.getByTestId("password-toggle");
+
+      expect(passwordInput).toHaveAttribute("type", "password");
+
+      await user.click(toggleButton);
+      expect(passwordInput).toHaveAttribute("type", "text");
+
+      await user.click(toggleButton);
+      expect(passwordInput).toHaveAttribute("type", "password");
+    });
   });
 
-  test("toggles password visibility when eye icon is clicked", async () => {
-    render(<RegisterPage />);
+  describe("Form Validation", () => {
+    test("validates email format", async () => {
+      renderRegisterPage();
 
-    const passwordInput = screen.getByLabelText(/password/i);
-    const toggleButton = screen.getByTestId("password-toggle");
+      await user.type(screen.getByLabelText(/email/i), "invalid-email");
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      expect(
+        screen.getByText(/please enter a valid email address/i)
+      ).toBeInTheDocument();
 
-    // Initially password should be hidden
-    expect(passwordInput).toHaveAttribute("type", "password");
+      await user.clear(screen.getByLabelText(/email/i));
+      await user.type(screen.getByLabelText(/email/i), "test@example.com");
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      expect(
+        screen.queryByText(/please enter a valid email address/i)
+      ).not.toBeInTheDocument();
+    });
 
-    // Click toggle button
-    await userEvent.click(toggleButton);
-    expect(passwordInput).toHaveAttribute("type", "text");
+    test("validates password requirements", async () => {
+      renderRegisterPage();
 
-    // Click again to hide
-    await userEvent.click(toggleButton);
-    expect(passwordInput).toHaveAttribute("type", "password");
+      await user.type(screen.getByLabelText(/password/i), "weak");
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      expect(
+        screen.getByText(/password must be at least 8 characters/i)
+      ).toBeInTheDocument();
+
+      await user.clear(screen.getByLabelText(/password/i));
+      await user.type(screen.getByLabelText(/password/i), "StrongPass123!");
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      expect(
+        screen.queryByText(/password must be at least 8 characters/i)
+      ).not.toBeInTheDocument();
+    });
+
+    test("shows validation errors for empty fields", async () => {
+      renderRegisterPage();
+      await user.click(screen.getByRole("button", { name: /register/i }));
+
+      expect(screen.getByText(/username is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/phone number is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+    });
   });
 
-  test("validates email format", async () => {
-    render(<RegisterPage />);
+  describe("Form Submission", () => {
+    test("handles successful registration", async () => {
+      renderRegisterPage();
+      await fillForm();
+      mockRegister.mockResolvedValueOnce({});
 
-    const emailInput = screen.getByLabelText(/email/i);
-    const registerButton = screen.getByRole("button", { name: /register/i });
+      await user.click(screen.getByRole("button", { name: /register/i }));
 
-    // Test invalid email
-    await userEvent.type(emailInput, "invalid-email");
-    await userEvent.click(registerButton);
+      await waitFor(() => {
+        expect(mockRegister).toHaveBeenCalledWith(
+          validFormData.username,
+          validFormData.email,
+          validFormData.phone,
+          validFormData.password
+        );
+      });
 
-    expect(
-      screen.getByText(/please enter a valid email address/i)
-    ).toBeInTheDocument();
-
-    // Test valid email
-    await userEvent.clear(emailInput);
-    await userEvent.type(emailInput, "test@example.com");
-    await userEvent.click(registerButton);
-
-    expect(
-      screen.queryByText(/please enter a valid email address/i)
-    ).not.toBeInTheDocument();
-  });
-
-  test("validates password requirements", async () => {
-    render(<RegisterPage />);
-
-    const passwordInput = screen.getByLabelText(/password/i);
-    const registerButton = screen.getByRole("button", { name: /register/i });
-
-    // Test weak password
-    await userEvent.type(passwordInput, "weak");
-    await userEvent.click(registerButton);
-
-    expect(
-      screen.getByText(/password must be at least 8 characters/i)
-    ).toBeInTheDocument();
-
-    // Test strong password
-    await userEvent.clear(passwordInput);
-    await userEvent.type(passwordInput, "StrongPass123!");
-    await userEvent.click(registerButton);
-
-    expect(
-      screen.queryByText(/password must be at least 8 characters/i)
-    ).not.toBeInTheDocument();
-  });
-
-  test("handles successful registration", async () => {
-    render(<RegisterPage />);
-
-    await fillForm();
-    mockRegister.mockResolvedValueOnce({});
-
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
-
-    await waitFor(() => {
-      expect(mockRegister).toHaveBeenCalledWith(
-        validFormData.username,
-        validFormData.email,
-        validFormData.phone,
-        validFormData.password
+      expect(toast.success).toHaveBeenCalledWith(
+        "Registration successful! Redirecting to login...",
+        expect.any(Object)
       );
+      expect(mockNavigate).toHaveBeenCalledWith("/");
     });
 
-    expect(toast.success).toHaveBeenCalledWith(
-      "Registration successful! Redirecting to login...",
-      expect.objectContaining({
-        position: "top-right",
-        autoClose: 3000,
-      })
-    );
-    expect(mockNavigate).toHaveBeenCalledWith("/");
-  });
+    test("handles registration errors", async () => {
+      renderRegisterPage();
+      await fillForm();
 
-  test("handles field-specific registration errors", async () => {
-    render(<RegisterPage />);
+      // Field-specific error
+      mockRegister.mockRejectedValueOnce({
+        field: "email",
+        message: "Email already exists",
+      });
 
-    await fillForm();
-    const errorMessage = "Email already exists";
-    mockRegister.mockRejectedValueOnce({
-      field: "email",
-      message: errorMessage,
-    });
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      await waitFor(() => {
+        expect(screen.getByText("Email already exists")).toBeInTheDocument();
+      });
 
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
+      // General error
+      mockRegister.mockRejectedValueOnce({
+        field: "general",
+        message: "Network error occurred",
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    });
-  });
-
-  test("handles general registration errors", async () => {
-    render(<RegisterPage />);
-
-    await fillForm();
-    mockRegister.mockRejectedValueOnce({
-      field: "general",
-      message: "Network error occurred",
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/network error occurred/i)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /register/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/network error occurred/i)).toBeInTheDocument();
+      });
     });
   });
 
-  test("navigates to login page when login link is clicked", async () => {
-    render(<RegisterPage />);
-
-    await userEvent.click(screen.getByText(/login here/i));
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
-  });
-
-  test("clears error messages when inputs change", async () => {
-    render(<RegisterPage />);
-
-    const emailInput = screen.getByLabelText(/email/i);
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
-    expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-
-    await userEvent.type(emailInput, "a");
-    expect(screen.queryByText(/email is required/i)).not.toBeInTheDocument();
-  });
-
-  test("shows validation errors for empty fields", async () => {
-    render(<RegisterPage />);
-
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
-
-    expect(screen.getByText(/username is required/i)).toBeInTheDocument();
-    expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-    expect(screen.getByText(/phone number is required/i)).toBeInTheDocument();
-    expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+  describe("Navigation", () => {
+    test("navigates to login page", async () => {
+      renderRegisterPage();
+      await user.click(screen.getByText(/login here/i));
+      expect(mockNavigate).toHaveBeenCalledWith("/login");
+    });
   });
 });

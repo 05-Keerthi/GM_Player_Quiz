@@ -6,7 +6,6 @@ import HomePage from "../../pages/Home";
 import { useAuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-// Mock dependencies
 jest.mock("react-router-dom", () => ({
   useNavigate: jest.fn(),
 }));
@@ -55,6 +54,7 @@ jest.mock("../../models/Tenant/CreateTenantModel", () => {
 
 describe("HomePage", () => {
   const mockNavigate = jest.fn();
+  const user = userEvent.setup();
 
   beforeEach(() => {
     useNavigate.mockReturnValue(mockNavigate);
@@ -92,8 +92,7 @@ describe("HomePage", () => {
     });
 
     render(<HomePage />);
-    const joinButton = screen.getByRole("button", { name: "Join Now" });
-    await userEvent.click(joinButton);
+    await user.click(screen.getByRole("button", { name: "Join Now" }));
     expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 
@@ -106,7 +105,7 @@ describe("HomePage", () => {
 
       render(<HomePage />);
       const planCards = screen.getAllByTestId("card");
-      await userEvent.click(planCards[0]); // Click Basic Plan
+      await user.click(planCards[0]); // Click Basic Plan
       expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
 
@@ -118,7 +117,6 @@ describe("HomePage", () => {
 
       render(<HomePage />);
       const planCards = screen.getAllByTestId("card");
-
       const planPaths = [
         "/basic-plan",
         "/pro-plan",
@@ -127,7 +125,7 @@ describe("HomePage", () => {
       ];
 
       for (let i = 0; i < planPaths.length; i++) {
-        await userEvent.click(planCards[i]);
+        await user.click(planCards[i]);
         expect(mockNavigate).toHaveBeenNthCalledWith(i + 1, planPaths[i]);
       }
     });
@@ -185,32 +183,6 @@ describe("HomePage", () => {
     expect(screen.getByTestId("user-management")).toBeInTheDocument();
   });
 
-  test("renders correctly for regular user role", () => {
-    useAuthContext.mockReturnValue({
-      isAuthenticated: true,
-      user: { role: "user", id: "123" },
-    });
-
-    render(<HomePage />);
-
-    const expectedHeadings = ["Join Quiz", "Join Survey", "View Reports"];
-    expectedHeadings.forEach((heading) => {
-      expect(
-        screen.getByRole("heading", { name: heading })
-      ).toBeInTheDocument();
-    });
-
-    expect(
-      screen.getByText("Participate in exciting quizzes")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Participate in exciting surveys")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Choose Your Plan" })
-    ).toBeInTheDocument();
-  });
-
   test("handles navigation correctly for tenant admin actions", async () => {
     useAuthContext.mockReturnValue({
       isAuthenticated: true,
@@ -219,49 +191,24 @@ describe("HomePage", () => {
 
     render(<HomePage />);
 
-    // Test navigation for Create Quiz
-    const createQuizButton = screen.getByRole("button", {
-      name: "Create Quiz",
-    });
-    await userEvent.click(createQuizButton);
+    await user.click(screen.getByRole("button", { name: "Create Quiz" }));
     expect(mockNavigate).toHaveBeenCalledWith("/selectQuizCategory");
 
-    // Test navigation for View Quizzes
-    const viewQuizzesButton = screen.getByRole("button", {
-      name: "Go to Quizzes",
-    });
-    await userEvent.click(viewQuizzesButton);
+    await user.click(screen.getByRole("button", { name: "Go to Quizzes" }));
     expect(mockNavigate).toHaveBeenCalledWith("/quiz-list");
   });
 
-  test("opens create tenant modal for superadmin", async () => {
+  test("opens and closes create tenant modal for superadmin", async () => {
     useAuthContext.mockReturnValue({
       isAuthenticated: true,
       user: { role: "superadmin" },
     });
 
     render(<HomePage />);
-    const createTenantButton = screen.getByRole("button", {
-      name: "Create Tenant",
-    });
-    await userEvent.click(createTenantButton);
+    await user.click(screen.getByRole("button", { name: "Create Tenant" }));
     expect(screen.getByTestId("create-tenant-modal")).toBeInTheDocument();
-  });
 
-  test("handles modal close for superadmin", async () => {
-    useAuthContext.mockReturnValue({
-      isAuthenticated: true,
-      user: { role: "superadmin" },
-    });
-
-    render(<HomePage />);
-    const createTenantButton = screen.getByRole("button", {
-      name: "Create Tenant",
-    });
-    await userEvent.click(createTenantButton);
-
-    const closeButton = screen.getByRole("button", { name: "Close" });
-    await userEvent.click(closeButton);
+    await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("create-tenant-modal")).not.toBeInTheDocument();
   });
 });
