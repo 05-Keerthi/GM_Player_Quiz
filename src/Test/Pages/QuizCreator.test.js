@@ -1,4 +1,4 @@
-// src/tests/components/QuizCreator.test.js
+// src/Test/pages/QuizCreator.test.js
 
 import React from "react";
 import {

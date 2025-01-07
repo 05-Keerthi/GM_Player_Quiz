@@ -48,11 +48,9 @@ const QuizCreator = () => {
   const [alert, setAlert] = useState({ message: "", type: "error" });
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
   const [showDeleteSlideModal, setShowDeleteSlideModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [selectedSlide, setSelectedSlide] = useState(null);
   const [quizTitle, setQuizTitle] = useState("");
   const [quiz, setQuiz] = useState({
     title: "",

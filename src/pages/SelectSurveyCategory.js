@@ -119,6 +119,7 @@ const SelectSurveyCategory = () => {
               Select Survey Categories
             </h1>
             <button
+              data-testid="create-category-button"
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
@@ -136,6 +137,7 @@ const SelectSurveyCategory = () => {
               />
               <input
                 type="text"
+                data-testid="category-search"
                 placeholder="Search survey categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -159,6 +161,7 @@ const SelectSurveyCategory = () => {
                 {currentItems.map((category) => (
                   <div
                     key={category._id}
+                    data-testid={`category-item-${category._id}`}
                     className={`bg-white rounded-lg shadow-md px-4 py-2 cursor-pointer transition-all flex items-center justify-between
                     ${
                       selectedCategories.includes(category._id)
@@ -188,12 +191,14 @@ const SelectSurveyCategory = () => {
                     </div>
                     <div className="flex items-center gap-4">
                       <button
+                        data-testid={`edit-category-${category._id}`}
                         onClick={(e) => handleEdit(e, category._id)}
                         className="p-1 hover:bg-gray-100 rounded-full"
                       >
                         <Edit className="h-4 w-4 text-gray-600" />
                       </button>
                       <button
+                        data-testid={`delete-category-${category._id}`}
                         onClick={(e) => handleDelete(e, category._id)}
                         className="p-1 hover:bg-gray-100 rounded-full"
                       >
@@ -225,6 +230,7 @@ const SelectSurveyCategory = () => {
         {/* Create Survey Button */}
         <div className="fixed bottom-8 right-8">
           <button
+            data-testid="create-survey-button"
             onClick={handleCreateSurvey}
             disabled={selectedCategories.length === 0}
             className={`px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-white
