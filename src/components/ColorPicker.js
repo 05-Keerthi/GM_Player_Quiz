@@ -82,6 +82,7 @@ const ColorPicker = ({ color, onChange, className = "" }) => {
               value={color}
               onChange={(e) => handleColorChange(e.target.value)}
               className="w-full h-10 cursor-pointer rounded border p-1"
+              aria-label="Custom color input"
             />
           </div>
 
