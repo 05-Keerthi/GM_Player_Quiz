@@ -60,11 +60,10 @@ describe("PreviewPage", () => {
   });
 
   const renderAndWaitForLoad = async () => {
-    const rendered = render(<PreviewPage />);
+    render(<PreviewPage />);
     await waitFor(() => {
       expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
     });
-    return rendered;
   };
 
   describe("Initial Loading", () => {
@@ -75,15 +74,19 @@ describe("PreviewPage", () => {
 
     test("fetches and displays quiz data correctly", async () => {
       await renderAndWaitForLoad();
-      
-      expect(screen.getByTestId("slide-title")).toHaveTextContent("Introduction");
-      expect(screen.getByTestId("slide-content")).toHaveTextContent("Welcome to the quiz");
+
+      expect(screen.getByTestId("slide-title")).toHaveTextContent(
+        "Introduction"
+      );
+      expect(screen.getByTestId("slide-content")).toHaveTextContent(
+        "Welcome to the quiz"
+      );
     });
 
     test("handles API error gracefully", async () => {
       axios.get.mockRejectedValueOnce(new Error("Failed to fetch"));
       render(<PreviewPage />);
-      
+
       await waitFor(() => {
         expect(screen.queryByText(/loading\.\.\./i)).not.toBeInTheDocument();
       });
@@ -119,47 +122,67 @@ describe("PreviewPage", () => {
     test("navigates through slides using buttons", async () => {
       await renderAndStartPresentation();
 
-      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
-      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
+      const presentationContent = screen.getByRole("dialog", {
+        name: /presentation/i,
+      });
+      expect(
+        within(presentationContent).getByTestId("slide-title")
+      ).toHaveTextContent("Introduction");
 
       await user.click(screen.getByTestId("next-slide"));
-      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
+      expect(
+        within(presentationContent).getByTestId("question-title")
+      ).toHaveTextContent("First Question");
 
       await user.click(screen.getByTestId("prev-slide"));
-      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
+      expect(
+        within(presentationContent).getByTestId("slide-title")
+      ).toHaveTextContent("Introduction");
     });
 
     test("handles keyboard navigation", async () => {
       await renderAndStartPresentation();
 
-      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
+      const presentationContent = screen.getByRole("dialog", {
+        name: /presentation/i,
+      });
 
       await user.keyboard("{ArrowRight}");
-      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
+      expect(
+        within(presentationContent).getByTestId("question-title")
+      ).toHaveTextContent("First Question");
 
       await user.keyboard("{ArrowLeft}");
-      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
+      expect(
+        within(presentationContent).getByTestId("slide-title")
+      ).toHaveTextContent("Introduction");
 
       await user.keyboard("{Escape}");
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     test("prevents navigation beyond bounds", async () => {
       await renderAndStartPresentation();
-      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
+      const presentationContent = screen.getByRole("dialog", {
+        name: /presentation/i,
+      });
 
       await user.keyboard("{ArrowLeft}");
-      expect(within(presentationContent).getByTestId("slide-title")).toHaveTextContent("Introduction");
+      expect(
+        within(presentationContent).getByTestId("slide-title")
+      ).toHaveTextContent("Introduction");
 
       await user.keyboard("{ArrowRight}");
       await user.keyboard("{ArrowRight}");
-      expect(within(presentationContent).getByTestId("question-title")).toHaveTextContent("First Question");
+      expect(
+        within(presentationContent).getByTestId("question-title")
+      ).toHaveTextContent("First Question");
     });
 
     test("exits presentation mode", async () => {
       await renderAndStartPresentation();
       await user.click(screen.getByTestId("exit-presentation"));
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 
@@ -169,11 +192,16 @@ describe("PreviewPage", () => {
       await user.click(screen.getByTestId("start-presentation"));
       await user.click(screen.getByTestId("next-slide"));
 
-      const presentationContent = screen.getByRole('dialog', { name: /presentation/i });
-      const optionText = within(presentationContent).getByTestId("option-text-0");
-      
+      const presentationContent = screen.getByRole("dialog", {
+        name: /presentation/i,
+      });
+      const optionText =
+        within(presentationContent).getByTestId("option-text-0");
+
       expect(optionText).toHaveTextContent("4");
-      expect(within(presentationContent).getByTestId("correct-answer-label")).toBeInTheDocument();
+      expect(
+        within(presentationContent).getByTestId("correct-answer-label")
+      ).toBeInTheDocument();
     });
 
     test("renders question options correctly in preview mode", async () => {
@@ -182,9 +210,11 @@ describe("PreviewPage", () => {
 
       const mainContent = screen.getByTestId("preview-content");
       const optionText = within(mainContent).getByTestId("option-text-0");
-      
+
       expect(optionText).toHaveTextContent("4");
-      expect(within(mainContent).getByTestId("correct-answer-label")).toBeInTheDocument();
+      expect(
+        within(mainContent).getByTestId("correct-answer-label")
+      ).toBeInTheDocument();
     });
 
     test("displays images properly", async () => {
@@ -192,7 +222,7 @@ describe("PreviewPage", () => {
 
       const mainContent = screen.getByTestId("preview-content");
       const image = within(mainContent).getByTestId("slide-image");
-      
+
       expect(image).toBeInTheDocument();
       expect(image).toHaveAttribute("src", "https://example.com/image1.jpg");
     });
@@ -207,7 +237,9 @@ describe("PreviewPage", () => {
       await renderAndWaitForLoad();
 
       const mainContent = screen.getByTestId("preview-content");
-      expect(within(mainContent).queryByTestId("slide-image")).not.toBeInTheDocument();
+      expect(
+        within(mainContent).queryByTestId("slide-image")
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -215,9 +247,11 @@ describe("PreviewPage", () => {
     test("allows direct navigation to slides", async () => {
       await renderAndWaitForLoad();
       await user.click(screen.getByTestId("sidebar-item-1"));
-      
+
       const mainContent = screen.getByTestId("preview-content");
-      expect(within(mainContent).getByTestId("question-title")).toHaveTextContent("First Question");
+      expect(
+        within(mainContent).getByTestId("question-title")
+      ).toHaveTextContent("First Question");
     });
 
     test("highlights active slide in sidebar", async () => {
