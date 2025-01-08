@@ -118,14 +118,19 @@ const UnifiedList = ({ contentType }) => {
 
   const handleConfirmDelete = async () => {
     if (itemToDelete) {
-      await deleteItemFunc(itemToDelete);
-      toast.success(
-        `${
-          contentType.charAt(0).toUpperCase() + contentType.slice(1)
-        } deleted successfully!`
-      );
-      setShowDeleteModal(false);
-      setItemToDelete(null);
+      try {
+        await deleteItemFunc(itemToDelete);
+        toast.success(
+          `${
+            contentType.charAt(0).toUpperCase() + contentType.slice(1)
+          } deleted successfully!`
+        );
+      } catch (error) {
+        toast.error("Failed to delete");
+      } finally {
+        setShowDeleteModal(false);
+        setItemToDelete(null);
+      }
     }
   };
 
@@ -239,6 +244,7 @@ const UnifiedList = ({ contentType }) => {
     return (
       <button
         onClick={(e) => handleStatusChange(e, item, config.newStatus)}
+        data-testid={`status-button-${item._id}`}
         className={`w-full px-3 py-2 text-white rounded-lg flex items-center justify-center gap-2 ${config.class}`}
       >
         {config.icon}
@@ -289,6 +295,7 @@ const UnifiedList = ({ contentType }) => {
         {isMobile && (
           <div className="fixed bottom-4 right-4 z-50">
             <button
+              data-testid="mobile-menu-button"
               onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
               className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
             >
@@ -303,6 +310,7 @@ const UnifiedList = ({ contentType }) => {
 
         {/* Filter Sidebar */}
         <div
+          data-testid="filter-menu"
           className={`
             ${
               isMobile
@@ -322,6 +330,7 @@ const UnifiedList = ({ contentType }) => {
               </h1>
               {isMobile && (
                 <button
+                  data-testid="close-menu-button"
                   onClick={() => setIsFilterMenuOpen(false)}
                   className="text-gray-600"
                 >
@@ -332,6 +341,7 @@ const UnifiedList = ({ contentType }) => {
             <div className="space-y-2">
               {statusConfig.map(({ status, icon, color }) => (
                 <button
+                  data-testid={`filter-${status}`}
                   key={status}
                   onClick={() => {
                     setFilter(status);
@@ -355,11 +365,12 @@ const UnifiedList = ({ contentType }) => {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className={`flex-1 p-4 ${isMobile ? "mt-0" : "ml-64"}`}>
             <div className="sticky top-16 z-30 flex flex-col sm:flex-row justify-between items-center mb-6 bg-gray-100 p-5">
-              <h1 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">
+              <h1 data-testid="content-header">
                 My {contentType.charAt(0).toUpperCase() + contentType.slice(1)}s
               </h1>
               <button
                 onClick={() => navigate(`/select${contentType}category`)}
+                data-testid="create-button"
                 className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
               >
                 <PlusCircle className="w-4 h-4" />
@@ -398,6 +409,7 @@ const UnifiedList = ({ contentType }) => {
                             >
                               {(provided) => (
                                 <div
+                                  data-testid={`${contentType}-card-${item._id}`}
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
@@ -414,7 +426,10 @@ const UnifiedList = ({ contentType }) => {
                                     <StatusBadge status={item.status} />
                                   </div>
 
-                                  <h2 className="text-xl font-bold mb-3 text-gray-800">
+                                  <h2
+                                    data-testid={`${contentType}-title-${item._id}`}
+                                    className="text-xl font-bold mb-3 text-gray-800"
+                                  >
                                     {item.title ||
                                       `Untitled ${
                                         contentType.charAt(0).toUpperCase() +
@@ -442,14 +457,14 @@ const UnifiedList = ({ contentType }) => {
                                         <>
                                           <ListChecks className="w-5 h-5" />
                                           <span>
-                                            {item.slides?.length || 0}{" "}
-                                            Slides
+                                            {item.slides?.length || 0} Slides
                                           </span>
                                         </>
                                       )}
                                     </div>
                                     <div className="flex gap-2">
                                       <button
+                                        data-testid={`edit-button-${item._id}`}
                                         onClick={(e) => handleEdit(e, item._id)}
                                         className="text-blue-600 hover:text-blue-800"
                                         title={`Edit ${contentType}`}
@@ -460,6 +475,7 @@ const UnifiedList = ({ contentType }) => {
                                         onClick={(e) =>
                                           handleDelete(e, item._id)
                                         }
+                                        data-testid={`delete-button-${item._id}`}
                                         className="text-red-600 hover:text-red-800"
                                         title={`Delete ${contentType}`}
                                       >
@@ -499,6 +515,7 @@ const UnifiedList = ({ contentType }) => {
       </div>
 
       <ConfirmationModal
+        data-testid="confirmation-modal"
         isOpen={showDeleteModal}
         onClose={() => {
           setShowDeleteModal(false);
