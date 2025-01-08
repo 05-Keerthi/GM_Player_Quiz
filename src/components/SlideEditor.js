@@ -56,13 +56,17 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     setPoints(newPoints);
   };
 
-  const addPoint = () => {
-    setPoints([...points, ""]);
+  const handleAddBulletPoint = () => {
+    setPoints([...points, '']);
   };
 
-  const removePoint = (index) => {
-    const newPoints = points.filter((_, i) => i !== index);
-    setPoints(newPoints);
+  const handleRemoveBulletPoint = (index) => {
+    const updatedPoints = [...points];
+    updatedPoints.splice(index, 1);
+    setPoints(updatedPoints);
+    // Also update the content to keep it in sync
+    const newContent = updatedPoints.join('\n');
+    setContent(newContent);
   };
 
   const handleImageUpload = async (e) => {
@@ -91,7 +95,6 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
   
-        // Set both preview URL and store the media ID
         setImagePreview(
           `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
         );
@@ -108,7 +111,6 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     }
   };
   
-  // 2. Update handleImageRemove in SlideEditor.js
   const handleImageRemove = () => {
     setImagePreview(null);
     if (slide) {
@@ -116,7 +118,6 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     }
   };
   
-  // 3. Update handleSave in SlideEditor.js
   const handleSave = async () => {
     try {
       const updatedData = {
@@ -179,7 +180,6 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           />
         </div>
 
-        {/* Image Upload Section */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">
             Slide Image
@@ -216,34 +216,34 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
             </div>
           )}
 
-        {imagePreview && (
-                    <div className="relative mt-4">
-                      <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                        <div className="relative w-full" style={{ paddingBottom: "75%" }}>
-                          <img
-                            src={imagePreview}
-                            alt="Slide"
-                            className="absolute inset-0 w-full h-full object-contain"
-                          />
-                          {isUploading && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="absolute top-2 right-2 flex gap-2">
-                        <button
-                          onClick={handleImageRemove}
-                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                          title="Remove image"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
+          {imagePreview && (
+            <div className="relative mt-4">
+              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
+                <div className="relative w-full" style={{ paddingBottom: "75%" }}>
+                  <img
+                    src={imagePreview}
+                    alt="Slide"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
                     </div>
                   )}
                 </div>
+              </div>
+              <div className="absolute top-2 right-2 flex gap-2">
+                <button
+                  onClick={handleImageRemove}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         {slide.type === "bullet_points" ? (
           <div className="space-y-4">
             <label className="block text-sm font-semibold text-gray-700">
@@ -265,16 +265,17 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
                   />
                   {points.length > 1 && (
                     <button
-                      onClick={() => removePoint(index)}
-                      className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                onClick={() => handleRemoveBulletPoint(index)}
+                className="ml-2 p-2 text-red-600 hover:text-red-800"
+                aria-label="Remove bullet point"
+              >
+                <Trash2 size={20} data-icon="trash-2" />
+              </button>
                   )}
                 </div>
               ))}
               <button
-                onClick={addPoint}
+                onClick={handleAddBulletPoint}
                 className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
               >
                 Add Bullet Point
@@ -283,10 +284,14 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           </div>
         ) : (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label 
+              htmlFor="slide-content"
+              className="block text-sm font-semibold text-gray-700 mb-2"
+            >
               Content
             </label>
             <textarea
+              id="slide-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300 min-h-[150px]"
