@@ -131,52 +131,57 @@ const UserQuizList = () => {
             <p className="text-4xl font-bold text-gray-800">{averageScore}</p>
           </div>
         </div>
-        <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
-          <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
-            Answers Overview
-          </h2>
-          <div className="flex justify-center">
-            <div className="w-80">
-              <Pie data={chartData} />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white shadow-lg rounded-lg p-8">
-          <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
-            Quiz History
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full table-auto border-collapse">
-              <thead>
-                <tr className="bg-indigo-600 text-white uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left">Quiz Title</th>
-                  <th className="px-6 py-3 text-left">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((report) => (
-                  <tr
-                    key={report._id}
-                    className="hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleQuizClick(report)}
-                  >
-                    <td className="px-6 py-4">{report.quiz?.title || "N/A"}</td>
-                    <td className="px-6 py-4">{report.totalScore}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
 
-          {totalPages > 1 && (
-            <div className="mt-8 flex justify-center">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white shadow-lg rounded-lg p-8">
+            <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+              Answers Overview
+            </h2>
+            <div className="flex justify-center">
+              <div className="w-80">
+                <Pie data={chartData} />
+              </div>
             </div>
-          )}
+          </div>
+          <div className="bg-white shadow-lg rounded-lg p-8">
+            <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+              Quiz History
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full table-auto border-collapse">
+                <thead>
+                  <tr className="bg-indigo-600 text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left">Quiz Title</th>
+                    <th className="px-6 py-3 text-left">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((report) => (
+                    <tr
+                      key={report._id}
+                      className="hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleQuizClick(report)}
+                    >
+                      <td className="px-6 py-4">
+                        {report.quiz?.title || "N/A"}
+                      </td>
+                      <td className="px-6 py-4">{report.totalScore}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => setCurrentPage(page)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
