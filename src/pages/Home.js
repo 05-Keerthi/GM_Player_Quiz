@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutGrid,
   Star,
   Trophy,
   Rocket,
@@ -35,6 +34,7 @@ export default function HomePage() {
   };
 
   const handleAction = (action) => {
+    
     if (!isAuthenticated) {
       navigate("/login");
       return;
