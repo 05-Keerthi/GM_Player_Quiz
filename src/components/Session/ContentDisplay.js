@@ -49,8 +49,8 @@ const ContentDisplay = ({
         setTotalVotes(passedTotalVotes);
       } else {
         const initialCounts = {};
-        item.options?.forEach((_, index) => {
-          initialCounts[index] = 0;
+        item.options?.forEach((option) => {
+          initialCounts[option._id] = 0;
         });
         setOptionCounts(initialCounts);
         setTotalVotes(0);
@@ -345,7 +345,7 @@ const ContentDisplay = ({
           <div className="mt-8">
             <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
               {item.options.map((option, index) => {
-                const count = optionCounts[index] || 0;
+                const count = optionCounts[option._id] || 0;
                 const percentage = getPercentage(count);
                 const backgroundColor = option.color || "#ffffff";
                 const textColor = getContrastColor(backgroundColor);

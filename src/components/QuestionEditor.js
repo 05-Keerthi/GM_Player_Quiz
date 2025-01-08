@@ -286,15 +286,15 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
                   color={option.color}
                   onChange={(color) => handleOptionColorChange(index, color)}
                 />
-                {parsedQuestion.options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveOption(index)}
-                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
+               {parsedQuestion.options.length > 2 && (
+  <button
+    type="button"
+    onClick={() => handleRemoveOption(index)}
+    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+  >
+    <Trash2 className="w-5 h-5" data-testid="trash-2-icon" />
+  </button>
+)}
               </div>
             ))}
             {parsedQuestion.type !== "true_false" && (
