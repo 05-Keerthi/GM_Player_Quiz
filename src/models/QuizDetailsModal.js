@@ -23,9 +23,9 @@ const QuizDetailsModal = ({ open, onClose, quiz }) => {
           <TableBody>
             <TableRow>
               <TableCell component="th" scope="row">
-                Quiz Title
+              <span className="text-xl font-bold">Quiz Title</span>
               </TableCell>
-              <TableCell>{quiz.quiz?.title}</TableCell>
+              <TableCell><span className="text-xl font-medium">{quiz.quiz?.title}</span></TableCell>
             </TableRow>
             <TableRow>
               <TableCell component="th" scope="row">
@@ -45,13 +45,17 @@ const QuizDetailsModal = ({ open, onClose, quiz }) => {
               <TableCell component="th" scope="row">
                 Correct Answers
               </TableCell>
-              <TableCell>{quiz.correctAnswers}</TableCell>
+              <TableCell>
+                <span className="text-green-500">{quiz.correctAnswers}</span>
+              </TableCell>
             </TableRow>
             <TableRow>
               <TableCell component="th" scope="row">
                 Incorrect Answers
               </TableCell>
-              <TableCell>{quiz.incorrectAnswers}</TableCell>
+              <TableCell>
+                <span className="text-red-500">{quiz.incorrectAnswers}</span>
+              </TableCell>
             </TableRow>
             <TableRow>
               <TableCell component="th" scope="row">
