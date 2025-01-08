@@ -8,6 +8,15 @@ import {
   Users,
   Building,
   Activity,
+  FileSpreadsheet,
+  ClipboardList,
+  BarChart3,
+  PieChart,
+  FileQuestion,
+  MessagesSquare,
+  ScrollText,
+  LineChart,
+  BookOpen,
 } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
@@ -38,23 +47,15 @@ export default function HomePage() {
     }
   };
 
-  const handlePlanSelection = (path) => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-    handleNavigation(path);
-  };
-
   const getRoleBasedActions = () => {
     if (!isAuthenticated) {
       return [
         {
-          icon: <Trophy className="text-green-600" size={48} />,
+          icon: <BookOpen className="text-emerald-600" size={48} />,
           title: "Join Quiz",
           description: "Participate in exciting quizzes",
           buttonText: "Join Now",
-          buttonColor: "bg-green-500 hover:bg-green-600",
+          buttonColor: "bg-emerald-500 hover:bg-emerald-600",
           path: "/join-quiz",
         },
       ];
@@ -64,11 +65,11 @@ export default function HomePage() {
       case "superadmin":
         return [
           {
-            icon: <Building className="text-purple-600" size={48} />,
+            icon: <Building className="text-indigo-600" size={48} />,
             title: "Create Tenant",
             description: "Set up new organization spaces",
             buttonText: "Create Tenant",
-            buttonColor: "bg-purple-500 hover:bg-purple-600",
+            buttonColor: "bg-indigo-500 hover:bg-indigo-600",
             modalAction: true,
           },
         ];
@@ -76,84 +77,92 @@ export default function HomePage() {
       case "admin":
         return [
           {
-            icon: <LayoutGrid className="text-blue-600" size={48} />,
+            icon: <FileQuestion className="text-violet-600" size={48} />,
             title: "Create Quiz",
             description: "Design and launch new quizzes",
             buttonText: "Create Quiz",
-            buttonColor: "bg-blue-500 hover:bg-blue-600",
+            buttonColor: "bg-violet-500 hover:bg-violet-600",
             path: "/selectQuizCategory",
           },
           {
-            icon: <Rocket className="text-orange-600" size={48} />,
+            icon: <ClipboardList className="text-teal-600" size={48} />,
             title: "View Quizzes",
             description: "Manage and monitor all quizzes",
             buttonText: "Go to Quizzes",
-            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            buttonColor: "bg-teal-500 hover:bg-teal-600",
             path: "/quiz-list",
           },
           {
-            icon: <LayoutGrid className="text-blue-600" size={48} />,
+            icon: <MessagesSquare className="text-rose-600" size={48} />,
             title: "Create Survey",
             description: "Create and launch new surveys",
             buttonText: "Create Survey",
-            buttonColor: "bg-green-500 hover:bg-blue-600",
+            buttonColor: "bg-rose-500 hover:bg-rose-600",
             path: "/selectSurveyCategory",
           },
           {
-            icon: <Rocket className="text-orange-600" size={48} />,
+            icon: <ScrollText className="text-cyan-600" size={48} />,
             title: "View Surveys",
             description: "Manage and monitor all surveys",
             buttonText: "Go to Surveys",
-            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            buttonColor: "bg-cyan-500 hover:bg-cyan-600",
             path: "/survey-list",
           },
           {
-            icon: <Activity className="text-blue-600" size={48} />,
+            icon: <Activity className="text-amber-600" size={48} />,
             title: "View Activity Log",
             description: "Manage and monitor activities",
             buttonText: "Go to Activity Log",
-            buttonColor: "bg-blue-500 hover:bg-orange-600",
+            buttonColor: "bg-amber-500 hover:bg-amber-600",
             path: "/activity-log",
           },
           {
-            icon: <Rocket className="text-orange-600" size={48} />,
+            icon: <BarChart3 className="text-fuchsia-600" size={48} />,
             title: "View Reports",
             description: "Manage and monitor all reports",
             buttonText: "Go to Reports",
-            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            buttonColor: "bg-fuchsia-500 hover:bg-fuchsia-600",
             path: "/reports",
           },
         ];
       case "user":
         return [
           {
-            icon: <Trophy className="text-green-600" size={48} />,
+            icon: <FileSpreadsheet className="text-emerald-600" size={48} />,
             title: "Join Quiz",
             description: "Participate in exciting quizzes",
             buttonText: "Join Now",
-            buttonColor: "bg-green-500 hover:bg-green-600",
+            buttonColor: "bg-emerald-500 hover:bg-emerald-600",
             path: "/join",
           },
           {
-            icon: <Trophy className="text-green-600" size={48} />,
+            icon: <PieChart className="text-purple-600" size={48} />,
             title: "Join Survey",
             description: "Participate in exciting surveys",
             buttonText: "Join Now",
-            buttonColor: "bg-green-500 hover:bg-green-600",
+            buttonColor: "bg-purple-500 hover:bg-purple-600",
             path: "/joinsurvey",
           },
           {
-            icon: <Rocket className="text-orange-600" size={48} />,
+            icon: <LineChart className="text-blue-600" size={48} />,
             title: "View Reports",
             description: "View reports and your quiz performance",
             buttonText: "View Reports",
-            buttonColor: "bg-orange-500 hover:bg-orange-600",
+            buttonColor: "bg-blue-500 hover:bg-blue-600",
             path: `/userreports/${user?.id}`,
           },
         ];
       default:
         return [];
     }
+  };
+
+  const handlePlanSelection = (path) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    handleNavigation(path);
   };
 
   const plans = [
