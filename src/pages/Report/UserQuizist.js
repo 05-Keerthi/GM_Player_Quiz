@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Navbar from "../../components/NavbarComp";
 import {
   Container,
@@ -16,13 +16,14 @@ import {
 } from "@mui/material";
 import { useReportContext } from "../../context/ReportContext";
 import { paginateData, PaginationControls } from "../../utils/pagination";
+import QuizDetailsModal from "../../models/QuizDetailsModal";
 
 const UserQuizList = () => {
-  const navigate = useNavigate();
   const { userId } = useParams();
   const { getUserReports, reports, loading, error } = useReportContext();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
 
   useEffect(() => {
     if (userId) {
@@ -30,8 +31,12 @@ const UserQuizList = () => {
     }
   }, [userId]);
 
-  const handleQuizClick = (quizId) => {
-    navigate(`/reports/${quizId}/user/${userId}`);
+  const handleQuizClick = (quiz) => {
+    setSelectedQuiz(quiz);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedQuiz(null);
   };
 
   if (loading) {
@@ -97,28 +102,19 @@ const UserQuizList = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Quiz Title</TableCell>
-                  <TableCell>Completion Date</TableCell>
                   <TableCell>Score</TableCell>
-                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {currentItems.map((report) => (
-                  <TableRow key={report._id} hover className="cursor-pointer">
+                  <TableRow
+                    key={report._id}
+                    hover
+                    className="cursor-pointer"
+                    onClick={() => handleQuizClick(report)}
+                  >
                     <TableCell>{report.quiz?.title || "N/A"}</TableCell>
-                    <TableCell>
-                      {new Date(report.completedAt).toLocaleString()}
-                    </TableCell>
                     <TableCell>{report.totalScore}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleQuizClick(report.quiz?._id)}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -134,6 +130,13 @@ const UserQuizList = () => {
           )}
         </Paper>
       </Container>
+
+      {/* Quiz Details Modal */}
+      <QuizDetailsModal
+        open={Boolean(selectedQuiz)}
+        onClose={handleCloseModal}
+        quiz={selectedQuiz}
+      />
     </div>
   );
 };

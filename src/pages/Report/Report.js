@@ -1,48 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useReportContext } from '../../context/ReportContext';
-import { useAuthContext } from '../../context/AuthContext';
-import Navbar from '../../components/NavbarComp';
-import { 
-  Container, 
-  TextField, 
-  Button, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper, 
-  CircularProgress, 
-  Pagination, 
-  Typography 
-} from '@mui/material';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { useReportContext } from "../../context/ReportContext";
+import { useAuthContext } from "../../context/AuthContext";
+import Navbar from "../../components/NavbarComp";
+import {
+  Container,
+  TextField,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  CircularProgress,
+  Pagination,
+  Typography,
+} from "@mui/material";
 
 const ReportsView = () => {
   const { quizId } = useParams();
   const { user } = useAuthContext();
-  const isAdmin = user?.role === 'admin';
-  
-  const { 
+  const isAdmin = user?.role === "admin";
+
+  const {
     reports,
-    loading, 
+    loading,
     error,
     getAllReports,
     getReportByQuiz,
-    clearError 
+    clearError,
   } = useReportContext();
 
   const [filteredReports, setFilteredReports] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [reportsPerPage] = useState(5);
-  const [quizTitleFilter, setQuizTitleFilter] = useState('');
-  const [usernameFilter, setUsernameFilter] = useState('');
+  const [quizTitleFilter, setQuizTitleFilter] = useState("");
+  const [usernameFilter, setUsernameFilter] = useState("");
 
   // Calculate current reports for pagination
   const indexOfLastReport = currentPage * reportsPerPage;
   const indexOfFirstReport = indexOfLastReport - reportsPerPage;
-  const currentReports = filteredReports.slice(indexOfFirstReport, indexOfLastReport);
+  const currentReports = filteredReports.slice(
+    indexOfFirstReport,
+    indexOfLastReport
+  );
 
   // Handle page change
   const handlePageChange = (event, newPage) => {
@@ -61,12 +64,12 @@ const ReportsView = () => {
         }
       } catch (err) {
         // Error handling is managed by the context
-        console.error('Error fetching reports:', err);
+        console.error("Error fetching reports:", err);
       }
     };
 
     fetchReports();
-    
+
     return () => {
       clearError();
     };
@@ -75,15 +78,21 @@ const ReportsView = () => {
   useEffect(() => {
     if (isAdmin) {
       let filtered = reports;
-      
+
       // Apply filters for admin
-      filtered = filtered.filter(report => {
-        const matchesQuizTitle = !quizTitleFilter || 
-          (report.quiz?.title || '').toLowerCase().includes(quizTitleFilter.toLowerCase());
-        
-        const matchesUsername = !usernameFilter || 
-          (report.user?.username || '').toLowerCase().includes(usernameFilter.toLowerCase());
-        
+      filtered = filtered.filter((report) => {
+        const matchesQuizTitle =
+          !quizTitleFilter ||
+          (report.quiz?.title || "")
+            .toLowerCase()
+            .includes(quizTitleFilter.toLowerCase());
+
+        const matchesUsername =
+          !usernameFilter ||
+          (report.user?.username || "")
+            .toLowerCase()
+            .includes(usernameFilter.toLowerCase());
+
         return matchesQuizTitle && matchesUsername;
       });
 
@@ -109,8 +118,14 @@ const ReportsView = () => {
         <Navbar />
         <div className="flex justify-center items-center h-screen text-red-500">
           <div className="text-center">
-            <Typography variant="h6" color="error" gutterBottom>{error.message}</Typography>
-            <Button variant="contained" color="primary" onClick={() => window.location.reload()}>
+            <Typography variant="h6" color="error" gutterBottom>
+              {error.message}
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => window.location.reload()}
+            >
               Retry
             </Button>
           </div>
@@ -127,20 +142,20 @@ const ReportsView = () => {
           <Typography variant="h4" className="text-center pt-8">
             Quiz Reports
           </Typography>
-          
+
           <div className="flex gap-4 mb-4 justify-center p-4">
-            <TextField 
-              label="Filter by Quiz Title" 
-              variant="outlined" 
-              value={quizTitleFilter} 
-              onChange={(e) => setQuizTitleFilter(e.target.value)} 
+            <TextField
+              label="Filter by Quiz Title"
+              variant="outlined"
+              value={quizTitleFilter}
+              onChange={(e) => setQuizTitleFilter(e.target.value)}
               className="max-w-xs w-full"
             />
-            <TextField 
-              label="Filter by Username" 
-              variant="outlined" 
-              value={usernameFilter} 
-              onChange={(e) => setUsernameFilter(e.target.value)} 
+            <TextField
+              label="Filter by Username"
+              variant="outlined"
+              value={usernameFilter}
+              onChange={(e) => setUsernameFilter(e.target.value)}
               className="max-w-xs w-full"
             />
           </div>
@@ -165,28 +180,35 @@ const ReportsView = () => {
                 <TableBody>
                   {currentReports.map((report) => (
                     <TableRow key={report._id}>
-                      <TableCell>{report.quiz?.title || 'N/A'}</TableCell>
-                      <TableCell>{report.user?.username || 'N/A'}</TableCell>
+                      <TableCell>{report.quiz?.title || "N/A"}</TableCell>
+                      <TableCell>{report.user?.username || "N/A"}</TableCell>
                       <TableCell>{report.totalQuestions}</TableCell>
                       <TableCell>
-                        <span className="text-green-500">{report.correctAnswers}</span> / 
-                        <span className="text-red-500">{report.incorrectAnswers}</span>
+                        <span className="text-green-500">
+                          {report.correctAnswers}
+                        </span>{" "}
+                        /{" "}
+                        <span className="text-red-500">
+                          {report.incorrectAnswers}
+                        </span>
                       </TableCell>
                       <TableCell>{report.totalScore}</TableCell>
-                      <TableCell>{new Date(report.completedAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {new Date(report.completedAt).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
           )}
-          
+
           <div className="flex justify-center p-4">
-            <Pagination 
-              count={Math.ceil(filteredReports.length / reportsPerPage)} 
-              page={currentPage} 
+            <Pagination
+              count={Math.ceil(filteredReports.length / reportsPerPage)}
+              page={currentPage}
               onChange={handlePageChange}
-              color="primary" 
+              color="primary"
             />
           </div>
         </Paper>
