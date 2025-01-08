@@ -74,7 +74,6 @@ const SurveyPreviewPage = () => {
     fetchSurveyData();
   }, [surveyId]);
 
-  // Rest of the component remains the same...
   const startPresentation = () => {
     setPresentationMode(true);
   };
@@ -85,7 +84,6 @@ const SurveyPreviewPage = () => {
 
   const navigatePresentation = (direction) => {
     const newIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
-
     if (newIndex >= 0 && newIndex < slides.length) {
       setCurrentIndex(newIndex);
     }
@@ -116,20 +114,43 @@ const SurveyPreviewPage = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [presentationMode, currentIndex]);
 
-  const renderQuestionContent = (question) => (
-    <div className="space-y-6">
-      <div className="text-lg text-gray-700 leading-relaxed">
+  const getTextColor = (backgroundColor) => {
+    if (!backgroundColor) return "text-gray-700";
+
+    const hex = backgroundColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    return luminance > 0.5 ? "text-gray-700" : "text-white";
+  };
+
+  const renderQuestionContent = (question, index, mode = "preview") => (
+    <div
+      className="space-y-6"
+      data-testid={`${mode}-question-content-${index}`}
+    >
+      <div
+        className="text-lg text-gray-700 leading-relaxed"
+        data-testid="question-description"
+      >
         {question.description}
       </div>
 
-      <div className="space-y-4">
-        {question.answerOptions?.map((option, index) => (
+      <div className="space-y-4" data-testid="answer-options">
+        {question.answerOptions?.map((option, optionIndex) => (
           <div
-            key={index}
+            key={optionIndex}
+            data-testid={`answer-option-${optionIndex}`}
             style={{ backgroundColor: option.color || "#ffffff" }}
             className={`p-4 rounded-lg transition-colors cursor-pointer border hover:opacity-90`}
           >
-            <span className={`${getTextColor(option.color)}`}>
+            <span
+              className={`${getTextColor(option.color)}`}
+              data-testid={`answer-text-${optionIndex}`}
+            >
               {option.optionText}
             </span>
           </div>
@@ -138,31 +159,21 @@ const SurveyPreviewPage = () => {
     </div>
   );
 
-  const getTextColor = (backgroundColor) => {
-    // If no background color is provided, return default dark text
-    if (!backgroundColor) return "text-gray-700";
-
-    // Convert hex to RGB
-    const hex = backgroundColor.replace("#", "");
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-
-    // Calculate relative luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-    // Return white text for dark backgrounds, dark text for light backgrounds
-    return luminance > 0.5 ? "text-gray-700" : "text-white";
-  };
-
-  const renderContent = (slide) => {
-    if (!slide) return null;
+  const renderContent = (slide, index, mode = "preview") => {
+    if (!slide) {
+      return <p data-testid="error-message">Content not available</p>;
+    }
 
     return (
-      <div className="h-full flex flex-col">
+      <div
+        className="h-full flex flex-col"
+        data-testid={`${mode}-${slide.type}-container-${index}`}
+      >
         <div className="p-6 flex-grow overflow-auto">
           {slide.surveyTitle && (
-            <h2 className="text-2xl font-bold mb-4">{slide.surveyTitle}</h2>
+            <h2 className="text-2xl font-bold mb-4" data-testid="content-title">
+              {slide.surveyTitle}
+            </h2>
           )}
 
           {slide.imageUrl && (
@@ -171,14 +182,15 @@ const SurveyPreviewPage = () => {
                 src={slide.imageUrl}
                 alt={slide.surveyTitle || "Content"}
                 className="max-w-full max-h-[40vh] object-contain rounded-lg shadow-md"
+                data-testid="content-image"
               />
             </div>
           )}
 
           {slide.type === "question"
-            ? renderQuestionContent(slide)
+            ? renderQuestionContent(slide, index, mode)
             : slide.surveyContent && (
-                <div className="mb-4">
+                <div className="mb-4" data-testid="slide-description">
                   <p className="text-lg text-gray-700">{slide.surveyContent}</p>
                 </div>
               )}
@@ -188,19 +200,25 @@ const SurveyPreviewPage = () => {
   };
 
   const renderPresentationMode = () => (
-    <div className="fixed inset-0 bg-[#262626] z-50">
+    <div
+      className="fixed inset-0 bg-[#262626] z-50"
+      data-testid="presentation-mode"
+    >
       <div className="absolute top-0 left-0 right-0 bg-[#1a1a1a] px-6 py-3 flex justify-between items-center">
-        <span className="text-gray-300 font-medium">
+        <span className="text-gray-300 font-medium" data-testid="slide-type">
           {slides[currentIndex]?.type === "question" ? "Question" : "Slide"}{" "}
           {currentIndex + 1}
         </span>
         <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">
+          <span className="text-gray-400 text-sm" data-testid="slide-progress">
             {currentIndex + 1} / {slides.length}
           </span>
           <button
             onClick={exitPresentation}
+            autoFocus
             className="text-gray-400 hover:text-white transition-colors"
+            data-testid="exit-presentation"
+            aria-label="Exit presentation"
           >
             <X className="w-5 h-5" />
           </button>
@@ -231,7 +249,11 @@ const SurveyPreviewPage = () => {
               </div>
 
               <div className="flex-1 p-8 overflow-auto">
-                {renderContent(slides[currentIndex])}
+                {renderContent(
+                  slides[currentIndex],
+                  currentIndex,
+                  "presentation"
+                )}
               </div>
             </div>
           </motion.div>
@@ -280,7 +302,10 @@ const SurveyPreviewPage = () => {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div
+      className="h-screen flex flex-col bg-gray-100"
+      data-testid="survey-preview"
+    >
       <div className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="text-xl font-semibold">Survey Preview</h1>
         <div className="flex items-center gap-3">
@@ -288,6 +313,7 @@ const SurveyPreviewPage = () => {
             onClick={startPresentation}
             className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
             disabled={loading || slides.length === 0}
+            data-testid="start-presentation"
           >
             <Play className="w-5 h-5" />
             Start Presentation
@@ -295,6 +321,8 @@ const SurveyPreviewPage = () => {
           <button
             onClick={() => window.history.back()}
             className="text-gray-600 hover:text-gray-800"
+            data-testid="close-preview"
+            aria-label="Close preview"
           >
             <X className="w-6 h-6" />
           </button>
@@ -302,17 +330,24 @@ const SurveyPreviewPage = () => {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div
+          className="flex-1 flex items-center justify-center"
+          data-testid="loading-state"
+        >
           <p className="text-gray-500">Loading...</p>
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-64 bg-gray-50 border-r overflow-y-auto p-4">
+          <div
+            className="w-64 bg-gray-50 border-r overflow-y-auto p-4"
+            data-testid="sidebar"
+          >
             <div className="space-y-3">
               {slides.map((slide, index) => (
                 <div
                   key={slide._id}
                   onClick={() => setCurrentIndex(index)}
+                  data-testid={`sidebar-item-${index}`}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     currentIndex === index
                       ? "bg-purple-50 border-purple-300"
@@ -340,9 +375,10 @@ const SurveyPreviewPage = () => {
             </div>
           </div>
 
-          <div className="flex-1 bg-white">
+          <div className="flex-1 bg-white" data-testid="main-content">
             <div className="h-full border-l">
-              {slides[currentIndex] && renderContent(slides[currentIndex])}
+              {slides[currentIndex] &&
+                renderContent(slides[currentIndex], currentIndex, "preview")}
             </div>
           </div>
         </div>
