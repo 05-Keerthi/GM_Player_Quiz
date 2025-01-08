@@ -49,7 +49,7 @@ const Navbar = () => {
                 fontFamily: user?.tenantId?.fontFamily || 'Arial'
               }}
             >
-              Welcome to {user?.tenantId?.name}..!
+              Welcome to {user?.tenantId?.name || "GM Play"}..!
             </h1>
             <p 
               className="text-sm"
