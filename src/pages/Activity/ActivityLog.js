@@ -1,6 +1,19 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Navbar from "../../components/NavbarComp";
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import {
   Table,
   TableBody,
   TableCell,
@@ -20,14 +33,18 @@ import {
   FormControl,
   InputLabel,
   Grid,
-  Tooltip,
+  Tooltip as MuiTooltip,
   Pagination,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
 import * as XLSX from "xlsx";
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 // Custom Styled Components
 const DarkBlueTableHead = styled(TableHead)(() => ({
@@ -110,6 +127,53 @@ const ActivityLogPage = () => {
     fetchActivityLogs();
   }, []);
 
+  // Dashboard Data Processing
+  const dashboardData = useMemo(() => {
+    if (!activityLogs.length)
+      return { activityTypes: [], dailyActivity: [], userActivity: [] };
+
+    const activityTypeCount = activityLogs.reduce((acc, log) => {
+      acc[log.activityType] = (acc[log.activityType] || 0) + 1;
+      return acc;
+    }, {});
+
+    const activityTypes = Object.entries(activityTypeCount).map(
+      ([name, value]) => ({
+        name,
+        value,
+      })
+    );
+
+    const dailyCount = activityLogs.reduce((acc, log) => {
+      const date = new Date(log.createdAt).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dailyActivity = Object.entries(dailyCount)
+      .map(([date, count]) => ({
+        date,
+        activities: count,
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-7);
+
+    const userCount = activityLogs.reduce((acc, log) => {
+      acc[log.processedUsername] = (acc[log.processedUsername] || 0) + 1;
+      return acc;
+    }, {});
+
+    const userActivity = Object.entries(userCount)
+      .map(([name, value]) => ({
+        name,
+        activities: value,
+      }))
+      .sort((a, b) => b.activities - a.activities)
+      .slice(0, 5);
+
+    return { activityTypes, dailyActivity, userActivity };
+  }, [activityLogs]);
+
   // Filtering Logic
   const filteredLogs = useMemo(() => {
     return activityLogs.filter((log) => {
@@ -169,13 +233,160 @@ const ActivityLogPage = () => {
       .join("\n");
   };
 
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex justify-center items-center min-h-screen">
+          <CircularProgress
+            data-testid="loading-spinner"
+            id="loading-spinner"
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="p-4">
+          <Alert
+            severity="error"
+            data-testid="error-alert"
+            id="error-alert"
+            role="alert"
+          >
+            {error}
+          </Alert>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Navbar />
-      <div style={{ padding: "20px" }}>
+      <div className="p-5">
         <Typography variant="h4" align="center" gutterBottom>
-          Activity Log
+          Activity Log Dashboard
         </Typography>
+
+        {/* Dashboard Charts */}
+        <Grid container spacing={4} className="mb-8">
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <Paper className="p-4">
+                      <Typography
+                        variant="h3"
+                        className="text-center text-blue-600"
+                      >
+                        {activityLogs.length}
+                      </Typography>
+                      <Typography className="text-center">
+                        Total Activities
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Paper className="p-4">
+                      <Typography
+                        variant="h3"
+                        className="text-center text-green-600"
+                      >
+                        {
+                          new Set(
+                            activityLogs.map((log) => log.processedUsername)
+                          ).size
+                        }
+                      </Typography>
+                      <Typography className="text-center">
+                        Unique Users
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Paper className="p-4">
+                      <Typography
+                        variant="h3"
+                        className="text-center text-purple-600"
+                      >
+                        {
+                          new Set(activityLogs.map((log) => log.activityType))
+                            .size
+                        }
+                      </Typography>
+                      <Typography className="text-center">
+                        Activity Types
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Activity Distribution
+                </Typography>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie
+                        data={dashboardData.activityTypes}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          `${name} (${(percent * 100).toFixed(0)}%)`
+                        }
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {dashboardData.activityTypes.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Daily Activity
+                </Typography>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={dashboardData.dailyActivity}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="activities" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* Filtering Section */}
         <Grid container spacing={2} style={{ marginBottom: "20px" }}>
@@ -261,86 +472,68 @@ const ActivityLogPage = () => {
             </Grid>
           </Grid>
           <Grid item xs={12} md={2}>
-            <Tooltip title="Export to Excel">
+            <MuiTooltip title="Export to Excel">
               <IconButton
-                data-testid="export-button"
                 onClick={exportToExcel}
-                aria-label="export to excel"
+                data-testid="export-button"
                 id="export-button"
+                aria-label="export to excel"
               >
                 <StyledDownloadIcon />
               </IconButton>
-            </Tooltip>
+            </MuiTooltip>
           </Grid>
         </Grid>
 
-        {/* Logs Table */}
-        {loading ? (
-          <CircularProgress
-            data-testid="loading-spinner"
-            id="loading-spinner"
-          />
-        ) : error ? (
-          <Alert
-            severity="error"
-            data-testid="error-alert"
-            id="error-alert"
-            role="alert"
-          >
-            {error}
-          </Alert>
-        ) : (
-          <>
-            <TableContainer component={Paper}>
-              <Table id="activity-log-table" data-testid="activity-log-table">
-                <DarkBlueTableHead>
-                  <TableRow>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Activity Type</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </DarkBlueTableHead>
-                <TableBody data-testid="activity-log-table-body">
-                  {currentLogs.map((log) => (
-                    <TableRow key={log._id} data-testid={`log-row-${log._id}`}>
-                      <TableCell data-testid={`username-cell-${log._id}`}>
-                        {log.processedUsername}
-                      </TableCell>
-                      <TableCell data-testid={`activity-type-cell-${log._id}`}>
-                        {log.activityType}
-                      </TableCell>
-                      <TableCell data-testid={`date-cell-${log._id}`}>
-                        {new Date(log.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell data-testid={`actions-cell-${log._id}`}>
-                        <IconButton
-                          data-testid={`view-details-button-${log._id}`}
-                          onClick={() => setSelectedDetails(log)}
-                          aria-label={`view details for ${log.processedUsername}`}
-                        >
-                          <StyledVisibilityIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+        {/* Activity Logs Table */}
+        <TableContainer component={Paper}>
+          <Table id="activity-log-table" data-testid="activity-log-table">
+            <DarkBlueTableHead>
+              <TableRow>
+                <TableCell>Username</TableCell>
+                <TableCell>Activity Type</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </DarkBlueTableHead>
+            <TableBody data-testid="activity-log-table-body">
+              {currentLogs.map((log) => (
+                <TableRow key={log._id} data-testid={`log-row-${log._id}`}>
+                  <TableCell data-testid={`username-cell-${log._id}`}>
+                    {log.processedUsername}
+                  </TableCell>
+                  <TableCell data-testid={`activity-type-cell-${log._id}`}>
+                    {log.activityType}
+                  </TableCell>
+                  <TableCell data-testid={`date-cell-${log._id}`}>
+                    {new Date(log.createdAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell data-testid={`actions-cell-${log._id}`}>
+                    <IconButton
+                      data-testid={`view-details-button-${log._id}`}
+                      onClick={() => setSelectedDetails(log)}
+                      aria-label={`view details for ${log.processedUsername}`}
+                    >
+                      <StyledVisibilityIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-            <Box display="flex" justifyContent="center" mt={2}>
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={handlePageChange}
-                color="primary"
-                size="large"
-                data-testid="activity-log-pagination"
-                id="activity-log-pagination"
-              />
-            </Box>
-          </>
-        )}
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            size="large"
+            data-testid="activity-log-pagination"
+            id="activity-log-pagination"
+          />
+        </Box>
 
         {/* Details Modal */}
         {selectedDetails && (
