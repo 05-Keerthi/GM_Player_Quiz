@@ -11,6 +11,13 @@ import "@testing-library/jest-dom";
 import ActivityLogPage from "../../../pages/Activity/ActivityLog";
 import * as XLSX from "xlsx";
 
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock XLSX
 jest.mock("xlsx", () => ({
   utils: {
@@ -31,6 +38,8 @@ jest.mock("../../../components/NavbarComp", () => {
 // Mock fetch
 global.fetch = jest.fn();
 process.env.REACT_APP_API_URL = "http://test-api.com";
+
+// Rest of your test file remains the same...
 
 describe("ActivityLogPage", () => {
   const mockActivityLogs = [
