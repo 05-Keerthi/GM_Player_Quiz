@@ -27,9 +27,7 @@ exports.createSurveySession = async (req, res) => {
     const savedSurveySession = await surveySession.save();
 
     // Construct the QR data using the session ID and join code
-    const surveyQrData = `${req.protocol}://${req.get(
-      "host"
-    )}/api/survey-sessions/${surveyJoinCode}/${savedSurveySession._id}/join`;
+    const surveyQrData = `${surveyJoinCode}`;
 
     // Generate QR code as base64
     const surveyQrCodeImageUrl = await QRCode.toDataURL(surveyQrData);
