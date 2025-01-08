@@ -442,7 +442,7 @@ const UnifiedList = ({ contentType }) => {
                                         <>
                                           <ListChecks className="w-5 h-5" />
                                           <span>
-                                            {item.surveySlides?.length || 0}{" "}
+                                            {item.slides?.length || 0}{" "}
                                             Slides
                                           </span>
                                         </>
