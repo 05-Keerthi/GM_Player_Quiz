@@ -245,15 +245,17 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         ) : (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="slide-title" className="block text-sm font-medium text-gray-700 mb-1">
                 Slide Title
               </label>
               <input
+              id="slide-title"
                 type="text"
                 value={slide.title}
                 onChange={(e) => setSlide({ ...slide, title: e.target.value })}
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter your slide title..."
+                aria-label="Slide Title"
               />
             </div>
 
@@ -336,6 +338,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                       <button
                         onClick={() => removePoint(index)}
                         className="p-1 text-gray-400 hover:text-red-500"
+                        aria-label="remove Point"
                       >
                         <X className="w-4 h-4" />
                       </button>
