@@ -46,10 +46,11 @@ const SurveyUserLobby = () => {
       });
 
       // Handle next survey question
-      socket.on("next-survey-question", ({ item }) => {
-        console.log("Next survey question:", { item });
+      socket.on("next-survey-question", ({ item, isLast }) => {
+        console.log("Next survey question:", { item, isLast });
         setCurrentItem(item);
         setSelectedAnswer(null);
+        setIsLastItem(isLast);
       });
 
       // Handle survey session end
@@ -66,7 +67,7 @@ const SurveyUserLobby = () => {
   }, [socket, navigate, sessionId]);
 
   const handleAnswerSubmit = (option) => {
-    if (currentItem !== "question" || selectedAnswer || !user) return;
+    if (!currentItem || selectedAnswer || !user) return;
 
     setSelectedAnswer(option);
 
@@ -87,7 +88,7 @@ const SurveyUserLobby = () => {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
+          <Loader2 role="status" className="w-6 h-6 animate-spin" />
           <span>Loading...</span>
         </div>
       </div>
