@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Dialog } from '@/components/ui/dialog';
 import { useSurveyAnswerContext } from '../context/surveyAnswerContext';
 import { Loader2 } from 'lucide-react';
 
@@ -86,7 +85,8 @@ const SurveyAnswersList = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
+       // In the loading state render:
+       <Loader2 className="w-8 h-8 animate-spin" aria-label="Loading" />
       </div>
     );
   }
@@ -106,9 +106,18 @@ const SurveyAnswersList = () => {
         ))}
       </div>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div 
+            className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
             <h2 className="text-xl font-bold mb-4">{selectedQuestion?.title}</h2>
             <div className="mb-6">
               {renderAnswers()}
@@ -121,7 +130,7 @@ const SurveyAnswersList = () => {
             </button>
           </div>
         </div>
-      </Dialog>
+      )}
     </div>
   );
 };

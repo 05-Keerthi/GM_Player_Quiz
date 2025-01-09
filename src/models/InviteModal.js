@@ -162,8 +162,8 @@ const handleInvite = async () => {
         <div className="max-h-96 overflow-y-auto mb-6">
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" data-testid="loading-spinner" /></div>
+            
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredUsers.map((user) => (
