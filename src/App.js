@@ -33,7 +33,7 @@ import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
 import Reports from "./pages/Report/Report";
-import UserQuizList from "./pages/Report/UserQuizist";
+import UserReport from "./pages/Report/UserReport";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -112,7 +112,7 @@ export default function App() {
           path="/userreports/:userId"
           element={
             <ProtectedRoute>
-              <UserQuizList />
+              <UserReport />
             </ProtectedRoute>
           }
         />

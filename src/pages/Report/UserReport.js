@@ -9,7 +9,7 @@ import QuizDetailsModal from "../../models/QuizDetailsModal";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const UserQuizList = () => {
+const UserReport = () => {
   const { userId } = useParams();
   const { getUserReports, reports, loading, error } = useReportContext();
   const [currentPage, setCurrentPage] = useState(1);
@@ -194,4 +194,4 @@ const UserQuizList = () => {
   );
 };
 
-export default UserQuizList;
+export default UserReport;
