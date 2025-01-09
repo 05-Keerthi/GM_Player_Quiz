@@ -11,6 +11,8 @@ const AdminStart = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { nextQuestion, endSession, loading } = useSessionContext();
+
+  // State management
   const [currentItem, setCurrentItem] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [socket, setSocket] = useState(null);
@@ -23,11 +25,12 @@ const AdminStart = () => {
   const [optionCounts, setOptionCounts] = useState({});
   const [totalVotes, setTotalVotes] = useState(0);
 
+  // URL parameters
   const quizId = searchParams.get("quizId");
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
-  // Initialize socket and fetch first question
+  // Socket initialization and first question fetch
   useEffect(() => {
     const newSocket = io(`${process.env.REACT_APP_API_URL}`);
     setSocket(newSocket);
@@ -38,35 +41,7 @@ const AdminStart = () => {
         if (joinCode && sessionId) {
           const response = await nextQuestion(joinCode, sessionId);
           if (response.item) {
-            setCurrentItem(response.item);
-            const initialTime =
-              response.item.type === "bullet_points"
-                ? 0
-                : response.item.timer || 30;
-            setTimeLeft(initialTime);
-            setTimerActive(response.item.type !== "bullet_points");
-            setIsLastItem(response.isLastItem || false);
-
-            if (response.item.type === "poll") {
-              const initialCounts = {};
-              response.item.options?.forEach((_, index) => {
-                initialCounts[index] = 0;
-              });
-              setOptionCounts(initialCounts);
-              setTotalVotes(0);
-            }
-
-            newSocket.emit("next-item", {
-              sessionId,
-              type: response.type,
-              item: response.item,
-              isLastItem: response.isLastItem || false,
-              initialTime: initialTime,
-            });
-
-            if (response.item.type !== "bullet_points") {
-              startTimer(newSocket, sessionId, initialTime);
-            }
+            handleNewItem(response.item, response.isLastItem, newSocket);
           }
         }
       } catch (error) {
@@ -82,59 +57,12 @@ const AdminStart = () => {
     };
   }, [sessionId, joinCode]);
 
+  // Answer submission handler
   useEffect(() => {
     if (socket && currentItem) {
       const handleAnswerSubmitted = (data) => {
         if (data.answerDetails.questionId === currentItem._id) {
-          if (currentItem.type === "open_ended") {
-            setSubmittedAnswers((prev) => [...prev, data.answerDetails.answer]);
-          } else if (currentItem.type === "multiple_select") {
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
-              let selectedAnswers = [];
-
-              if (typeof data.answerDetails.answer === "string") {
-                try {
-                  selectedAnswers = JSON.parse(data.answerDetails.answer);
-                  if (!Array.isArray(selectedAnswers)) {
-                    selectedAnswers = [selectedAnswers];
-                  }
-                } catch {
-                  selectedAnswers = [data.answerDetails.answer];
-                }
-              } else if (Array.isArray(data.answerDetails.answer)) {
-                selectedAnswers = data.answerDetails.answer;
-              } else {
-                selectedAnswers = [data.answerDetails.answer];
-              }
-
-              selectedAnswers.forEach((answer) => {
-                const optionIndex = currentItem.options.findIndex(
-                  (opt) => opt.text === answer
-                );
-                if (optionIndex !== -1) {
-                  newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-                }
-              });
-              return newCounts;
-            });
-            setTotalVotes((prev) => prev + 1);
-          } else if (
-            currentItem.type === "poll" ||
-            currentItem.type === "multiple_choice"
-          ) {
-            setOptionCounts((prev) => {
-              const newCounts = { ...prev };
-              const optionIndex = currentItem.options.findIndex(
-                (opt) => opt.text === data.answerDetails.answer
-              );
-              if (optionIndex !== -1) {
-                newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
-              }
-              return newCounts;
-            });
-            setTotalVotes((prev) => prev + 1);
-          }
+          handleAnswerUpdate(data.answerDetails);
         }
       };
 
@@ -142,6 +70,94 @@ const AdminStart = () => {
       return () => socket.off("answer-submitted", handleAnswerSubmitted);
     }
   }, [socket, currentItem]);
+
+  // Helper functions
+  const handleNewItem = (item, isLastItem, socketInstance) => {
+    setCurrentItem(item);
+    const initialTime = item.type === "bullet_points" ? 0 : item.timer || 30;
+    setTimeLeft(initialTime);
+    setTimerActive(item.type !== "bullet_points");
+    setIsLastItem(isLastItem || false);
+
+    if (item.type === "poll") {
+      initializeOptionCounts(item.options);
+    }
+
+    socketInstance.emit("next-item", {
+      sessionId,
+      type: item.type,
+      item: item,
+      isLastItem: isLastItem || false,
+      initialTime: initialTime,
+    });
+
+    if (item.type !== "bullet_points") {
+      startTimer(socketInstance, sessionId, initialTime);
+    }
+  };
+
+  const initializeOptionCounts = (options) => {
+    const initialCounts = {};
+    options?.forEach((_, index) => {
+      initialCounts[index] = 0;
+    });
+    setOptionCounts(initialCounts);
+    setTotalVotes(0);
+  };
+
+  const handleAnswerUpdate = (answerDetails) => {
+    if (currentItem.type === "open_ended") {
+      setSubmittedAnswers((prev) => [...prev, answerDetails.answer]);
+    } else if (currentItem.type === "multiple_select") {
+      updateMultiSelectCounts(answerDetails.answer);
+    } else if (["poll", "multiple_choice"].includes(currentItem.type)) {
+      updateSingleAnswerCounts(answerDetails.answer);
+    }
+  };
+
+  const updateMultiSelectCounts = (answer) => {
+    setOptionCounts((prev) => {
+      const newCounts = { ...prev };
+      let selectedAnswers = parseAnswers(answer);
+
+      selectedAnswers.forEach((answer) => {
+        const optionIndex = currentItem.options.findIndex(
+          (opt) => opt.text === answer
+        );
+        if (optionIndex !== -1) {
+          newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+        }
+      });
+      return newCounts;
+    });
+    setTotalVotes((prev) => prev + 1);
+  };
+
+  const updateSingleAnswerCounts = (answer) => {
+    setOptionCounts((prev) => {
+      const newCounts = { ...prev };
+      const optionIndex = currentItem.options.findIndex(
+        (opt) => opt.text === answer
+      );
+      if (optionIndex !== -1) {
+        newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+      }
+      return newCounts;
+    });
+    setTotalVotes((prev) => prev + 1);
+  };
+
+  const parseAnswers = (answer) => {
+    if (typeof answer === "string") {
+      try {
+        const parsed = JSON.parse(answer);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [answer];
+      }
+    }
+    return Array.isArray(answer) ? answer : [answer];
+  };
 
   const startTimer = (socketInstance, sessionId, initialTime) => {
     if (timerInterval) {
@@ -170,7 +186,6 @@ const AdminStart = () => {
 
   const handleNext = async () => {
     try {
-      setSubmittedAnswers([]);
       if (!joinCode) {
         console.error("Join code is missing");
         return;
@@ -181,59 +196,30 @@ const AdminStart = () => {
         setTimerInterval(null);
       }
 
+      setSubmittedAnswers([]);
       const response = await nextQuestion(joinCode, sessionId);
 
       if (response.item) {
-        setCurrentItem(response.item);
-        const newTime =
-          response.item.type === "bullet_points"
-            ? 0
-            : response.item.timer || 30;
-        setTimeLeft(newTime);
-        setTimerActive(response.item.type !== "bullet_points");
-        setIsLastItem(response.isLastItem || false);
-
-        if (response.item.type === "poll") {
-          const initialCounts = {};
-          response.item.options?.forEach((_, index) => {
-            initialCounts[index] = 0;
-          });
-          setOptionCounts(initialCounts);
-          setTotalVotes(0);
-        }
-
-        if (socket) {
-          socket.emit("next-item", {
-            sessionId,
-            type: response.type,
-            item: response.item,
-            isLastItem: response.isLastItem || false,
-            initialTime: newTime,
-          });
-
-          if (response.item.type !== "bullet_points") {
-            startTimer(socket, sessionId, newTime);
-          }
-        }
+        handleNewItem(response.item, response.isLastItem, socket);
       } else {
-        setIsQuizEnded(true);
-        setShowFinalLeaderboard(true);
-        if (socket) {
-          socket.emit("quiz-completed", { sessionId });
-        }
+        handleQuizEnd();
       }
     } catch (error) {
       if (
         error.response?.data?.message === "No more items left in the session"
       ) {
-        setIsQuizEnded(true);
-        setShowFinalLeaderboard(true);
-        if (socket) {
-          socket.emit("quiz-completed", { sessionId });
-        }
+        handleQuizEnd();
       } else {
         console.error("Error getting next item:", error);
       }
+    }
+  };
+
+  const handleQuizEnd = () => {
+    setIsQuizEnded(true);
+    setShowFinalLeaderboard(true);
+    if (socket) {
+      socket.emit("quiz-completed", { sessionId });
     }
   };
 
@@ -263,9 +249,15 @@ const AdminStart = () => {
 
   if (showFinalLeaderboard) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        <FinalLeaderboard sessionId={sessionId} isAdmin={true} />
+      <div
+        className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4"
+        data-testid="quiz-end-container"
+      >
+        <div data-testid="final-leaderboard">
+          <FinalLeaderboard sessionId={sessionId} isAdmin={true} />
+        </div>
         <button
+          data-testid="end-quiz-button"
           onClick={handleEndQuiz}
           className="mt-8 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
         >
@@ -276,26 +268,32 @@ const AdminStart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div
+      className="min-h-screen bg-gray-100"
+      data-testid="admin-start-container"
+    >
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-4xl px-6">
           {loading ? (
-            <div className="flex items-center justify-center">
+            <div
+              className="flex items-center justify-center"
+              data-testid="loading-container"
+            >
               <Loader2
                 data-testid="loading-spinner"
                 className="w-8 h-8 animate-spin"
               />
             </div>
           ) : (
-            <>
-              <div className="mb-2">
+            <div data-testid="content-container">
+              <div className="mb-2" data-testid="answer-counts-container">
                 <AdminAnswerCounts
                   sessionId={sessionId}
                   currentItem={currentItem}
                   socket={socket}
                 />
               </div>
-              <div>
+              <div data-testid="content-display-container">
                 <ContentDisplay
                   item={currentItem}
                   isAdmin={true}
@@ -310,7 +308,7 @@ const AdminStart = () => {
                   totalVotes={totalVotes}
                 />
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
