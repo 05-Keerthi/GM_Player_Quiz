@@ -183,10 +183,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
   const renderEmailStep = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Email Address
         </label>
         <input
+          id="email"
           type="email"
           value={email}
           onChange={(e) => {
@@ -199,17 +203,21 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
           placeholder="Enter your email"
         />
         {formErrors.email && (
-          <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+          <p className="mt-1 text-sm text-red-600" role="alert">
+            {formErrors.email}
+          </p>
         )}
       </div>
       <div className="flex justify-end space-x-3">
         <button
+          type="button"
           onClick={onClose}
           className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           Cancel
         </button>
         <button
+          type="button"
           onClick={handleSendCode}
           disabled={state.isLoading}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
@@ -223,10 +231,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
   const renderCodeVerificationStep = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="verificationCode"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Verification Code
         </label>
         <input
+          id="verificationCode"
           type="text"
           value={resetCode}
           onChange={(e) => {
@@ -241,11 +253,18 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
           maxLength={6}
         />
         {formErrors.resetCode && (
-          <p className="mt-1 text-sm text-red-600">{formErrors.resetCode}</p>
+          <p
+            className="mt-1 text-sm text-red-600"
+            role="alert"
+            data-testid="reset-code-error"
+          >
+            {formErrors.resetCode}
+          </p>
         )}
       </div>
       <div className="flex justify-between items-center">
         <button
+          type="button"
           onClick={() => {
             setIsCodeSent(false);
             setFormErrors({});
@@ -256,12 +275,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
         </button>
         <div className="flex space-x-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleVerifyCode}
             disabled={state.isLoading || resetCode.length !== 6}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
@@ -276,10 +297,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
   const renderPasswordResetStep = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="newPassword"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           New Password
         </label>
         <input
+          id="newPassword"
           type="password"
           value={newPassword}
           onChange={(e) => {
@@ -292,14 +317,20 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
           placeholder="Enter new password"
         />
         {formErrors.newPassword && (
-          <p className="mt-1 text-sm text-red-600">{formErrors.newPassword}</p>
+          <p className="mt-1 text-sm text-red-600" role="alert">
+            {formErrors.newPassword}
+          </p>
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="confirmPassword"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Confirm Password
         </label>
         <input
+          id="confirmPassword"
           type="password"
           value={confirmPassword}
           onChange={(e) => {
@@ -312,13 +343,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
           placeholder="Confirm new password"
         />
         {formErrors.confirmPassword && (
-          <p className="mt-1 text-sm text-red-600">
+          <p className="mt-1 text-sm text-red-600" role="alert">
             {formErrors.confirmPassword}
           </p>
         )}
       </div>
       <div className="flex justify-between items-center">
         <button
+          type="button"
           onClick={handleReset}
           className="text-sm text-blue-600 hover:text-blue-800"
         >
@@ -326,12 +358,14 @@ const PasswordResetModal = ({ isOpen, onClose, initialEmail, onSuccess }) => {
         </button>
         <div className="flex space-x-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleResetPassword}
             disabled={state.isLoading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
