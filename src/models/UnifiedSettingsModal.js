@@ -118,7 +118,7 @@ const UnifiedSettingsModal = ({
           </div>
         </div>
 
-        <div className="p-6">
+        <div  role="alert" className="p-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
