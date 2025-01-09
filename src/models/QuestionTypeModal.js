@@ -431,6 +431,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                     {!["true_false"].includes(selectedType) &&
                       question.options.length > 2 && (
                         <button
+                        aria-label="removeOption"
                           onClick={() => removeOption(index)}
                           className="text-red-500 hover:bg-red-100 p-2 rounded-full"
                         >
