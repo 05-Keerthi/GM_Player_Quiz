@@ -30,6 +30,16 @@ describe('Leaderboard Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  
+  afterAll(() => {
+    console.log.mockRestore();
+    console.error.mockRestore();
+  });
+
   describe('getSessionLeaderboard', () => {
     const validSessionId = '507f1f77bcf86cd799439011';
 

@@ -25,6 +25,16 @@ describe('Subscription Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  
+  afterAll(() => {
+    console.log.mockRestore();
+    console.error.mockRestore();
+  });
+
   describe('createSubscription', () => {
     it('should create a subscription successfully', async () => {
       req.body = {

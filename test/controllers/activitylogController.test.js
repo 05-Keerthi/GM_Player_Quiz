@@ -12,6 +12,16 @@ const {
 } = require('../../controllers/ActivityLogController');
 
 
+beforeAll(() => {
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterAll(() => {
+  console.log.mockRestore();
+  console.error.mockRestore();
+});
+
 
 describe('ActivityLog Controller', () => {
   let req;

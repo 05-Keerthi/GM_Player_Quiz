@@ -48,6 +48,16 @@ describe('Quiz Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  
+  afterAll(() => {
+    console.log.mockRestore();
+    console.error.mockRestore();
+  });
+
   describe('createQuiz', () => {
     const mockQuizData = {
       title: 'Test Quiz',

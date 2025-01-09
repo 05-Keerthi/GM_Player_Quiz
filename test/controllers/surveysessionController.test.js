@@ -55,6 +55,16 @@ describe('Survey Session Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  
+  afterAll(() => {
+    console.log.mockRestore();
+    console.error.mockRestore();
+  });
+
   describe('createSurveySession', () => {
     it('should create a survey session successfully', async () => {
       // Setup
