@@ -37,28 +37,30 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
   }, [sessionId, userId, isAdmin]);
   const handleSendResults = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-         
-        },
-        body: JSON.stringify({
-          type: "quiz_result", 
-          sessionId: sessionId,
-          users: leaderboardData.map(entry => entry.user._id)
-        }),
-      });
-  
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/notifications`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            type: "quiz_result",
+            sessionId: sessionId,
+            users: leaderboardData.map((entry) => entry.user._id),
+          }),
+        }
+      );
+
       if (!response.ok) {
         // Log the error response
         const errorData = await response.json();
         console.error("Error details:", errorData);
         throw new Error(errorData.message || "Failed to send notifications");
       }
-  
+
       const data = await response.json();
       console.log("Results sent successfully:", data);
       setShowPopup(false);
@@ -73,7 +75,7 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 role="status" className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -141,7 +143,7 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
               className="mt-6 bg-blue-500 text-white py-2 px-4 rounded"
               onClick={() => setShowPopup(true)} // Open the popup
             >
-              Send Results 
+              Send Results
             </button>
 
             {showPopup && (
