@@ -64,60 +64,85 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
         <h2 className="text-xl font-bold mb-4">Edit User</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Username</label>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium mb-2"
+            >
+              Username
+            </label>
             <input
+              id="username"
               type="text"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
+              aria-label="Username"
               className={`w-full border rounded-lg px-4 py-2 ${
                 errors.username ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.username && (
-              <p className="mt-1 text-sm text-red-500">{errors.username}</p>
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                {errors.username}
+              </p>
             )}
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium mb-2">
+              Email
+            </label>
             <input
+              id="email"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               required
+              aria-label="Email"
               className={`w-full border rounded-lg px-4 py-2 ${
                 errors.email ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.email && (
-              <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                {errors.email}
+              </p>
             )}
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Mobile</label>
+            <label htmlFor="mobile" className="block text-sm font-medium mb-2">
+              Mobile
+            </label>
             <input
+              id="mobile"
               type="text"
               name="mobile"
               value={formData.mobile}
               onChange={handleChange}
               required
+              aria-label="Mobile"
               className={`w-full border rounded-lg px-4 py-2 ${
                 errors.mobile ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.mobile && (
-              <p className="mt-1 text-sm text-red-500">{errors.mobile}</p>
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                {errors.mobile}
+              </p>
             )}
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Role</label>
+            <label htmlFor="role" className="block text-sm font-medium mb-2">
+              Role
+            </label>
             <select
+              id="role"
               name="role"
               value={formData.role}
               onChange={handleChange}
               required
+              aria-label="Role"
               className={`w-full border rounded-lg px-4 py-2 ${
                 errors.role ? "border-red-500" : "border-gray-300"
               }`}
@@ -127,7 +152,9 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
               <option value="user">User</option>
             </select>
             {errors.role && (
-              <p className="mt-1 text-sm text-red-500">{errors.role}</p>
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                {errors.role}
+              </p>
             )}
           </div>
           <div className="flex justify-end gap-2">
