@@ -50,7 +50,11 @@ const JoinQuiz = () => {
           Enter your game PIN below
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          data-testid="join-quiz-form"
+          className="space-y-6"
+        >
           <div>
             <input
               type="text"
