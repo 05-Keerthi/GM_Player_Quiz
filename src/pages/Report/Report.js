@@ -28,6 +28,7 @@ const ReportsView = () => {
   const [reportsPerPage] = useState(5);
   const [quizTitleFilter, setQuizTitleFilter] = useState("");
   const [usernameFilter, setUsernameFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
 
   // Calculate current reports for pagination
   const indexOfLastReport = currentPage * reportsPerPage;
@@ -66,26 +67,21 @@ const ReportsView = () => {
     if (isAdmin) {
       let filtered = reports;
 
-      filtered = filtered.filter((report) => {
-        const matchesQuizTitle =
-          !quizTitleFilter ||
-          (report.quiz?.title || "")
-            .toLowerCase()
-            .includes(quizTitleFilter.toLowerCase());
-
-        const matchesUsername =
-          !usernameFilter ||
-          (report.user?.username || "")
-            .toLowerCase()
-            .includes(usernameFilter.toLowerCase());
-
-        return matchesQuizTitle && matchesUsername;
-      });
+      if (searchFilter) {
+        const searchTerm = searchFilter.toLowerCase();
+        filtered = filtered.filter((report) => {
+          const quizTitle = (report.quiz?.title || "").toLowerCase();
+          const username = (report.user?.username || "").toLowerCase();
+          return (
+            quizTitle.includes(searchTerm) || username.includes(searchTerm)
+          );
+        });
+      }
 
       setFilteredReports(filtered);
       setCurrentPage(1);
     }
-  }, [reports, quizTitleFilter, usernameFilter, isAdmin]);
+  }, [reports, searchFilter, isAdmin]);
 
   const totalQuizzes = filteredReports.length;
   const totalScore = filteredReports.reduce(
@@ -119,7 +115,10 @@ const ReportsView = () => {
     return (
       <>
         <Navbar />
-        <div className="flex justify-center items-center h-screen">
+        <div
+          data-testid="loading-spinner"
+          className="flex justify-center items-center h-screen"
+        >
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
         </div>
       </>
@@ -130,10 +129,14 @@ const ReportsView = () => {
     return (
       <>
         <Navbar />
-        <div className="flex justify-center items-center h-screen text-red-500">
+        <div
+          data-testid="error-message"
+          className="flex justify-center items-center h-screen text-red-500"
+        >
           <div className="text-center">
             <p className="text-xl font-semibold mb-4">{error.message}</p>
             <button
+              data-testid="retry-button"
               className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               onClick={() => window.location.reload()}
             >
@@ -154,23 +157,47 @@ const ReportsView = () => {
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="total-quizzes-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Total Quizzes
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{totalQuizzes}</p>
+            <p
+              data-testid="total-quizzes-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {totalQuizzes}
+            </p>
           </div>
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="total-score-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Total Score
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{totalScore}</p>
+            <p
+              data-testid="total-score-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {totalScore}
+            </p>
           </div>
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="average-score-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Average Score
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{averageScore}</p>
+            <p
+              data-testid="average-score-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {averageScore}
+            </p>
           </div>
         </div>
 
@@ -180,39 +207,50 @@ const ReportsView = () => {
               Answers Overview
             </h2>
             <div className="flex justify-center">
-              <div className="w-80">
-                <Pie data={chartData} />
+              <div
+                data-testid="pie-chart-container"
+                className="w-full h-96 flex items-center justify-center"
+              >
+                <div className="w-80 h-80">
+                  <Pie
+                    data={chartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: true,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           <div className="bg-white shadow-lg rounded-lg">
             <div className="flex flex-col md:flex-row items-center justify-between bg-indigo-600 text-white px-6 py-4 rounded-t-lg">
-              <div className="mt-4 md:mt-0 flex flex-col md:flex-row md:space-x-4">
+              <div className="flex justify-center">
                 <input
+                  data-testid="combined-filter"
                   type="text"
-                  placeholder="Filter by Quiz Title"
-                  value={quizTitleFilter}
-                  onChange={(e) => setQuizTitleFilter(e.target.value)}
-                  className="border border-white bg-white text-indigo-600 rounded-md px-4 py-2 mb-2 md:mb-0"
-                />
-                <input
-                  type="text"
-                  placeholder="Filter by Username"
-                  value={usernameFilter}
-                  onChange={(e) => setUsernameFilter(e.target.value)}
-                  className="border border-white bg-white text-indigo-600 rounded-md px-4 py-2"
+                  placeholder="Search by Quiz Title or Username"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="border border-white bg-white text-indigo-600 rounded-md px-4 py-2 w-full md:w-96"
                 />
               </div>
             </div>
 
             {filteredReports.length === 0 ? (
-              <p className="text-xl text-center text-gray-500 py-8">
+              <p
+                data-testid="no-reports-message"
+                className="text-xl text-center text-gray-500 py-8"
+              >
                 No reports found
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full table-auto border-collapse">
+                <table
+                  data-testid="reports-table"
+                  className="w-full table-auto border-collapse"
+                >
                   <thead>
                     <tr className="bg-gray-100 text-gray-600 uppercase text-sm">
                       <th className="px-6 py-4 text-left">Quiz</th>

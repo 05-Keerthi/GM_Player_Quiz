@@ -16,7 +16,7 @@ const SurveyJoin = () => {
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("code");
     if (codeFromUrl) {
-      setJoinCode(codeFromUrl);
+      setJoinCode(codeFromUrl.replace(/\D/g, "").slice(0, 6));
     }
   }, [location]);
 
@@ -74,7 +74,10 @@ const SurveyJoin = () => {
           >
             {loading ? (
               <>
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2
+                  data-testid="loader"
+                  className="w-6 h-6 animate-spin"
+                />
                 Joining...
               </>
             ) : (
