@@ -111,7 +111,13 @@ describe("EditUserModal", () => {
         mobile: mockUser.mobile,
         role: mockUser.role,
       });
+    });
+
+    await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith("User updated successfully!");
+    });
+
+    await waitFor(() => {
       expect(mockOnClose).toHaveBeenCalled();
     });
   });
@@ -136,6 +142,9 @@ describe("EditUserModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Invalid email format")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("email: Invalid email format");
     });
   });
