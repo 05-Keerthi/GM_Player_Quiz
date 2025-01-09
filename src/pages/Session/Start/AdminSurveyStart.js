@@ -310,7 +310,7 @@ const AdminSurveyStart = () => {
         <div className="w-full max-w-4xl px-6">
           {loading ? (
             <div className="flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" />
+              <Loader2 role="status" className="w-8 h-8 animate-spin" />
             </div>
           ) : (
             <>

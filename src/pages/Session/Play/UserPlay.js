@@ -159,7 +159,7 @@ const UserPlay = () => {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
+          <Loader2 role="status" className="w-6 h-6 animate-spin" />
           <span>Loading...</span>
         </div>
       </div>
