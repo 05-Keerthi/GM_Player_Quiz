@@ -226,6 +226,7 @@ const NotificationDropdown = () => {
       <div
         className="cursor-pointer relative"
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="notification-bell"
       >
         <FaBell className="text-gray-600 hover:text-gray-800" size={24} />
         {unreadCount > 0 && (
@@ -246,7 +247,7 @@ const NotificationDropdown = () => {
           <div className="max-h-96 overflow-y-auto">
             {regularLoading || surveyLoading ? (
               <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" data-testid="loading-spinner"></div>
               </div>
             ) : regularError || surveyError ? (
               <div className="p-4 text-center text-red-500">
