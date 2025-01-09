@@ -127,7 +127,7 @@ const UserReport = () => {
             className="bg-white shadow-lg rounded-lg p-6"
           >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Total Quizzes Taken
+              Total Quizzes given
             </h3>
             <p
               data-testid="total-quizzes-value"
