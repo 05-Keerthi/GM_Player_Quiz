@@ -34,7 +34,10 @@ const UserReport = () => {
     return (
       <>
         <Navbar />
-        <div className="flex justify-center items-center h-screen">
+        <div
+          data-testid="loading-spinner"
+          className="flex justify-center items-center h-screen"
+        >
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
         </div>
       </>
@@ -45,10 +48,14 @@ const UserReport = () => {
     return (
       <>
         <Navbar />
-        <div className="flex justify-center items-center h-screen text-red-500">
+        <div
+          data-testid="error-message"
+          className="flex justify-center items-center h-screen text-red-500"
+        >
           <div className="text-center">
             <p className="text-xl font-semibold mb-4">{error}</p>
             <button
+              data-testid="retry-button"
               className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               onClick={() => window.location.reload()}
             >
@@ -64,7 +71,10 @@ const UserReport = () => {
     return (
       <>
         <Navbar />
-        <div className="flex justify-center items-center h-screen">
+        <div
+          data-testid="no-quizzes-message"
+          className="flex justify-center items-center h-screen"
+        >
           <p className="text-2xl text-gray-500">No quizzes taken yet</p>
         </div>
       </>
@@ -112,23 +122,47 @@ const UserReport = () => {
           Quiz Dashboard
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="total-quizzes-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Total Quizzes Taken
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{totalQuizzes}</p>
+            <p
+              data-testid="total-quizzes-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {totalQuizzes}
+            </p>
           </div>
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="total-score-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Total Score
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{totalScore}</p>
+            <p
+              data-testid="total-score-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {totalScore}
+            </p>
           </div>
-          <div className="bg-white shadow-lg rounded-lg p-6">
+          <div
+            data-testid="average-score-card"
+            className="bg-white shadow-lg rounded-lg p-6"
+          >
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
               Average Score
             </h3>
-            <p className="text-4xl font-bold text-gray-800">{averageScore}</p>
+            <p
+              data-testid="average-score-value"
+              className="text-4xl font-bold text-gray-800"
+            >
+              {averageScore}
+            </p>
           </div>
         </div>
 
@@ -138,7 +172,7 @@ const UserReport = () => {
               Answers Overview
             </h2>
             <div className="flex justify-center">
-              <div className="w-80">
+              <div data-testid="pie-chart-container" className="w-80">
                 <Pie data={chartData} />
               </div>
             </div>
@@ -148,7 +182,10 @@ const UserReport = () => {
               Quiz History
             </h2>
             <div className="overflow-x-auto">
-              <table className="w-full table-auto border-collapse">
+              <table
+                data-testid="quiz-history-table"
+                className="w-full table-auto border-collapse"
+              >
                 <thead>
                   <tr className="bg-indigo-600 text-white uppercase tracking-wider">
                     <th className="px-6 py-3 text-left">Quiz Title</th>
@@ -159,6 +196,7 @@ const UserReport = () => {
                   {currentItems.map((report) => (
                     <tr
                       key={report._id}
+                      data-testid="quiz-history-row"
                       className="hover:bg-gray-100 cursor-pointer"
                       onClick={() => handleQuizClick(report)}
                     >
