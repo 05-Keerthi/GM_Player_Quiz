@@ -1,4 +1,3 @@
-// CreateCategoryModal.js
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { useCategoryContext } from "../../context/categoryContext";
@@ -12,8 +11,19 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
   const [fieldErrors, setFieldErrors] = useState({});
   const { createCategory, loading } = useCategoryContext();
 
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.name.trim()) {
+      errors.name = "Category name is required";
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    
     try {
       await createCategory(formData);
       toast.success("Category created successfully!");
@@ -65,7 +75,6 @@ const CreateCategoryModal = ({ isOpen, onClose }) => {
               <input
                 type="text"
                 name="name"
-                required
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
