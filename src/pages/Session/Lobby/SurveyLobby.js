@@ -1,8 +1,7 @@
-//SurveyLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
-import { Loader2, ChevronRight, Users } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import io from "socket.io-client";
 import Navbar from "../../../components/NavbarComp";
 import SurveyInviteModal from "../../../models/SurveyInviteModal";
@@ -14,15 +13,11 @@ const SurveyLobby = () => {
   const [showPin, setShowPin] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [socket, setSocket] = useState(null);
-  const [currentItem, setCurrentItem] = useState(null);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [questions, setQuestions] = useState([]);
   const [surveyPlayers, setSurveyPlayers] = useState([]);
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [error, setError] = useState(null);
 
-  const { startSurveySession, nextSurveyQuestion, loading } =
-    useSurveySessionContext();
+  const { startSurveySession, loading } = useSurveySessionContext();
 
   const surveyId = searchParams.get("surveyId");
 
@@ -61,28 +56,31 @@ const SurveyLobby = () => {
   //Listen for surveyPlayers updates
   useEffect(() => {
     if (!socket || !sessionData) return;
-  
+
     const handleSurveyPlayersJoined = (data) => {
       console.log("Survey player joined data:", data);
       setSurveyPlayers((currentSurveyPlayers) => {
         // Make sure we're getting the full user object from the data
         const newPlayer = data.user || data;
         if (!newPlayer || !newPlayer._id) return currentSurveyPlayers;
-  
+
         // Check if player already exists and add with full details if not
         if (!currentSurveyPlayers.some((p) => p._id === newPlayer._id)) {
-          return [...currentSurveyPlayers, {
-            _id: newPlayer._id,
-            username: newPlayer.username,
-            email: newPlayer.email
-          }];
+          return [
+            ...currentSurveyPlayers,
+            {
+              _id: newPlayer._id,
+              username: newPlayer.username,
+              email: newPlayer.email,
+            },
+          ];
         }
         return currentSurveyPlayers;
       });
     };
-  
+
     socket.on("user-joined-survey", handleSurveyPlayersJoined);
-  
+
     return () => {
       socket.off("user-joined-survey", handleSurveyPlayersJoined);
     };
@@ -96,8 +94,6 @@ const SurveyLobby = () => {
         sessionData._id
       );
       console.log("Start Survey session response:", response);
-
-      setQuestions(response.questions || []);
 
       if (socket) {
         socket.emit("survey-session-started", {
@@ -113,31 +109,6 @@ const SurveyLobby = () => {
     } catch (error) {
       console.error("Failed to start survey session:", error);
       setError("Failed to start survey session. Please try again.");
-    }
-  };
-
-  const handleNextItem = async () => {
-    try {
-      setError(null);
-      const response = await nextSurveyQuestion(
-        sessionData.surveyJoinCode,
-        sessionData._id
-      );
-      console.log("Next item response:", response);
-
-      if (response.item) {
-        setCurrentItem(response.item);
-
-        if (socket) {
-          socket.emit("next-survey-question", {
-            sessionId: sessionData._id,
-            item: response.item,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get next survey question:", error);
-      setError("Failed to get next survey question. Please try again.");
     }
   };
 
@@ -166,97 +137,6 @@ const SurveyLobby = () => {
       setError("Failed to process invitations. Please try again.");
     }
   };
-  const handleSessionUpdate = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (!sessionData || !sessionData.surveyQuiz) {
-        console.error("No session data available");
-        return;
-      }
-  
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/survey-notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          type: "Survey-session_update",
-          sessionId: sessionData._id,
-          message: `The session for "${sessionData.surveyQuiz.title}" has been updated.`
-        }),
-      });
-  
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Survey session update notification sent successfully:", data);
-        return true;
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to send survey session update notification:", errorData);
-        return false;
-      }
-    } catch (error) {
-      console.error("Error sending survey session update notification:", error);
-      return false;
-    }
-  };
-
-  const renderCurrentItem = () => {
-    if (!currentItem) return null;
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">Current question</h3>
-          <button
-            onClick={handleNextItem}
-            disabled={loading}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            Next <ChevronRight className="ml-2" />
-          </button>
-        </div>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          {currentItem ? (
-            <div>
-              <h4 className="font-medium text-xl mb-4">{currentItem.title}</h4>
-              {currentItem.imageUrl && (
-                <img
-                  src={currentItem.imageUrl}
-                  alt="Question"
-                  className="mb-4 rounded-lg max-w-full h-auto"
-                />
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                {currentItem.options?.map((option) => (
-                  <div key={option._id} className={`p-4 rounded-lg border`}>
-                    <span>{option.text}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-sm text-gray-500">
-                Timer: {currentItem.timer}s
-              </div>
-            </div>
-          ) : (
-            <div>
-              <h4 className="font-medium text-xl mb-2">{currentItem.title}</h4>
-              <p className="text-gray-700 mb-4">{currentItem.content}</p>
-              {currentItem.imageUrl && (
-                <img
-                  src={currentItem.imageUrl}
-                  alt={currentItem.title}
-                  className="rounded-lg max-w-full h-auto"
-                />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const renderSurveyPlayers = () => (
     <div className="space-y-6">
@@ -264,7 +144,7 @@ const SurveyLobby = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-6 h-6" />
-            <span className="text-xl font-semibold">
+            <span className="text-xl font-semibold" data-testid="players-count">
               Players ({surveyPlayers?.length || 0})
             </span>
           </div>
@@ -275,55 +155,21 @@ const SurveyLobby = () => {
             >
               Invite
             </button>
-            {!currentItem && (
-  <button
-    onClick={async () => {
-      try {
-        const token = localStorage.getItem('token');
-        
-        if (!sessionData || !sessionData.surveyQuiz) {
-          console.error("No session data available");
-          return;
-        }
-
-        // Send survey session update notification
-        const notificationResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/survey-notifications`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            type: "Survey-session_update",
-            sessionId: sessionData._id,
-            message: `The session for "${sessionData.surveyQuiz.title}" has been updated.`
-          }),
-        });
-
-        if (!notificationResponse.ok) {
-          console.warn("Failed to send survey session update notification");
-        }
-
-        // Proceed with starting the session
-        await handleStartSession();
-      } catch (error) {
-        console.error("Error sending session update or starting session:", error);
-        setError("Failed to start session. Please try again.");
-      }
-    }}
-    disabled={loading || !surveyPlayers?.length}
-    className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    {loading ? (
-      <div className="flex items-center gap-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Starting...
-      </div>
-    ) : (
-      "Start Survey"
-    )}
-  </button>
-)}
+            <button
+              onClick={handleStartSession}
+              disabled={loading || !surveyPlayers?.length}
+              data-testid="start-button"
+              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Starting...
+                </div>
+              ) : (
+                "Start Survey"
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -337,7 +183,6 @@ const SurveyLobby = () => {
       <div className="bg-white rounded-lg p-6 shadow-lg">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {surveyPlayers.map((participant) => {
-            console.log("Rendering participant:", participant); // Debug log
             const playerId = participant._id || participant.id || "unknown";
             const username =
               participant.username || participant.name || "Anonymous";
@@ -377,10 +222,16 @@ const SurveyLobby = () => {
           {!showPin ? (
             <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
               <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-800 mb-8">
+                <h1
+                  className="text-4xl font-bold text-gray-800 mb-8"
+                  data-testid="loading-title"
+                >
                   Setting up session
                 </h1>
-                <div className="flex items-center gap-2 text-xl text-gray-600">
+                <div
+                  className="flex items-center gap-2 text-xl text-gray-600"
+                  data-testid="loading-status"
+                >
                   <Loader2 className="w-6 h-6 animate-spin" />
                   Loading Game PIN
                 </div>
@@ -391,15 +242,28 @@ const SurveyLobby = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <h2 className="text-xl text-gray-700">Join at</h2>
+                    <h2
+                      className="text-xl text-gray-700"
+                      data-testid="join-text"
+                    >
+                      Join at
+                    </h2>
                     <p className="text-2xl font-bold text-gray-900">
                       www.gmplay.com
                     </p>
                   </div>
 
                   <div className="text-center px-8">
-                    <p className="text-xl text-gray-600">Game PIN:</p>
-                    <h1 className="text-5xl font-bold tracking-wider text-gray-900">
+                    <p
+                      className="text-xl text-gray-600"
+                      data-testid="pin-label"
+                    >
+                      Game PIN:
+                    </p>
+                    <h1
+                      className="text-5xl font-bold tracking-wider text-gray-900"
+                      data-testid="pin-value"
+                    >
                       {sessionData?.surveyJoinCode?.match(/.{1,3}/g)?.join(" ")}
                     </h1>
                   </div>
@@ -415,12 +279,6 @@ const SurveyLobby = () => {
               </div>
 
               {renderSurveyPlayers()}
-
-              {currentItem && (
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  {renderCurrentItem()}
-                </div>
-              )}
             </div>
           )}
         </div>
