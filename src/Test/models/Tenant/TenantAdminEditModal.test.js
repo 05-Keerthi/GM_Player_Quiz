@@ -1,7 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 import TenantAdminEditModal from "../../../models/Tenant/TenantAdminEditModal";
 import { useTenantContext } from "../../../context/TenantContext";
 import { toast } from "react-toastify";
