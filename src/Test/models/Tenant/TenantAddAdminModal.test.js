@@ -128,18 +128,27 @@ describe("TenantAddAdminModal", () => {
     const submitButton = screen.getByRole("button", { name: /add admin/i });
     await userEvent.click(submitButton);
 
-    await waitFor(() => {
+    await waitFor(() => 
       expect(mockRegisterTenantAdmin).toHaveBeenCalledWith("tenant123", {
         username: "testuser",
         email: "test@example.com",
         password: "password123",
         mobile: "+1234567890",
         role: "tenant_admin",
-      });
-      expect(toast.success).toHaveBeenCalledWith("Admin added successfully!");
-      expect(mockGetTenantAdmins).toHaveBeenCalledWith("tenant123");
-      expect(mockOnClose).toHaveBeenCalled();
-    });
+      })
+    );
+
+    await waitFor(() => 
+      expect(toast.success).toHaveBeenCalledWith("Admin added successfully!")
+    );
+
+    await waitFor(() => 
+      expect(mockGetTenantAdmins).toHaveBeenCalledWith("tenant123")
+    );
+
+    await waitFor(() => 
+      expect(mockOnClose).toHaveBeenCalled()
+    );
   });
 
   it("should handle form submission errors", async () => {
@@ -170,7 +179,13 @@ describe("TenantAddAdminModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Invalid email")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("email: Invalid email");
+    });
+
+    await waitFor(() => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
