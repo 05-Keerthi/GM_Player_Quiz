@@ -73,8 +73,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
         <h2 className="text-lg font-bold mb-4">Edit Tenant</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium mb-2">
+              Name
+            </label>
             <input
+              id="name"
               type="text"
               name="name"
               value={formData.name}
@@ -90,10 +93,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="customDomain" className="block text-sm font-medium mb-2">
               Custom Domain
             </label>
             <input
+              id="customDomain"
               type="text"
               name="customDomain"
               value={formData.customDomain}
@@ -109,8 +113,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Logo URL</label>
+            <label htmlFor="logo" className="block text-sm font-medium mb-2">
+              Logo URL
+            </label>
             <input
+              id="logo"
               type="url"
               name="logo"
               value={formData.logo}
@@ -126,8 +133,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Theme</label>
+            <label htmlFor="theme" className="block text-sm font-medium mb-2">
+              Theme
+            </label>
             <select
+              id="theme"
               name="theme"
               value={formData.theme}
               onChange={handleChange}
@@ -147,10 +157,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="primaryColor" className="block text-sm font-medium mb-2">
                 Primary Color
               </label>
               <input
+                id="primaryColor"
                 type="color"
                 name="primaryColor"
                 value={formData.primaryColor}
@@ -164,10 +175,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="secondaryColor" className="block text-sm font-medium mb-2">
                 Secondary Color
               </label>
               <input
+                id="secondaryColor"
                 type="color"
                 name="secondaryColor"
                 value={formData.secondaryColor}
@@ -183,10 +195,11 @@ const TenantEditModal = ({ isOpen, onClose, tenant }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="fontFamily" className="block text-sm font-medium mb-2">
               Font Family
             </label>
             <input
+              id="fontFamily"
               type="text"
               name="fontFamily"
               value={formData.fontFamily}
