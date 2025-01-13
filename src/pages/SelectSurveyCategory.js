@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { useCategoryContext } from "../context/categoryContext";
 import { useSurveyContext } from "../context/surveyContext";
@@ -12,6 +12,8 @@ import { toast } from "react-toastify";
 
 const SelectSurveyCategory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const surveyType = location.state?.surveyTyp;
   const { categories, getAllCategories, deleteCategory, loading, error } =
     useCategoryContext();
   const { createSurvey } = useSurveyContext();
@@ -71,8 +73,8 @@ const SelectSurveyCategory = () => {
       const response = await createSurvey({
         categoryId: selectedCategories,
         status: "draft",
+        type: surveyType,
       });
-      console.log(response);
       navigate(`/createSurvey/${response.surveyQuiz._id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create survey");
@@ -116,7 +118,8 @@ const SelectSurveyCategory = () => {
           {/* Header */}
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">
-              Select Survey Categories
+              Select {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"}{" "}
+              Categories
             </h1>
             <button
               data-testid="create-category-button"
@@ -241,7 +244,8 @@ const SelectSurveyCategory = () => {
               }`}
           >
             <Plus className="h-5 w-5" />
-            Create Survey ({selectedCategories.length})
+            Create {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"} (
+            {selectedCategories.length})
           </button>
         </div>
       </div>
