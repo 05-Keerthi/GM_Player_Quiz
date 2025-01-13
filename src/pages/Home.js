@@ -34,7 +34,6 @@ export default function HomePage() {
   };
 
   const handleAction = (action) => {
-    
     if (!isAuthenticated) {
       navigate("/login");
       return;
@@ -43,7 +42,14 @@ export default function HomePage() {
     if (action.modalAction) {
       setIsCreateModalOpen(true);
     } else if (action.path) {
-      handleNavigation(action.path);
+      if (action.surveyType) {
+        // Pass the survey type when navigating
+        navigate(action.path, {
+          state: { surveyType: action.surveyType },
+        });
+      } else {
+        handleNavigation(action.path);
+      }
     }
   };
 
@@ -73,6 +79,7 @@ export default function HomePage() {
             modalAction: true,
           },
         ];
+
       case "tenant_admin":
       case "admin":
         return [
@@ -99,14 +106,34 @@ export default function HomePage() {
             buttonText: "Create Survey",
             buttonColor: "bg-rose-500 hover:bg-rose-600",
             path: "/selectSurveyCategory",
+            surveyType: "survey",
           },
           {
             icon: <ScrollText className="text-cyan-600" size={48} />,
             title: "View Surveys",
-            description: "Manage and monitor all surveys",
+            description: "Manage and monitor regular surveys",
             buttonText: "Go to Surveys",
             buttonColor: "bg-cyan-500 hover:bg-cyan-600",
             path: "/survey-list",
+            surveyType: "survey",
+          },
+          {
+            icon: <MessagesSquare className="text-indigo-600" size={48} />,
+            title: "Create ArtPulse",
+            description: "Create and launch new ArtPulse surveys",
+            buttonText: "Create ArtPulse",
+            buttonColor: "bg-indigo-500 hover:bg-indigo-600",
+            path: "/selectSurveyCategory",
+            surveyType: "ArtPulse",
+          },
+          {
+            icon: <ScrollText className="text-violet-600" size={48} />,
+            title: "View ArtPulse",
+            description: "Manage and monitor ArtPulse surveys",
+            buttonText: "Go to ArtPulse",
+            buttonColor: "bg-violet-500 hover:bg-violet-600",
+            path: "/survey-list",
+            surveyType: "ArtPulse",
           },
           {
             icon: <Activity className="text-amber-600" size={48} />,
@@ -125,6 +152,7 @@ export default function HomePage() {
             path: "/reports",
           },
         ];
+
       case "user":
         return [
           {
@@ -290,7 +318,7 @@ export default function HomePage() {
       <main className="container mx-auto px-4 py-8">
         <section className="mb-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {roleBasedActions.map((action, index) => (
+            {getRoleBasedActions().map((action, index) => (
               <div
                 key={index}
                 className="bg-white rounded-2xl shadow-md p-6 flex items-center space-x-6 hover:shadow-lg transition-shadow"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuizContext } from "../context/quizContext";
 import { useSurveyContext } from "../context/surveyContext";
 import { useAuthContext } from "../context/AuthContext";
@@ -42,8 +42,12 @@ const StatusBadge = ({ status }) => {
 
 const UnifiedList = ({ contentType }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthContext();
   const isQuiz = contentType === "quiz";
+
+  // Get the survey type from location state
+  const surveyType = location.state?.surveyType || "survey";
 
   // Context setup based on content type
   const {
@@ -85,12 +89,23 @@ const UnifiedList = ({ contentType }) => {
     getAllItems();
   }, []);
 
+  // Filter items based on status and type
   useEffect(() => {
-    const filtered = items.filter(
-      (item) => filter === "all" || item.status === filter
-    );
-    setFilteredList(filtered);
-  }, [items, filter]);
+    if (items) {
+      const filtered = items.filter((item) => {
+        // Apply status filter
+        const statusMatch = filter === "all" || item.status === filter;
+
+        // For surveys, also apply type filter
+        if (!isQuiz) {
+          return statusMatch && item.type === surveyType;
+        }
+
+        return statusMatch;
+      });
+      setFilteredList(filtered);
+    }
+  }, [items, filter, surveyType]);
 
   // Handlers
   const handleCardClick = (item) => {
@@ -158,17 +173,13 @@ const UnifiedList = ({ contentType }) => {
     if (!item) return;
 
     try {
-      if (isQuiz) {
-        await updateItemFunc(draggableId, {
-          ...item,
-          status: destination.droppableId,
-        });
-      } else {
-        await updateItemFunc(draggableId, {
-          ...item,
-          status: destination.droppableId,
-        });
-      }
+      const updatedItem = {
+        ...item,
+        status: destination.droppableId,
+      };
+
+      await updateItemFunc(draggableId, updatedItem);
+
       toast.success(
         `${
           contentType.charAt(0).toUpperCase() + contentType.slice(1)
@@ -187,7 +198,7 @@ const UnifiedList = ({ contentType }) => {
       if (newStatus === "active" && !isQuiz) {
         const updatedItem = await publishSurvey(item._id);
         if (updatedItem) {
-          toast.success("Survey published successfully!");
+          toast.success(`${surveyType} published successfully!`);
           await getAllItems();
           navigate(
             `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
@@ -210,28 +221,38 @@ const UnifiedList = ({ contentType }) => {
     }
   };
 
+  const handleCreateNew = () => {
+    if (isQuiz) {
+      navigate("/selectQuizCategory");
+    } else {
+      navigate("/selectSurveyCategory", {
+        state: { surveyType },
+      });
+    }
+  };
+
+  // Helper function to get the content title
+  const getContentTitle = () => {
+    if (isQuiz) return "Quizzes";
+    return surveyType === "ArtPulse" ? "ArtPulse Surveys" : "Surveys";
+  };
+
   const getStatusActionButton = (item) => {
     const buttonConfigs = {
       draft: {
-        label: `Publish ${
-          contentType.charAt(0).toUpperCase() + contentType.slice(1)
-        }`,
+        label: `Publish ${isQuiz ? "Quiz" : surveyType}`,
         icon: <CheckSquare className="w-4 h-4" />,
         class: "bg-green-500 hover:bg-green-600",
         newStatus: "active",
       },
       active: {
-        label: `Close ${
-          contentType.charAt(0).toUpperCase() + contentType.slice(1)
-        }`,
+        label: `Close ${isQuiz ? "Quiz" : surveyType}`,
         icon: <Lock className="w-4 h-4" />,
         class: "bg-red-500 hover:bg-red-600",
         newStatus: "closed",
       },
       closed: {
-        label: `Reopen ${
-          contentType.charAt(0).toUpperCase() + contentType.slice(1)
-        }`,
+        label: `Reopen ${isQuiz ? "Quiz" : surveyType}`,
         icon: <ArrowRight className="w-4 h-4" />,
         class: "bg-blue-500 hover:bg-blue-600",
         newStatus: "active",
@@ -292,6 +313,7 @@ const UnifiedList = ({ contentType }) => {
       </div>
 
       <div className="flex bg-gray-100 min-h-screen pt-16">
+        {/* Mobile Menu Button */}
         {isMobile && (
           <div className="fixed bottom-4 right-4 z-50">
             <button
@@ -321,12 +343,10 @@ const UnifiedList = ({ contentType }) => {
             }
           `}
         >
-          {/* Filter Content */}
           <div className="sticky top-0 bg-white">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-800">
-                {contentType.charAt(0).toUpperCase() + contentType.slice(1)}{" "}
-                Filters
+                {getContentTitle()} Filters
               </h1>
               {isMobile && (
                 <button
@@ -365,17 +385,19 @@ const UnifiedList = ({ contentType }) => {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className={`flex-1 p-4 ${isMobile ? "mt-0" : "ml-64"}`}>
             <div className="sticky top-16 z-30 flex flex-col sm:flex-row justify-between items-center mb-6 bg-gray-100 p-5">
-              <h1 data-testid="content-header">
-                My {contentType.charAt(0).toUpperCase() + contentType.slice(1)}s
-              </h1>
+              <h1 data-testid="content-header">My {getContentTitle()}</h1>
               <button
-                onClick={() => navigate(`/select${contentType}category`)}
+                onClick={handleCreateNew}
                 data-testid="create-button"
                 className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
               >
                 <PlusCircle className="w-4 h-4" />
                 Create New{" "}
-                {contentType.charAt(0).toUpperCase() + contentType.slice(1)}
+                {isQuiz
+                  ? "Quiz"
+                  : surveyType === "ArtPulse"
+                  ? "ArtPulse"
+                  : "Survey"}
               </button>
             </div>
 
@@ -395,9 +417,11 @@ const UnifiedList = ({ contentType }) => {
                       >
                         <h2 className="text-lg font-semibold mb-4 capitalize">
                           {status}{" "}
-                          {contentType.charAt(0).toUpperCase() +
-                            contentType.slice(1)}
-                          s
+                          {isQuiz
+                            ? "Quizzes"
+                            : surveyType === "ArtPulse"
+                            ? "ArtPulse"
+                            : "Surveys"}
                         </h2>
                         {filteredList
                           .filter((item) => item.status === status)
@@ -432,8 +456,7 @@ const UnifiedList = ({ contentType }) => {
                                   >
                                     {item.title ||
                                       `Untitled ${
-                                        contentType.charAt(0).toUpperCase() +
-                                        contentType.slice(1)
+                                        isQuiz ? "Quiz" : surveyType
                                       }`}
                                   </h2>
                                   <p className="text-gray-600 mb-4 line-clamp-3">
@@ -446,28 +469,19 @@ const UnifiedList = ({ contentType }) => {
                                       <span>
                                         {item.questions?.length || 0} Questions
                                       </span>
-                                      {isQuiz ? (
-                                        <>
-                                          <ListChecks className="w-5 h-5" />
-                                          <span>
-                                            {item.slides?.length || 0} Slides
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ListChecks className="w-5 h-5" />
-                                          <span>
-                                            {item.slides?.length || 0} Slides
-                                          </span>
-                                        </>
-                                      )}
+                                      <ListChecks className="w-5 h-5" />
+                                      <span>
+                                        {item.slides?.length || 0} Slides
+                                      </span>
                                     </div>
                                     <div className="flex gap-2">
                                       <button
                                         data-testid={`edit-button-${item._id}`}
                                         onClick={(e) => handleEdit(e, item._id)}
                                         className="text-blue-600 hover:text-blue-800"
-                                        title={`Edit ${contentType}`}
+                                        title={`Edit ${
+                                          isQuiz ? "Quiz" : surveyType
+                                        }`}
                                       >
                                         <FileEdit className="w-5 h-5" />
                                       </button>
@@ -477,7 +491,9 @@ const UnifiedList = ({ contentType }) => {
                                         }
                                         data-testid={`delete-button-${item._id}`}
                                         className="text-red-600 hover:text-red-800"
-                                        title={`Delete ${contentType}`}
+                                        title={`Delete ${
+                                          isQuiz ? "Quiz" : surveyType
+                                        }`}
                                       >
                                         <Trash2 className="w-5 h-5" />
                                       </button>
@@ -495,7 +511,13 @@ const UnifiedList = ({ contentType }) => {
                         {filteredList.filter((item) => item.status === status)
                           .length === 0 && (
                           <div className="text-center py-6 text-gray-500">
-                            No {status} {contentType}s found
+                            No {status}{" "}
+                            {isQuiz
+                              ? "quizzes"
+                              : surveyType === "ArtPulse"
+                              ? "ArtPulse surveys"
+                              : "surveys"}{" "}
+                            found
                           </div>
                         )}
                       </div>
@@ -507,7 +529,13 @@ const UnifiedList = ({ contentType }) => {
 
             {filteredList.length === 0 && (
               <div className="text-center py-12 text-gray-500">
-                No {contentType}s found for this status.
+                No{" "}
+                {isQuiz
+                  ? "quizzes"
+                  : surveyType === "ArtPulse"
+                  ? "ArtPulse surveys"
+                  : "surveys"}{" "}
+                found for this status.
               </div>
             )}
           </div>
@@ -522,10 +550,10 @@ const UnifiedList = ({ contentType }) => {
           setItemToDelete(null);
         }}
         onConfirm={handleConfirmDelete}
-        title={`Delete ${
-          contentType.charAt(0).toUpperCase() + contentType.slice(1)
-        }`}
-        message={`Are you sure you want to delete this ${contentType}? This action cannot be undone.`}
+        title={`Delete ${isQuiz ? "Quiz" : surveyType}`}
+        message={`Are you sure you want to delete this ${
+          isQuiz ? "quiz" : surveyType.toLowerCase()
+        }? This action cannot be undone.`}
       />
     </>
   );
