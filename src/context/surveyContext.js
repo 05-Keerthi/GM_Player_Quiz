@@ -63,6 +63,7 @@ export const SurveyProvider = ({ children }) => {
         // Process the order array if provided
         const processedSurveyData = {
           ...surveyData,
+          type: surveyData.type, 
           order:
             surveyData.order?.map((item) => ({
               id: item.id,
