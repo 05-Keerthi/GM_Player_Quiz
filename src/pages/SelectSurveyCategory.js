@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 const SelectSurveyCategory = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const surveyType = location.state?.surveyTyp;
+  const surveyType = location.state?.surveyType || "survey";
   const { categories, getAllCategories, deleteCategory, loading, error } =
     useCategoryContext();
   const { createSurvey } = useSurveyContext();
@@ -73,7 +73,7 @@ const SelectSurveyCategory = () => {
       const response = await createSurvey({
         categoryId: selectedCategories,
         status: "draft",
-        type: surveyType,
+        type: surveyType, // Add the survey type
       });
       navigate(`/createSurvey/${response.surveyQuiz._id}`);
     } catch (err) {

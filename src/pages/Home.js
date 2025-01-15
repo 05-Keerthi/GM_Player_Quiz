@@ -34,6 +34,11 @@ export default function HomePage() {
   };
 
   const handleAction = (action) => {
+    if (!isAuthenticated && action.path === "/join") {
+      navigate("/login");
+      return;
+    }
+
     if (action.modalAction) {
       setIsCreateModalOpen(true);
     } else if (action.path) {
@@ -121,20 +126,20 @@ export default function HomePage() {
             surveyType: "survey",
           },
           {
-            icon: <MessagesSquare className="text-indigo-600" size={48} />,
+            icon: <Rocket className="text-orange-600" size={48} />,
             title: "Create ArtPulse",
             description: "Create and launch new ArtPulse surveys",
             buttonText: "Create ArtPulse",
-            buttonColor: "bg-indigo-500 hover:bg-indigo-600",
+            buttonColor: "bg-orange-500 hover:bg-orange-600",
             path: "/selectSurveyCategory",
             surveyType: "ArtPulse",
           },
           {
-            icon: <ScrollText className="text-violet-600" size={48} />,
+            icon: <Star className="text-pink-600" size={48} />,
             title: "View ArtPulse",
             description: "Manage and monitor ArtPulse surveys",
             buttonText: "Go to ArtPulse",
-            buttonColor: "bg-violet-500 hover:bg-violet-600",
+            buttonColor: "bg-pink-500 hover:bg-pink-600",
             path: "/survey-list",
             surveyType: "ArtPulse",
           },

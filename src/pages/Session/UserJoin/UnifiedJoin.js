@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSessionContext } from "../../../context/sessionContext";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import { useAuthContext } from "../../../context/AuthContext";
 import { Loader2 } from "lucide-react";
 
-const SurveyJoin = () => {
+const UnifiedJoin = ({ type = "quiz" }) => {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [guestData, setGuestData] = useState({
@@ -13,12 +14,16 @@ const SurveyJoin = () => {
     mobile: "",
   });
 
-  const { joinSurveySession, loading } = useSurveySessionContext();
+  const { joinSession, loading: quizLoading } = useSessionContext();
+  const { joinSurveySession, loading: surveyLoading } =
+    useSurveySessionContext();
   const { user } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
   const isAuthenticated = !!user;
+  const loading = type === "quiz" ? quizLoading : surveyLoading;
+  const isSurvey = type === "survey";
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -27,6 +32,34 @@ const SurveyJoin = () => {
       setJoinCode(codeFromUrl.replace(/\D/g, "").slice(0, 6));
     }
   }, [location]);
+
+  const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const isValidPhone = (mobile) => {
+    return /^\d{10}$/.test(mobile.replace(/[^\d]/g, ""));
+  };
+
+  const validateGuestData = () => {
+    if (
+      !guestData.username.trim() ||
+      !guestData.email.trim() ||
+      !guestData.mobile.trim()
+    ) {
+      setError("All fields are required");
+      return false;
+    }
+    if (!isValidEmail(guestData.email)) {
+      setError("Please enter a valid email address");
+      return false;
+    }
+    if (!isValidPhone(guestData.mobile)) {
+      setError("Please enter a valid phone number");
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,53 +72,31 @@ const SurveyJoin = () => {
 
     try {
       let response;
-      if (!isAuthenticated) {
-        // Guest user validation
-        if (
-          !guestData.username.trim() ||
-          !guestData.email.trim() ||
-          !guestData.mobile.trim()
-        ) {
-          setError("All fields are required");
-          return;
-        }
-        if (!isValidEmail(guestData.email)) {
-          setError("Please enter a valid email address");
-          return;
-        }
-        if (!isValidPhone(guestData.mobile)) {
-          setError("Please enter a valid phone number");
+
+      if (isSurvey) {
+        if (!isAuthenticated && !validateGuestData()) {
           return;
         }
 
-        // Join as guest
         response = await joinSurveySession(joinCode, {
-          isGuest: true,
-          ...guestData,
+          isGuest: !isAuthenticated,
+          ...(!isAuthenticated && guestData),
         });
       } else {
-        // Join as authenticated user
-        response = await joinSurveySession(joinCode, {});
+        response = await joinSession(joinCode);
       }
 
       if (response.session) {
+        const baseUrl = isSurvey ? "survey-user-lobby" : "user-lobby";
         navigate(
-          `/survey-user-lobby?code=${joinCode}&sessionId=${response.session._id}`
+          `/${baseUrl}?code=${joinCode}&sessionId=${response.session._id}`
         );
       } else {
         setError("Invalid response from server");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to join session");
+      setError(err.response?.data?.message || `Invalid Game PIN`);
     }
-  };
-
-  const isValidEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const isValidPhone = (mobile) => {
-    return /^\d{10}$/.test(mobile.replace(/[^\d]/g, ""));
   };
 
   const handleGuestDataChange = (e) => {
@@ -94,6 +105,14 @@ const SurveyJoin = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const isSubmitDisabled = () => {
+    if (loading || joinCode.length < 6) return true;
+    if (isSurvey && !isAuthenticated) {
+      return !guestData.username || !guestData.email || !guestData.mobile;
+    }
+    return false;
   };
 
   return (
@@ -119,7 +138,7 @@ const SurveyJoin = () => {
               />
             </div>
 
-            {!isAuthenticated && (
+            {isSurvey && !isAuthenticated && (
               <div className="space-y-4">
                 <input
                   type="text"
@@ -156,14 +175,7 @@ const SurveyJoin = () => {
 
             <button
               type="submit"
-              disabled={
-                loading ||
-                joinCode.length < 6 ||
-                (!isAuthenticated &&
-                  (!guestData.username ||
-                    !guestData.email ||
-                    !guestData.mobile))
-              }
+              disabled={isSubmitDisabled()}
               className="w-full bg-blue-600 text-white py-4 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xl"
             >
               {loading ? (
@@ -188,4 +200,4 @@ const SurveyJoin = () => {
   );
 };
 
-export default SurveyJoin;
+export default UnifiedJoin;

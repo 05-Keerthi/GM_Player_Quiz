@@ -14,7 +14,6 @@ import PreviewPage from "./pages/Preview";
 import SurveyPreviewPage from "./pages/SurveyPreview";
 import QuizCreator from "./pages/quizCreator";
 import Lobby from "./pages/Session/Lobby/AdminLobby";
-import JoinQuiz from "./pages/Session/UserJoin/JoinQuiz";
 import UserLobby from "./pages/Session/UserLobby/UserLobby";
 import AdminStart from "./pages/Session/Start/AdminStart";
 import UserPlay from "./pages/Session/Play/UserPlay";
@@ -25,7 +24,6 @@ import SurveyCreator from "./pages/SurveyCreator";
 import UnifiedDetails from "./pages/UnifiedDetails";
 import UnifiedList from "./pages/UnifiedList";
 import SurveyLobby from "./pages/Session/Lobby/SurveyLobby";
-import SurveyJoin from "./pages/Session/UserJoin/SurveyJoin";
 import SurveyUserLobby from "./pages/Session/UserLobby/SurveyUserLobby";
 import AdminSurveyStart from "./pages/Session/Start/AdminSurveyStart";
 import UserSurveyPlay from "./pages/Session/Play/UserSurveyPlay";
@@ -34,6 +32,7 @@ import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
 import Reports from "./pages/Report/Report";
 import UserReport from "./pages/Report/UserReport";
+import UnifiedJoin from "./pages/Session/UserJoin/UnifiedJoin";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -151,8 +150,17 @@ export default function App() {
         />
         <Route path="/lobby" element={<Lobby />} />
         <Route path="/survey-lobby" element={<SurveyLobby />} />
-        <Route path="/join" element={<JoinQuiz />} />
-        <Route path="/joinsurvey" element={<SurveyJoin />} />
+
+        <Route
+          path="/join"
+          element={
+            <ProtectedRoute>
+              <UnifiedJoin type="quiz" />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/joinsurvey" element={<UnifiedJoin type="survey" />} />
+
         <Route path="/user-lobby" element={<UserLobby />} />
         <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
         <Route path="/start" element={<AdminStart />} />

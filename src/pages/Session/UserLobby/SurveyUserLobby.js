@@ -1,4 +1,3 @@
-//SuvrveyUserLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -10,186 +9,122 @@ const SurveyUserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
-  const [currentItem, setCurrentItem] = useState(null);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const { checkGuestStatus } = useSurveySessionContext();
+
   const [socket, setSocket] = useState(null);
-  const [isLastItem, setIsLastItem] = useState(false);
-  const { loading: sessionLoading } = useSurveySessionContext();
+  const [activeUser, setActiveUser] = useState(null);
+  const [isWaiting, setIsWaiting] = useState(true);
+  const [error, setError] = useState(null);
+
   const joinCode = searchParams.get("code");
   const sessionId = searchParams.get("sessionId");
 
+  // Set active user
   useEffect(() => {
-    if (isAuthenticated && user && joinCode && sessionId) {
+    if (isAuthenticated && user) {
+      setActiveUser(user);
+    } else {
+      const guestUser = checkGuestStatus();
+      if (guestUser) {
+        setActiveUser(guestUser);
+      }
+    }
+  }, [isAuthenticated, user, checkGuestStatus]);
+
+  // Socket initialization
+  useEffect(() => {
+    if (activeUser && sessionId) {
       const newSocket = io(`${process.env.REACT_APP_API_URL}`);
       setSocket(newSocket);
 
-      // Join the survey session with full user details
-      newSocket.emit("join-survey-session", {
-        sessionId,
-        userId: user._id,
-        username: user.username,
-        email: user.email, // Add email to the emission
+      newSocket.on("connect", () => {
+        console.log("Socket connected, joining session");
+        newSocket.emit("join-survey-session", {
+          sessionId,
+          userId: activeUser._id || activeUser.id,
+          username: activeUser.username,
+          isGuest: activeUser.isGuest || false,
+        });
+      });
+
+      newSocket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+        setError("Connection error. Please try again.");
       });
 
       return () => newSocket.disconnect();
     }
-  }, [isAuthenticated, user, joinCode, sessionId]);
+  }, [activeUser, sessionId]);
 
-  // Listen for survey session events
+  // Socket event handlers
   useEffect(() => {
-    if (socket) {
-      socket.on("survey-session-started", (data) => {
-        console.log("survey Session started data:", data);
-        navigate(
-          `/survey-play?surveyId=${data.session.surveyQuiz._id}&sessionId=${sessionId}`
-        );
-      });
+    if (!socket) return;
 
-      // Handle next survey question
-      socket.on("next-survey-question", ({ item, isLast }) => {
-        console.log("Next survey question:", { item, isLast });
-        setCurrentItem(item);
-        setSelectedAnswer(null);
-        setIsLastItem(isLast);
-      });
+    socket.on("survey-session-started", (data) => {
+      console.log("Survey session started:", data);
+      navigate(
+        `/survey-play?surveyId=${data.session.surveyQuiz._id}&sessionId=${sessionId}`
+      );
+    });
 
-      // Handle survey session end
-      socket.on("survey-session-ended", () => {
-        navigate("/survey-results");
-      });
+    socket.on("survey-session-ended", () => {
+      navigate("/joinsurvey");
+    });
 
-      return () => {
-        socket.off("survey-session-started");
-        socket.off("next-survey-question");
-        socket.off("survey-session-ended");
-      };
-    }
+    return () => {
+      socket.off("survey-session-started");
+      socket.off("survey-session-ended");
+    };
   }, [socket, navigate, sessionId]);
 
-  const handleAnswerSubmit = (option) => {
-    if (!currentItem || selectedAnswer || !user) return;
-
-    setSelectedAnswer(option);
-
-    if (socket) {
-      socket.emit("survey-submit-answer", {
-        sessionId,
-        answerDetails: {
-          answer: option.text,
-          questionId: currentItem._id,
-          userId: user._id,
-        },
-      });
-    }
-  };
-
-  // Loading and authentication states remain similar to previous implementation
   if (authLoading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <Loader2 role="status" className="w-6 h-6 animate-spin" />
+          <Loader2 className="w-6 h-6 animate-spin" />
           <span>Loading...</span>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!activeUser) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">Authentication Required</h2>
-          </div>
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Please log in or register to join the survey session.
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => navigate("/login")}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Login
-              </button>
-              <button
-                onClick={() => navigate("/register")}
-                className="w-full border border-blue-600 text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                Register
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Joining survey session...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentItem) {
-    return (
-      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <div className="text-center py-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Waiting for survey to start...
-            </h2>
-            <p className="text-gray-600">
-              The host will begin the survey shortly
-            </p>
-          </div>
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Session Error</h2>
+          <p className="text-gray-600">Please rejoin the survey session.</p>
+          <button
+            onClick={() => navigate("/joinsurvey")}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Return to Join Page
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-purple-100 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold">{currentItem.title}</h2>
-          {currentItem.imageUrl && (
-            <img
-              src={currentItem.imageUrl}
-              alt="Survey Question"
-              className="mt-4 rounded-lg w-full"
-            />
+    <div className="min-h-screen bg-purple-100 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="text-center">
+          {activeUser.isGuest && (
+            <div className="mb-4">
+              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                Guest: {activeUser.username}
+              </span>
+            </div>
           )}
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 gap-4">
-            {currentItem.options?.map((option) => (
-              <button
-                key={option._id}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={selectedAnswer !== null}
-                className={`h-24 text-lg rounded-lg border transition-colors ${
-                  selectedAnswer === option
-                    ? "bg-blue-100 border-blue-500 text-blue-700"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                {option.text}
-              </button>
-            ))}
+          <h2 className="text-2xl font-bold mb-4">Waiting for Host</h2>
+          <p className="text-gray-600 mb-6">
+            The survey will begin when the host starts the session
+          </p>
+          <div className="flex justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
+          {error && <p className="mt-4 text-red-600 text-sm">{error}</p>}
         </div>
-        {isLastItem && (
-          <div className="p-4 text-center text-gray-600">
-            This is the last question in the survey
-          </div>
-        )}
       </div>
     </div>
   );

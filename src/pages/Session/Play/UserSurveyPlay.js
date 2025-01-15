@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSurveyAnswerContext } from "../../../context/surveyAnswerContext";
+import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
@@ -10,8 +11,10 @@ const UserSurveyPlay = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
+  const { checkGuestStatus } = useSurveySessionContext();
   const { submitSurveyAnswer } = useSurveyAnswerContext();
 
+  const [activeUser, setActiveUser] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
   const [socket, setSocket] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -22,115 +25,144 @@ const UserSurveyPlay = () => {
 
   const sessionId = searchParams.get("sessionId");
 
-  // Auth check and redirect
+  // Set active user
   useEffect(() => {
-    if (!isAuthenticated && !authLoading) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, authLoading, navigate]);
+    const setupUser = () => {
+      if (isAuthenticated && user) {
+        console.log("Setting authenticated user:", { user });
+        setActiveUser(user);
+      } else {
+        const guestUser = checkGuestStatus();
+        console.log("Checking guest status:", { guestUser });
+        if (guestUser) {
+          setActiveUser(guestUser);
+        }
+      }
+    };
+
+    setupUser();
+  }, [isAuthenticated, user, checkGuestStatus]);
 
   // Socket initialization
   useEffect(() => {
-    if (isAuthenticated && user && sessionId) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}`);
-      setSocket(newSocket);
+    if (!activeUser || !sessionId) return;
 
+    console.log("Initializing socket with user:", {
+      userId: activeUser._id || activeUser.id,
+      username: activeUser.username,
+      isGuest: activeUser.isGuest,
+      sessionId,
+    });
+
+    const newSocket = io(`${process.env.REACT_APP_API_URL}`);
+
+    newSocket.on("connect", () => {
+      console.log("Socket connected successfully");
       newSocket.emit("join-survey-session", {
         sessionId,
-        userId: user.id,
-        username: user.username,
+        userId: activeUser._id || activeUser.id,
+        username: activeUser.username,
+        isGuest: activeUser.isGuest || false,
       });
+    });
 
-      return () => {
-        newSocket.disconnect();
-      };
-    }
-  }, [isAuthenticated, user, sessionId]);
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      console.log("Cleaning up socket connection");
+      newSocket.disconnect();
+    };
+  }, [activeUser, sessionId]);
 
   // Socket event handlers
   useEffect(() => {
     if (!socket) return;
 
-    // Handle next question
-    socket.on("next-survey-question", (data) => {
+    const handleNextQuestion = (data) => {
       console.log("Received next question data:", data);
+      const { type, question, isLastQuestion, initialTime } = data;
 
-      const questionData = data?.question || data?.item || {};
-      const questionType = data?.type || questionData?.type || "single_select";
-      const isLastQuestion = data?.isLastQuestion || false;
-      const timerValue = data?.initialTime || questionData?.timer || 30;
+      if (!question) {
+        console.log("No question data received");
+        return;
+      }
 
       const transformedItem =
-        questionType === "slide"
+        type === "slide"
           ? {
-              _id: questionData._id,
+              _id: question._id,
               type: "slide",
-              title: questionData.surveyTitle || questionData.title,
-              content: questionData.surveyContent || questionData.content,
-              imageUrl: questionData.imageUrl,
-              surveyQuiz: questionData.surveyQuiz,
+              title: question.surveyTitle || question.title,
+              content: question.surveyContent || question.content,
+              imageUrl: question.imageUrl,
+              surveyQuiz: question.surveyQuiz,
             }
           : {
-              _id: questionData._id,
-              title: questionData.title,
-              type: questionType,
-              imageUrl: questionData.imageUrl,
-              description: questionData.description,
-              dimension: questionData.dimension,
-              timer: timerValue,
-              answerOptions: (questionData.answerOptions || []).map(
-                (option) => ({
-                  _id: option._id,
-                  optionText: option.optionText || option.text,
-                  color: option.color,
-                })
-              ),
+              _id: question._id,
+              title: question.title,
+              type: type || "single_select",
+              imageUrl: question.imageUrl,
+              description: question.description,
+              timer: initialTime || 30,
+              answerOptions: (question.answerOptions || []).map((option) => ({
+                _id: option._id,
+                optionText: option.optionText || option.text,
+                color: option.color,
+              })),
             };
 
+      console.log("Setting transformed item:", transformedItem);
       setCurrentItem(transformedItem);
-      setTimeLeft(timerValue);
+      setTimeLeft(initialTime || 30);
       setIsLastItem(isLastQuestion);
       setHasSubmitted(false);
-      setQuestionStartTime(questionType !== "slide" ? Date.now() : null);
-    });
+      setQuestionStartTime(type !== "slide" ? Date.now() : null);
+    };
 
-    // Handle timer sync
-    socket.on("timer-sync", (data) => {
+    const handleTimerSync = (data) => {
       if (data && typeof data.timeLeft === "number") {
         setTimeLeft(data.timeLeft);
       }
-    });
+    };
 
-    // Handle survey completion
-    socket.on("survey-completed", () => {
-      setIsSurveyEnded(true);
-    });
-
-    // Handle session end
-    socket.on("survey-session-ended", () => {
-      setIsSurveyEnded(true);
-      setTimeout(() => {
-        navigate("/joinsurvey");
-      }, 2000);
-    });
-
-    // Handle answer confirmation
-    socket.on("answer-submission-confirmed", (data) => {
+    const handleAnswerConfirmed = (data) => {
       if (data.status === "success") {
         setHasSubmitted(true);
       }
-    });
+    };
+
+    const handleSurveyCompleted = () => {
+      console.log("Survey completed");
+      setIsSurveyEnded(true);
+    };
+
+    const handleSessionEnded = () => {
+      console.log("Survey session ended");
+      setIsSurveyEnded(true);
+      setTimeout(() => navigate("/joinsurvey"), 2000);
+    };
+
+    // Register event handlers
+    socket.on("next-survey-question", handleNextQuestion);
+    socket.on("timer-sync", handleTimerSync);
+    socket.on("answer-submission-confirmed", handleAnswerConfirmed);
+    socket.on("survey-completed", handleSurveyCompleted);
+    socket.on("survey-session-ended", handleSessionEnded);
 
     return () => {
-      socket.off("next-survey-question");
-      socket.off("timer-sync");
-      socket.off("survey-completed");
-      socket.off("survey-session-ended");
-      socket.off("answer-submission-confirmed");
+      // Cleanup event handlers
+      socket.off("next-survey-question", handleNextQuestion);
+      socket.off("timer-sync", handleTimerSync);
+      socket.off("answer-submission-confirmed", handleAnswerConfirmed);
+      socket.off("survey-completed", handleSurveyCompleted);
+      socket.off("survey-session-ended", handleSessionEnded);
     };
   }, [socket, navigate]);
 
-  // Handle answer submission
   const handleSubmitAnswer = async (answer) => {
     if (
       !currentItem ||
@@ -139,47 +171,52 @@ const UserSurveyPlay = () => {
       hasSubmitted ||
       !answer ||
       !questionStartTime ||
-      !user
+      !activeUser
     ) {
+      console.log("Submit answer conditions not met:", {
+        hasCurrentItem: !!currentItem,
+        isSlide: currentItem?.type === "slide",
+        timeLeft,
+        hasSubmitted,
+        hasAnswer: !!answer,
+        hasQuestionStartTime: !!questionStartTime,
+        hasActiveUser: !!activeUser,
+      });
       return;
     }
 
     try {
-      // Immediately set submitted to prevent double submissions
+      console.log("Submitting answer:", { answer, activeUser });
       setHasSubmitted(true);
-
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
       const answerText =
         answer.answer ||
         answer.text ||
         (Array.isArray(answer) ? answer.join(",") : answer);
 
-      const answerData = {
+      await submitSurveyAnswer(sessionId, currentItem._id, {
         answer: answerText,
         timeTaken,
-      };
+        isGuest: activeUser.isGuest || false,
+        guestUserId: activeUser.isGuest ? activeUser._id : undefined,
+      });
 
-      // Submit to backend
-      await submitSurveyAnswer(sessionId, currentItem._id, answerData);
-
-      // Emit to socket
       if (socket) {
         socket.emit("survey-submit-answer", {
           sessionId,
           questionId: currentItem._id,
-          userId: user.id,
+          userId: activeUser._id || activeUser.id,
           answer: answerText,
           timeTaken,
+          isGuest: activeUser.isGuest || false,
         });
       }
     } catch (error) {
       console.error("Error submitting answer:", error);
-      // Reset submitted state if submission fails
       setHasSubmitted(false);
     }
   };
 
-  // Loading state
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -191,28 +228,50 @@ const UserSurveyPlay = () => {
     );
   }
 
-  // Auth check
-  if (!isAuthenticated) {
-    return null;
+  if (!activeUser) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Session Error</h2>
+          <p className="text-gray-600">Please rejoin the survey session.</p>
+          <button
+            onClick={() => navigate("/joinsurvey")}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Return to Join Page
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // Survey ended state
   if (isSurveyEnded) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center">
           <h2 className="text-2xl font-bold mb-4">Survey Completed!</h2>
           <p className="text-gray-600">Thank you for your participation.</p>
+          {activeUser.isGuest && (
+            <p className="mt-2 text-sm text-blue-600">
+              Participated as guest: {activeUser.username}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
-  // Main render
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-4xl px-6">
+          {activeUser.isGuest && (
+            <div className="mb-4 text-center">
+              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                Guest: {activeUser.username}
+              </span>
+            </div>
+          )}
           <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
