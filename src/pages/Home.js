@@ -34,11 +34,6 @@ export default function HomePage() {
   };
 
   const handleAction = (action) => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
     if (action.modalAction) {
       setIsCreateModalOpen(true);
     } else if (action.path) {
@@ -62,7 +57,15 @@ export default function HomePage() {
           description: "Participate in exciting quizzes",
           buttonText: "Join Now",
           buttonColor: "bg-emerald-500 hover:bg-emerald-600",
-          path: "/join-quiz",
+          path: "/join",
+        },
+        {
+          icon: <PieChart className="text-purple-600" size={48} />,
+          title: "Join Survey",
+          description: "Participate in exciting surveys",
+          buttonText: "Join Now",
+          buttonColor: "bg-purple-500 hover:bg-purple-600",
+          path: "/joinsurvey",
         },
       ];
     }
@@ -243,8 +246,6 @@ export default function HomePage() {
       path: "/enterprise",
     },
   ];
-
-  const roleBasedActions = getRoleBasedActions();
 
   const renderSecondSection = () => {
     if (!isAuthenticated) {
