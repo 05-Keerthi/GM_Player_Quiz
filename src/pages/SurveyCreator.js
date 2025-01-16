@@ -439,22 +439,12 @@ const SurveyCreator = () => {
     try {
       const updatePayload = {
         ...currentSurvey,
-        title: updatedSettings.title.trim(),
-        description: updatedSettings.description.trim(),
+        title: updatedSettings.title,
+        description: updatedSettings.description,
       };
 
-      // Update the survey in the backend
-      const updatedSurvey = await updateSurvey(surveyId, updatePayload);
-
-      // Update local state
-      setSurveyTitle(updatedSettings.title.trim());
-
-      // Update the currentSurvey context if it exists
-      if (currentSurvey) {
-        currentSurvey.title = updatedSettings.title.trim();
-        currentSurvey.description = updatedSettings.description.trim();
-      }
-
+      await updateSurvey(surveyId, updatePayload);
+      setSurveyTitle(updatedSettings.title);
       setIsSettingsOpen(false);
       showAlert("Survey settings updated successfully", "success");
     } catch (error) {
