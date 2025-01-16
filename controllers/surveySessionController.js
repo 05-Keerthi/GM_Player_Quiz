@@ -71,71 +71,171 @@ exports.createSurveySession = async (req, res) => {
 
 exports.joinSurveySession = async (req, res) => {
   const { joinCode } = req.params;
-  const userId = req.user._id;
+  const { isGuest, username, email, mobile } = req.body || {};
 
   try {
-    // Find the session using the join code
+    // Find session and populate references
     let session = await SurveySession.findOne({ surveyJoinCode: joinCode })
-      .populate("surveyPlayers", "username email")
-      .populate("surveyHost", "username email")
-      .populate("surveyQuiz");
+      .populate({
+        path: "surveyPlayers",
+        select: "username email mobile isGuest",
+      })
+      .populate({
+        path: "surveyHost",
+        select: "username email",
+      })
+      .populate("surveyQuiz")
+      .populate("surveyQuestions")
+      .populate("surveyCurrentQuestion");
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
     }
 
-    // Check if the session is open for joining
     if (session.surveyStatus !== "waiting") {
       return res
         .status(400)
-        .json({ message: "Survey session is not open for joining" });
+        .json({ message: "Session is not open for joining" });
     }
 
-    // Check if the user has already joined the session
-    if (
-      session.surveyPlayers.some(
-        (player) => player._id.toString() === userId.toString()
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "User has already joined this session" });
+    let user;
+
+    if (isGuest) {
+      // Handle guest user
+      if (!username || !email || !mobile) {
+        return res
+          .status(400)
+          .json({ message: "All fields are required for guest users" });
+      }
+
+      // Check existing user
+      const existingUser = await User.findOne({
+        $or: [
+          { email: email.toLowerCase() },
+          { mobile: mobile.replace(/[^\d]/g, "") },
+        ],
+      });
+
+      if (existingUser) {
+        if (existingUser.isGuest) {
+          // Update existing guest user
+          existingUser.guestExpiryDate = new Date(
+            Date.now() + 24 * 60 * 60 * 1000
+          );
+          await existingUser.save();
+          user = existingUser;
+        } else {
+          return res
+            .status(400)
+            .json({ message: "Email or mobile already registered" });
+        }
+      } else {
+        // Create new guest user with role as 'user'
+        user = new User({
+          username,
+          email: email.toLowerCase(),
+          mobile: mobile.replace(/[^\d]/g, ""),
+          isGuest: true,
+          role: "user", // Changed from 'guest' to 'user'
+          guestExpiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        await user.save();
+      }
+    } else {
+      // Handle authenticated user
+      if (!req.user?._id) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      user = await User.findById(req.user._id).select(
+        "_id username email mobile role"
+      );
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
     }
 
-    // Get user details with specific fields
-    const user = await User.findById(userId).select("_id username email");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    // Check if already joined
+    const existingPlayer = session.surveyPlayers.find(
+      (player) => player._id.toString() === user._id.toString()
+    );
+
+    if (existingPlayer) {
+      return res.status(400).json({ message: "Already joined this session" });
     }
 
-    // Add the user to the session's players
-    session.surveyPlayers.push(userId);
+    // Add user to session players
+    session.surveyPlayers = session.surveyPlayers || [];
+    session.surveyPlayers.push(user._id);
     await session.save();
 
-    // Refresh the populated session
-    session = await SurveySession.findById(session._id)
-      .populate("surveyPlayers", "username email")
-      .populate("surveyHost", "username email")
-      .populate("surveyQuiz");
+    // Add participation record to user
+    if (!user.surveyParticipations) {
+      user.surveyParticipations = [];
+    }
 
-    // Emit the join event using socket.io with full user details
-    const io = req.app.get("socketio");
-    io.emit("user-joined-survey", {
+    user.surveyParticipations.push({
       sessionId: session._id,
+      joinedAt: new Date(),
+    });
+    await user.save();
+
+    // Refresh session data
+    session = await SurveySession.findById(session._id)
+      .populate({
+        path: "surveyPlayers",
+        select: "username email mobile isGuest",
+      })
+      .populate({
+        path: "surveyHost",
+        select: "username email",
+      })
+      .populate("surveyQuiz")
+      .populate("surveyQuestions")
+      .populate("surveyCurrentQuestion");
+
+    // Socket emit
+    const io = req.app.get("socketio");
+    if (io) {
+      io.emit("user-joined-survey", {
+        sessionId: session._id,
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          isGuest: user.isGuest || false,
+        },
+      });
+    }
+
+    // Send response
+    res.status(200).json({
+      message: "Successfully joined survey session",
+      session: {
+        _id: session._id,
+        surveyJoinCode: session.surveyJoinCode,
+        surveyStatus: session.surveyStatus,
+        surveyPlayers: session.surveyPlayers.map((player) => ({
+          _id: player._id,
+          username: player.username,
+          email: player.email,
+          isGuest: player.isGuest || false,
+        })),
+        surveyQuiz: session.surveyQuiz,
+      },
       user: {
         _id: user._id,
         username: user.username,
         email: user.email,
+        mobile: user.mobile,
+        isGuest: user.isGuest || false,
       },
-    });
-
-    res.status(200).json({
-      message: "User successfully joined the survey session",
-      session,
     });
   } catch (error) {
     console.error("Error joining survey session:", error);
-    res.status(500).json({ message: "Error joining survey session", error });
+    res.status(500).json({
+      message: "Error joining session",
+      error: error.message,
+    });
   }
 };
 
