@@ -354,8 +354,8 @@ const SurveyCreator = () => {
         const survey = await getSurveyById(surveyId);
         setSurveyTitle(survey.title || "");
 
-        const surveyQuestions = await getAllQuestions(surveyId);
-        const surveySlides = await getAllSlides(surveyId);
+        const surveyQuestions = survey.questions || [];
+        const surveySlides = survey.slides || [];
 
         setQuestions(surveyQuestions || []);
         setSlides(surveySlides || []);
