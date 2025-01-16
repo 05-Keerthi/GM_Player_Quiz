@@ -2,6 +2,47 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const BlacklistedToken = require("../models/BlacklistedToken");
 
+// Optional auth middleware for routes that support both guest and authenticated users
+const optionalAuth = async (req, res, next) => {
+  try {
+    // If it's a guest request, let it pass through
+    if (req.body.isGuest === true) {
+      return next();
+    }
+
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Access denied. No token provided." });
+    }
+
+    // Check if token is blacklisted
+    const isBlacklisted = await BlacklistedToken.findOne({ token });
+    if (isBlacklisted) {
+      return res.status(401).json({ message: "Token has been invalidated." });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if user exists
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
+    req.user = user;
+    req.token = token;
+    next();
+  } catch (error) {
+    console.log("Authentication error:", error);
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+};
+
+// Required auth middleware for routes that need authentication
 const auth = async (req, res, next) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -49,7 +90,6 @@ const isSuperAdmin = (req, res, next) => {
   next();
 };
 
-// Combined middleware for both admin and tenant_admin roles
 const isAdminOrTenantAdmin = (req, res, next) => {
   if (
     !req.user ||
@@ -66,7 +106,6 @@ const isAdminOrTenantAdmin = (req, res, next) => {
   next();
 };
 
-// Individual role middlewares if needed
 const isTenantAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "tenant_admin") {
     console.log(
@@ -91,10 +130,20 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+// Helper middleware to check if user is guest
+const isGuest = (req, res, next) => {
+  if (!req.body.isGuest) {
+    return res.status(403).json({ message: "Access denied. Guest only." });
+  }
+  next();
+};
+
 module.exports = {
   auth,
+  optionalAuth,
   isSuperAdmin,
   isAdmin,
   isTenantAdmin,
   isAdminOrTenantAdmin,
+  isGuest,
 };
