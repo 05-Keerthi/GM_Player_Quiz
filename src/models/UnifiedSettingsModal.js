@@ -6,8 +6,8 @@ const UnifiedSettingsModal = ({
   onClose,
   onSave,
   initialData = {},
-  type = "quiz", // 'quiz' or 'survey'
-  onTitleUpdate, // New prop for immediate title updates
+  type = "quiz",
+  onTitleUpdate,
 }) => {
   const [formData, setFormData] = useState({
     title: "",
@@ -16,8 +16,9 @@ const UnifiedSettingsModal = ({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Update form data when modal opens or initialData changes
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && initialData) {
       setFormData({
         title: initialData.title || "",
         description: initialData.description || "",
@@ -32,9 +33,13 @@ const UnifiedSettingsModal = ({
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user starts typing
+    if (error) setError("");
   };
 
   const handleSave = async () => {
+    // Validate required fields
     if (!formData.title.trim()) {
       setError("Title is required");
       return;
@@ -44,44 +49,21 @@ const UnifiedSettingsModal = ({
       setIsLoading(true);
       setError("");
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
+      const trimmedData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+      };
 
-      const apiEndpoint =
-        type === "quiz"
-          ?`${process.env.REACT_APP_API_URL}/api/quizzes`          
-          :`${process.env.REACT_APP_API_URL}/api/survey-quiz`;
-
-      const response = await fetch(
-        `${apiEndpoint}/${initialData.id || initialData.quizId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: formData.title.trim(),
-            description: formData.description.trim(),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update ${type}`);
-      }
-
-      const updatedData = await response.json();
-
-      // Update the title in the parent component immediately
+      // Update title in parent component immediately
       if (onTitleUpdate) {
-        onTitleUpdate(formData.title.trim());
+        onTitleUpdate(trimmedData.title);
       }
 
-      if (onSave) onSave(updatedData);
+      // Call onSave with trimmed data
+      if (onSave) {
+        await onSave(trimmedData);
+      }
+
       onClose();
     } catch (err) {
       console.error("Error in handleSave:", err);
@@ -118,7 +100,7 @@ const UnifiedSettingsModal = ({
           </div>
         </div>
 
-        <div  role="alert" className="p-6">
+        <div role="alert" className="p-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
@@ -128,8 +110,11 @@ const UnifiedSettingsModal = ({
 
           <div className="space-y-6">
             <div>
-              <label className="block text-gray-700 mb-2">Title</label>
+              <label className="block text-gray-700 mb-2" htmlFor="title">
+                Title
+              </label>
               <input
+                id="title"
                 type="text"
                 name="title"
                 value={formData.title}
@@ -140,8 +125,11 @@ const UnifiedSettingsModal = ({
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-2">Description</label>
+              <label className="block text-gray-700 mb-2" htmlFor="description">
+                Description
+              </label>
               <textarea
+                id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}

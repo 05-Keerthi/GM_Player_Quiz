@@ -67,18 +67,18 @@ const processOrderedItems = (items) => {
 
 const SurveyCreator = () => {
   // State Management
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [surveyTitle, setSurveyTitle] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(null);
   const [isAddingSlide, setIsAddingSlide] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "error" });
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showSlideDeleteModal, setShowSlideDeleteModal] = useState(false);
   const [slideToDelete, setSlideToDelete] = useState(null);
   const [orderedItems, setOrderedItems] = useState([]);
-  const [surveyTitle, setSurveyTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [slides, setSlides] = useState([]);
@@ -410,12 +410,51 @@ const SurveyCreator = () => {
     loadSurveyData();
   }, [surveyId]);
 
-  // Settings and Navigation handlers
-  const handleSettingsUpdate = async (updatedSurvey) => {
+  const handleSaveSurvey = async () => {
     setIsSubmitting(true);
     try {
-      await updateSurvey(surveyId, updatedSurvey);
-      setSurveyTitle(updatedSurvey.title);
+      const surveyData = {
+        title: surveyTitle,
+        description: currentSurvey?.description || "",
+        questions: questions.map((q) => q._id),
+        slides: slides.map((s) => s._id),
+        order: orderedItems.map((item) => ({
+          id: item.id,
+          type: item.type,
+        })),
+      };
+
+      await updateSurvey(surveyId, surveyData);
+      showAlert("Survey saved successfully", "success");
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Settings and Navigation handlers
+  const handleSettingsUpdate = async (updatedSettings) => {
+    setIsSubmitting(true);
+    try {
+      const updatePayload = {
+        ...currentSurvey,
+        title: updatedSettings.title.trim(),
+        description: updatedSettings.description.trim(),
+      };
+
+      // Update the survey in the backend
+      const updatedSurvey = await updateSurvey(surveyId, updatePayload);
+
+      // Update local state
+      setSurveyTitle(updatedSettings.title.trim());
+
+      // Update the currentSurvey context if it exists
+      if (currentSurvey) {
+        currentSurvey.title = updatedSettings.title.trim();
+        currentSurvey.description = updatedSettings.description.trim();
+      }
+
       setIsSettingsOpen(false);
       showAlert("Survey settings updated successfully", "success");
     } catch (error) {
@@ -556,12 +595,29 @@ const SurveyCreator = () => {
                 >
                   Exit
                 </button>
+
                 <button
                   data-testid="preview-button"
                   onClick={handlePreviewClick}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Preview
+                </button>
+
+                <button
+                  data-testid="save-survey-button"
+                  onClick={handleSaveSurvey}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Survey"
+                  )}
                 </button>
               </div>
             </div>
@@ -584,69 +640,78 @@ const SurveyCreator = () => {
                         <div className="text-gray-500">Loading content...</div>
                       </div>
                     ) : (
-                      orderedItems.map((item, index) => (
-                        <div
-                          key={item.id}
-                          data-testid={`content-item-${index}`}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData(
-                              "text/plain",
-                              index.toString()
-                            );
-                          }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const sourceIndex = parseInt(
-                              e.dataTransfer.getData("text/plain"),
-                              10
-                            );
-                            handleReorderItems(sourceIndex, index);
-                          }}
-                          className={`p-3 rounded-lg cursor-move transition-colors ${
-                            (item.type === "question" &&
-                              currentQuestion?._id === item.id) ||
-                            (item.type === "slide" &&
-                              currentSlide?._id === item.id)
-                              ? "bg-blue-50 border-2 border-blue-500"
-                              : "hover:bg-gray-50 border border-gray-200"
-                          }`}
-                          onClick={() => handleItemClick(item)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">
+                      orderedItems.map((item, index) => {
+                        // Calculate separate counters for questions and slides
+                        const questionCount = orderedItems
+                          .slice(0, index + 1)
+                          .filter((i) => i.type === "question").length;
+                        const slideCount = orderedItems
+                          .slice(0, index + 1)
+                          .filter((i) => i.type === "slide").length;
+
+                        return (
+                          <div
+                            key={item.id}
+                            data-testid={`content-item-${index}`}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData(
+                                "text/plain",
+                                index.toString()
+                              );
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const sourceIndex = parseInt(
+                                e.dataTransfer.getData("text/plain"),
+                                10
+                              );
+                              handleReorderItems(sourceIndex, index);
+                            }}
+                            className={`p-3 rounded-lg cursor-move transition-colors ${
+                              (item.type === "question" &&
+                                currentQuestion?._id === item.id) ||
+                              (item.type === "slide" &&
+                                currentSlide?._id === item.id)
+                                ? "bg-blue-50 border-2 border-blue-500"
+                                : "hover:bg-gray-50 border border-gray-200"
+                            }`}
+                            onClick={() => handleItemClick(item)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">
+                                {item.type === "question"
+                                  ? `Question ${questionCount}`
+                                  : `Slide ${slideCount}`}
+                              </span>
+                              <button
+                                data-testid={`delete-${item.type}-${item.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item.type === "question") {
+                                    setItemToDelete(item.id);
+                                    setShowDeleteModal(true);
+                                  } else {
+                                    setSlideToDelete(item.id);
+                                    setShowSlideDeleteModal(true);
+                                  }
+                                }}
+                                className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-500 truncate">
                               {item.type === "question"
-                                ? `Question ${index + 1}`
-                                : `Slide ${index + 1}`}
-                            </span>
-                            <button
-                              data-testid={`delete-${item.type}-${item.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item.type === "question") {
-                                  setItemToDelete(item.id);
-                                  setShowDeleteModal(true);
-                                } else {
-                                  setSlideToDelete(item.id);
-                                  setShowSlideDeleteModal(true);
-                                }
-                              }}
-                              className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                                ? item.data.title
+                                : item.data.surveyTitle}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-500 truncate">
-                            {item.type === "question"
-                              ? item.data.title
-                              : item.data.surveyTitle}
-                          </p>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
-
                   {/* Add Buttons */}
                   <div className="space-y-2 mt-4">
                     <button
@@ -681,10 +746,10 @@ const SurveyCreator = () => {
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
             onSave={handleSettingsUpdate}
-            onTitleUpdate={setSurveyTitle}
+            onTitleUpdate={(title) => setSurveyTitle(title)}
             initialData={{
               id: surveyId,
-              title: currentSurvey?.title || "",
+              title: surveyTitle || currentSurvey?.title || "",
               description: currentSurvey?.description || "",
             }}
             type="survey"
