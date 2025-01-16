@@ -80,7 +80,7 @@ const SurveyResults = () => {
         throw new Error("Failed to end quiz");
       }
 
-      navigate("/survey-list");
+      navigate("/");
     } catch (error) {
       console.error("Error ending quiz:", error);
       setError(error.message);

@@ -31,7 +31,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
     if (codeFromUrl) {
       setJoinCode(codeFromUrl.replace(/\D/g, "").slice(0, 6));
     }
-  }, [location]);
+  }, [location, isAuthenticated, isSurvey]);
 
   const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
