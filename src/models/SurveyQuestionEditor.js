@@ -301,7 +301,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
               <img
                 src={imagePreview}
                 alt="Question"
-                className="w-full h-48 object-cover"
+                className="w-full max-h-96 object-contain"
               />
               <button
                 onClick={handleImageRemove}
@@ -390,19 +390,18 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
 
         {/* Timer Field */}
         <label
-  class="block text-sm font-medium text-gray-700 mb-1"
-  for="timer-input"
->
-  Timer (seconds)
-</label>
-<input
-  id="timer-input"
-  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-  min="0"
-  type="number"
-  value="30"
-/>
-
+          class="block text-sm font-medium text-gray-700 mb-1"
+          for="timer-input"
+        >
+          Timer (seconds)
+        </label>
+        <input
+          id="timer-input"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          min="0"
+          type="number"
+          value="30"
+        />
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-4 pt-6 border-t">
