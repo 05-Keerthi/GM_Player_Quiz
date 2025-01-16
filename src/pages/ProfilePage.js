@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/NavbarComp";
+import { useAuthContext } from "../context/AuthContext";
 import { useUserContext } from "../context/userContext";
 
 export const ProfilePage = () => {
-  const { getProfile, logout } = useAuthContext();
-  const { updateUser, changePassword } = useUserContext();
+  const { isAuthenticated, user, logout } = useAuthContext();
+  const { fetchUserById, updateUser, changePassword } = useUserContext();
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -29,19 +29,19 @@ export const ProfilePage = () => {
     const fetchProfile = async () => {
       try {
         setIsLoading(true);
-        const token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error("No authentication token found");
+
+        if (!isAuthenticated || !user) {
+          throw new Error("User not authenticated");
         }
 
-        const fetchedProfile = await getProfile();
+        const fetchedUser = await fetchUserById(user.id);
 
         if (isMounted) {
-          if (fetchedProfile) {
-            setProfileData(fetchedProfile);
+          if (fetchedUser) {
+            setProfileData(fetchedUser);
             setError(null);
           } else {
-            throw new Error("No profile data received");
+            throw new Error("No user data received");
           }
         }
       } catch (error) {
@@ -51,7 +51,7 @@ export const ProfilePage = () => {
             navigate("/login");
             return;
           }
-          setError(error.message || "Network error");
+          setError(error.message || "Failed to fetch user");
         }
       } finally {
         if (isMounted) {
@@ -60,12 +60,14 @@ export const ProfilePage = () => {
       }
     };
 
-    fetchProfile();
+    if (isAuthenticated && user) {
+      fetchProfile();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated, user, logout, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -87,6 +89,10 @@ export const ProfilePage = () => {
       };
 
       const updatedUser = await updateUser(profileData._id, updateData);
+      toast.success("Profile updated successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
       setProfileData(updatedUser);
     } catch (error) {
       setUpdateError("Failed to update profile");
@@ -113,6 +119,7 @@ export const ProfilePage = () => {
       setIsChangingPassword(true);
       await changePassword(oldPassword, newPassword);
 
+      // Clear the form on success
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -123,8 +130,16 @@ export const ProfilePage = () => {
         autoClose: 3000,
       });
     } catch (error) {
+      // Handle the specific error for incorrect old password
       const errorMessage =
         error.response?.data?.message || "Failed to change password";
+
+      if (errorMessage === "Old password is incorrect.") {
+        // Set error specifically for the old password field
+        document.getElementById("oldPassword").focus();
+        document.getElementById("oldPassword").classList.add("border-red-500");
+      }
+
       setPasswordError(errorMessage);
     } finally {
       setIsChangingPassword(false);
@@ -291,11 +306,21 @@ export const ProfilePage = () => {
                   onChange={(e) => {
                     setOldPassword(e.target.value);
                     setPasswordError(null);
+                    // Remove error styling when user starts typing
+                    e.target.classList.remove("border-red-500");
                   }}
-                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className={`border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none 
+            ${
+              passwordError === "Old password is incorrect."
+                ? "border-red-500"
+                : ""
+            }`}
                   required
                   aria-label="current password"
                 />
+                {passwordError === "Old password is incorrect." && (
+                  <p className="mt-1 text-red-500 text-sm">{passwordError}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="newPassword" className="block font-medium mb-2">
@@ -338,9 +363,11 @@ export const ProfilePage = () => {
               </div>
             </div>
 
-            {passwordError && (
-              <div className="text-red-500 text-sm mt-4">{passwordError}</div>
-            )}
+            {/* Only show generic password errors here */}
+            {passwordError &&
+              passwordError !== "Old password is incorrect." && (
+                <div className="text-red-500 text-sm mt-4">{passwordError}</div>
+              )}
 
             <div className="mt-6">
               <button

@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, { createContext, useContext, useReducer } from "react";
 import axios from "axios";
 import {
   userReducer,
-  USER_ACTIONS,
   initialState,
+  USER_ACTIONS,
 } from "../reducers/userReducer";
 
 const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
@@ -16,7 +16,7 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to always get fresh token
+// Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -25,13 +25,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-
-
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
-
 
   const fetchUsers = async () => {
     dispatch({ type: USER_ACTIONS.FETCH_USERS_START });
@@ -41,6 +38,7 @@ export const UserProvider = ({ children }) => {
         type: USER_ACTIONS.FETCH_USERS_SUCCESS,
         payload: response.data,
       });
+      return response.data;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Failed to fetch users";
@@ -60,6 +58,7 @@ export const UserProvider = ({ children }) => {
         type: USER_ACTIONS.FETCH_USER_SUCCESS,
         payload: response.data,
       });
+      return response.data;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Failed to fetch user";
@@ -137,7 +136,14 @@ export const UserProvider = ({ children }) => {
     dispatch({ type: USER_ACTIONS.CLEAR_ERROR });
   };
 
-  // Value to be provided to consumers
+  const clearCurrentUser = () => {
+    dispatch({ type: USER_ACTIONS.CLEAR_CURRENT_USER });
+  };
+
+  const resetState = () => {
+    dispatch({ type: USER_ACTIONS.RESET_STATE });
+  };
+
   const value = {
     ...state,
     fetchUsers,
@@ -146,12 +152,13 @@ export const UserProvider = ({ children }) => {
     deleteUser,
     changePassword,
     clearError,
+    clearCurrentUser,
+    resetState,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
 
-// Custom Hook for using UserContext
 export const useUserContext = () => {
   const context = useContext(UserContext);
   if (!context) {
