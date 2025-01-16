@@ -377,10 +377,15 @@ describe("SurveyCreator", () => {
     const saveButton = screen.getByTestId("save-settings");
     await user.click(saveButton);
 
-    expect(mockUpdateSurvey).toHaveBeenCalledWith("survey123", {
-      title: "Updated Survey",
-      description: "Updated Description",
-    });
+    expect(mockUpdateSurvey).toHaveBeenCalledWith(
+      "survey123",
+      expect.objectContaining({
+        title: "Updated Survey",
+        description: "Updated Description",
+        // Other properties from currentSurvey should be preserved
+        _id: "survey123",
+      })
+    );
   });
 
   test("handles preview navigation", async () => {
