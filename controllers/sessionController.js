@@ -31,7 +31,8 @@ exports.createSession = async (req, res) => {
     const savedSession = await session.save();
 
     // Now construct qrData using the session ID
-    const qrData = `${joinCode}`;
+    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const qrData = `${baseUrl}/join?code=${joinCode}`;
 
     // Generate QR code as base64
     const qrCodeImageUrl = await QRCode.toDataURL(qrData);

@@ -26,14 +26,17 @@ exports.createSurveySession = async (req, res) => {
 
     const savedSurveySession = await surveySession.save();
 
-    // Construct the QR data using the session ID and join code
-    const surveyQrData = `${surveyJoinCode}`;
+    // Create a URL that includes the join code
+    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const joinUrl = `${baseUrl}/joinsurvey?code=${surveyJoinCode}`;
 
-    // Generate QR code as base64
-    const surveyQrCodeImageUrl = await QRCode.toDataURL(surveyQrData);
+    // const joinUrl = "www.google.com"; // Just for testing
+
+    // Generate QR code as base64 with the join URL
+    const surveyQrCodeImageUrl = await QRCode.toDataURL(joinUrl);
 
     // Update the survey session with QR data
-    savedSurveySession.surveyQrData = surveyQrData;
+    savedSurveySession.surveyQrData = joinUrl;
     await savedSurveySession.save();
 
     // Populate the survey session with details
@@ -44,7 +47,7 @@ exports.createSurveySession = async (req, res) => {
       .populate("surveyHost", "username email")
       .populate("surveyQuiz");
 
-    // Emit a socket event for session creation (if applicable)
+    // Emit socket event
     const io = req.app.get("socketio");
     io.emit("create-survey-session", {
       sessionId: populatedSurveySession._id,
