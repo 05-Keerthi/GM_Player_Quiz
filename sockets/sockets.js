@@ -3,15 +3,13 @@ const Question = require("../models/question");
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
-
+    
     // ==================== QUIZ SOCKET HANDLERS ====================
 
     // Quiz Session Management
     socket.on("join-session", async ({ sessionId, userId, username }) => {
       try {
         socket.join(sessionId);
-        console.log(`Socket ${socket.id} joined room ${sessionId}`);
         io.to(sessionId).emit("user-joined", {
           message: "A new user has joined the session.",
           userId,
@@ -24,7 +22,6 @@ module.exports = (io) => {
 
     socket.on("create-session", ({ sessionId }) => {
       socket.join(sessionId);
-      console.log(`Session created: ${sessionId}, by Socket: ${socket.id}`);
       io.to(sessionId).emit("session-created", { sessionId });
     });
 
@@ -45,7 +42,6 @@ module.exports = (io) => {
     // Quiz Answer Management
     socket.on("answer-submitted", async ({ sessionId, answerDetails }) => {
       try {
-        console.log("Answer submitted:", { sessionId, answerDetails });
         io.to(sessionId).emit("answer-submitted", { answerDetails });
 
         if (answerDetails.questionId) {
@@ -102,53 +98,50 @@ module.exports = (io) => {
     // Survey Session Management
     socket.on("create-survey-session", ({ sessionId }) => {
       socket.join(sessionId);
-      console.log(`Survey session created: ${sessionId}`);
       io.to(sessionId).emit("survey-session-created", { sessionId });
     });
 
-    socket.on("join-survey-session", ({ sessionId, userId, username }) => {
-      socket.join(sessionId);
-      console.log(`User ${username} joined survey: ${sessionId}`);
-      io.to(sessionId).emit("user-joined-survey", {
-        userId,
-        username,
-      });
-    });
+    socket.on(
+      "join-survey-session",
+      ({ sessionId, userId, username, isGuest }) => {
+        socket.join(sessionId);
+        io.to(sessionId).emit("user-joined-survey", {
+          userId,
+          username,
+          isGuest,
+        });
+      }
+    );
 
-    // Survey Question Management
+    // Survey Content Management
     socket.on(
       "next-survey-question",
       ({ sessionId, type, item, isLastItem, initialTime }) => {
-        console.log(`Sending next question to session: ${sessionId}`);
-
-        const questionData = {
+        io.to(sessionId).emit("next-survey-question", {
           type,
           question: item,
           isLastQuestion: isLastItem,
           initialTime: initialTime || 30,
-        };
-
-        io.to(sessionId).emit("next-survey-question", questionData);
+        });
       }
     );
 
-    // Survey Timer
+    // Timer Management
     socket.on("survey-timer-sync", ({ sessionId, timeLeft }) => {
       io.to(sessionId).emit("timer-sync", { timeLeft });
     });
 
-    // Survey Answer Management
+    // Answer Management
     socket.on(
       "survey-submit-answer",
-      ({ sessionId, questionId, userId, answer, timeTaken }) => {
-        console.log(`Answer received for question ${questionId}`);
-
-        // Emit to admin that an answer was received
+      ({ sessionId, questionId, userId, answer, timeTaken, isGuest }) => {
+        // Emit to admin for tracking
         io.to(sessionId).emit("survey-answer-submitted", {
           questionId,
           userId,
           answer,
           timeTaken,
+          isGuest,
         });
 
         // Confirm back to user
@@ -161,7 +154,6 @@ module.exports = (io) => {
 
     // Survey Completion
     socket.on("survey-completed", ({ sessionId }) => {
-      // Add small delay to ensure all answers are processed
       setTimeout(() => {
         io.to(sessionId).emit("survey-completed", {
           message: "Survey has been completed",
@@ -171,32 +163,27 @@ module.exports = (io) => {
 
     // Survey Session End
     socket.on("end-survey-session", ({ sessionId }) => {
-      // Add small delay to ensure all operations are complete
-      setTimeout(() => {
+      try {
         io.to(sessionId).emit("survey-session-ended", {
           message: "Survey session has ended",
         });
-
-        // Clear the room
         io.in(sessionId).socketsLeave(sessionId);
-      }, 1000);
+      } catch (error) {
+        console.error("Error ending survey session:", error);
+      }
     });
-
     // ==================== COMMON HANDLERS ====================
 
     // Notifications
     socket.on("send-notification", ({ sessionId, notification }) => {
       if (sessionId && notification) {
         io.to(sessionId).emit("receive-notification", notification);
-        console.log(
-          `Notification sent to session ${sessionId}: ${notification.message}`
-        );
       }
     });
 
     // Disconnection
     socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.id}`);
+      console.log("User disconnected");
     });
   });
 };
