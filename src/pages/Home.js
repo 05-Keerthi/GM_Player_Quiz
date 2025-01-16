@@ -336,7 +336,7 @@ export default function HomePage() {
                   </h2>
                   <p className="text-gray-500">{action.description}</p>
                   <button
-                    data-testid="create-quiz-button"
+                    data-testid={action.path === "/join" ? "button-join-now" : "create-quiz-button"}
                     onClick={() => handleAction(action)}
                     className={`mt-4 px-4 py-2 text-white rounded-lg transition-colors ${action.buttonColor}`}
                   >

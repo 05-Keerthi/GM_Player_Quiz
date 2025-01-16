@@ -35,17 +35,19 @@ const SelectSurveyCategory = () => {
 
   // Filter categories when search query or categories change
   useEffect(() => {
-    if (categories) {
-      setFilteredCategories(
-        categories.filter((category) =>
+      if (categories) {
+        console.log("Categories:", categories);
+        console.log("Search Query:", searchQuery);
+        const filtered = categories.filter((category) =>
           category?.name
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase().trim())
-        )
-      );
-      setCurrentPage(1);
-    }
-  }, [categories, searchQuery]);
+        );
+        console.log("Filtered Categories:", filtered);
+        setFilteredCategories(filtered);
+        setCurrentPage(1);
+      }
+    }, [categories, searchQuery]);
 
   const { currentItems, totalPages } = paginateData(
     filteredCategories,

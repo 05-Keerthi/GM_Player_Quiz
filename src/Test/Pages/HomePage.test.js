@@ -74,7 +74,7 @@ describe("HomePage", () => {
       screen.getByRole("heading", { name: "Join Quiz" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Join Now" })
+      screen.getByTestId("button-join-now")
     ).toBeInTheDocument();
     expect(
       screen.getByText("Participate in exciting quizzes")
@@ -92,7 +92,7 @@ describe("HomePage", () => {
     });
 
     render(<HomePage />);
-    await user.click(screen.getByRole("button", { name: "Join Now" }));
+    await user.click(screen.getByTestId("button-join-now"));
     expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 

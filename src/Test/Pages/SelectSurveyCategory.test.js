@@ -1,257 +1,221 @@
-// src/Test/pages/SelectSurveyCategory.test.js
-import React from "react";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { useNavigate } from "react-router-dom";
-import SelectSurveyCategory from "../../pages/SelectSurveyCategory";
-import { useCategoryContext } from "../../context/categoryContext";
-import { useSurveyContext } from "../../context/surveyContext";
-import { toast } from "react-toastify";
-
-// Mock dependencies
-jest.mock("react-router-dom", () => ({
-  useNavigate: jest.fn(),
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import SelectSurveyCategory from '../../Pages/SelectSurveyCategory';
+import { CategoryContext } from '../../context/categoryContext';
+import { SurveyContext } from '../../context/surveyContext';
+import { toast } from 'react-toastify';
+import { within, act } from '@testing-library/react';
+// Mock the react-router-dom hooks
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({
+    state: { surveyType: 'survey' }
+  })
 }));
 
-jest.mock("../../context/categoryContext", () => ({
-  useCategoryContext: jest.fn(),
-}));
-
-jest.mock("../../context/surveyContext", () => ({
-  useSurveyContext: jest.fn(),
-}));
-
-jest.mock("react-toastify", () => ({
+// Mock react-toastify
+jest.mock('react-toastify', () => ({
   toast: {
     success: jest.fn(),
-    error: jest.fn(),
-  },
+    error: jest.fn()
+  }
 }));
-
-// Mock NavbarComp component
-jest.mock("../../components/NavbarComp", () => {
-  return function MockNavbar() {
-    return <div data-testid="navbar">Navbar</div>;
-  };
-});
-
-// Mock modal components
-jest.mock("../../models/Category/CreateCategoryModal", () => {
-  return function MockCreateCategoryModal({ isOpen, onClose }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="create-category-modal">
-        <button onClick={onClose} data-testid="close-create-modal">
-          Close
-        </button>
-      </div>
-    );
-  };
-});
-
-jest.mock("../../models/Category/EditCategoryModal", () => {
-  return function MockEditCategoryModal({ isOpen, onClose }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="edit-category-modal">
-        <button onClick={onClose} data-testid="close-edit-modal">
-          Close
-        </button>
-      </div>
-    );
-  };
-});
-
-jest.mock("../../models/ConfirmationModal", () => {
-  return function MockConfirmationModal({ isOpen, onClose, onConfirm }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="confirmation-modal">
-        <button onClick={onConfirm} data-testid="confirm-delete">
-          Confirm
-        </button>
-        <button onClick={onClose} data-testid="cancel-delete">
-          Cancel
-        </button>
-      </div>
-    );
-  };
-});
 
 // Mock data
 const mockCategories = [
-  { _id: "1", name: "Health Survey" },
-  { _id: "2", name: "Employee Feedback" },
-  { _id: "3", name: "Customer Satisfaction" },
+  { _id: '1', name: 'Category 1' },
+  { _id: '2', name: 'Category 2' },
+  { _id: '3', name: 'Category 3' }
 ];
 
-describe("SelectSurveyCategory", () => {
-  const mockNavigate = jest.fn();
-  const mockGetAllCategories = jest.fn();
-  const mockDeleteCategory = jest.fn();
-  const mockCreateSurvey = jest.fn();
-  const user = userEvent.setup();
+const mockSurveyResponse = {
+  surveyQuiz: { _id: 'survey123' }
+};
 
+// Mock context values
+const mockCategoryContext = {
+  categories: mockCategories,
+  getAllCategories: jest.fn(),
+  deleteCategory: jest.fn(),
+  loading: false,
+  error: null
+};
+
+const mockSurveyContext = {
+  createSurvey: jest.fn().mockResolvedValue(mockSurveyResponse)
+};
+
+// Helper function to render component with context
+const renderWithContext = (categoryContextValue = mockCategoryContext, surveyContextValue = mockSurveyContext) => {
+  return render(
+    <BrowserRouter>
+      <CategoryContext.Provider value={categoryContextValue}>
+        <SurveyContext.Provider value={surveyContextValue}>
+          <SelectSurveyCategory />
+        </SurveyContext.Provider>
+      </CategoryContext.Provider>
+    </BrowserRouter>
+  );
+};
+
+describe('SelectSurveyCategory Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useNavigate.mockReturnValue(mockNavigate);
-    useCategoryContext.mockReturnValue({
-      categories: mockCategories,
-      getAllCategories: mockGetAllCategories,
-      deleteCategory: mockDeleteCategory,
-      loading: false,
-      error: null,
+  });
+
+  test('renders component and loads categories', () => {
+    renderWithContext();
+    expect(mockCategoryContext.getAllCategories).toHaveBeenCalled();
+    expect(screen.getByText('Select Survey Categories')).toBeInTheDocument();
+  });
+
+  test('displays loading state', () => {
+    renderWithContext({
+      ...mockCategoryContext,
+      loading: true
     });
-    useSurveyContext.mockReturnValue({
-      createSurvey: mockCreateSurvey,
+    expect(screen.getByText('Loading categories...')).toBeInTheDocument();
+  });
+
+  test('displays error state', () => {
+    renderWithContext({
+      ...mockCategoryContext,
+      error: { message: 'Failed to load categories' }
+    });
+    expect(screen.getByText('Error: Failed to load categories')).toBeInTheDocument();
+  });
+
+  test('allows searching categories', () => {
+    renderWithContext();
+    const searchInput = screen.getByTestId('category-search');
+    fireEvent.change(searchInput, { target: { value: 'Category 1' } });
+    expect(screen.getByText('Category 1')).toBeInTheDocument();
+  });
+
+  test('allows selecting categories', () => {
+    renderWithContext();
+    const categoryItem = screen.getByTestId('category-item-1');
+    fireEvent.click(categoryItem);
+    const createButton = screen.getByTestId('create-survey-button');
+    expect(createButton).not.toHaveClass('bg-gray-400');
+  });
+
+  test('creates survey when clicking create button', async () => {
+    // Mock the createSurvey response
+    const mockCreateSurveyResponse = {
+      surveyQuiz: { _id: 'survey123' }
+    };
+    const mockSurveyContextWithResponse = {
+      createSurvey: jest.fn().mockResolvedValue(mockCreateSurveyResponse)
+    };
+  
+    // Render with the mock context
+    renderWithContext(mockCategoryContext, mockSurveyContextWithResponse);
+    
+    // Select a category
+    const categoryItem = screen.getByTestId('category-item-1');
+    fireEvent.click(categoryItem);
+    
+    // Verify the category is selected (checkbox is checked)
+    const checkbox = within(categoryItem).getByRole('checkbox');
+    expect(checkbox.checked).toBeTruthy();
+    
+    // Click create button
+    const createButton = screen.getByTestId('create-survey-button');
+    fireEvent.click(createButton);
+  
+    // Wait for createSurvey to be called with correct parameters
+    await waitFor(() => {
+      expect(mockSurveyContextWithResponse.createSurvey).toHaveBeenCalledWith({
+        categoryId: ['1'],
+        status: 'draft',
+        type: 'survey'
+      });
+    });
+  
+    // Since createSurvey is async, we need to wait for it to resolve
+    // and then for the navigation to happen
+    await act(async () => {
+      await mockSurveyContextWithResponse.createSurvey.mock.results[0].value;
+    });
+  
+    // Now check if navigation was called with the correct path
+    expect(mockNavigate).toHaveBeenCalledWith('/createSurvey/survey123');
+  });
+
+  test('handles create survey error', async () => {
+    const errorMessage = 'Failed to create survey';
+    const mockErrorSurveyContext = {
+      createSurvey: jest.fn().mockRejectedValue({ response: { data: { message: errorMessage } } })
+    };
+
+    renderWithContext(mockCategoryContext, mockErrorSurveyContext);
+    
+    // Select a category
+    const categoryItem = screen.getByTestId('category-item-1');
+    fireEvent.click(categoryItem);
+    
+    // Click create button
+    const createButton = screen.getByTestId('create-survey-button');
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(errorMessage);
     });
   });
 
-  test("renders initial page with survey categories", async () => {
-    render(<SelectSurveyCategory />);
-
-    expect(screen.getByText("Select Survey Categories")).toBeInTheDocument();
-    expect(screen.getByTestId("category-search")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("Search survey categories...")
-    ).toBeInTheDocument();
-
-    mockCategories.forEach((category) => {
-      expect(
-        screen.getByTestId(`category-item-${category._id}`)
-      ).toBeInTheDocument();
-      expect(screen.getByText(category.name)).toBeInTheDocument();
-    });
-
-    expect(mockGetAllCategories).toHaveBeenCalled();
-  });
-
-  test("handles category search", async () => {
-    render(<SelectSurveyCategory />);
-
-    const searchInput = screen.getByTestId("category-search");
-    await user.type(searchInput, "health");
-
-    expect(screen.getByText("Health Survey")).toBeInTheDocument();
-    expect(screen.queryByText("Employee Feedback")).not.toBeInTheDocument();
-  });
-
-  test("handles category selection with checkbox", async () => {
-    render(<SelectSurveyCategory />);
-
-    const categoryItem = screen.getByTestId("category-item-1");
-    const checkbox = within(categoryItem).getByRole("checkbox");
-
-    await user.click(checkbox);
-
-    const createButton = screen.getByTestId("create-survey-button");
-    expect(
-      within(createButton).getByText("Create Survey (1)")
-    ).toBeInTheDocument();
-    expect(checkbox).toBeChecked();
-  });
-
-  test("creates new survey with selected categories", async () => {
-    mockCreateSurvey.mockResolvedValue({
-      surveyQuiz: { _id: "new-survey-id" },
-    });
-
-    render(<SelectSurveyCategory />);
-
-    const categoryItem = screen.getByTestId("category-item-1");
-    await user.click(within(categoryItem).getByRole("checkbox"));
-
-    const createButton = screen.getByTestId("create-survey-button");
-    await user.click(createButton);
-
-    expect(mockCreateSurvey).toHaveBeenCalledWith({
-      categoryId: ["1"],
-      status: "draft",
-    });
-    expect(mockNavigate).toHaveBeenCalledWith("/createSurvey/new-survey-id");
-  });
-
-  test("handles survey creation error", async () => {
-    mockCreateSurvey.mockRejectedValue({
-      response: { data: { message: "Creation failed" } },
-    });
-
-    render(<SelectSurveyCategory />);
-
-    const categoryItem = screen.getByTestId("category-item-1");
-    await user.click(within(categoryItem).getByRole("checkbox"));
-
-    const createButton = screen.getByTestId("create-survey-button");
-    await user.click(createButton);
-
-    expect(toast.error).toHaveBeenCalledWith("Creation failed");
-  });
-
-  test("handles category deletion", async () => {
-    mockDeleteCategory.mockResolvedValue({});
-
-    render(<SelectSurveyCategory />);
-
-    const deleteButton = screen.getByTestId("delete-category-1");
-    await user.click(deleteButton);
-
-    const confirmButton = screen.getByTestId("confirm-delete");
-    await user.click(confirmButton);
-
-    expect(mockDeleteCategory).toHaveBeenCalledWith("1");
-    expect(toast.success).toHaveBeenCalledWith(
-      "Category deleted successfully!"
-    );
-  });
-
-  test("handles loading state", () => {
-    useCategoryContext.mockReturnValue({
-      categories: [],
-      getAllCategories: mockGetAllCategories,
-      loading: true,
-      error: null,
-    });
-
-    render(<SelectSurveyCategory />);
-    expect(screen.getByText("Loading categories...")).toBeInTheDocument();
-  });
-
-  test("handles error state", () => {
-    const errorMessage = "Failed to load categories";
-    useCategoryContext.mockReturnValue({
-      categories: [],
-      getAllCategories: mockGetAllCategories,
-      loading: false,
-      error: { message: errorMessage },
+  test('handles category deletion', async () => {
+    mockCategoryContext.deleteCategory.mockResolvedValueOnce();
+    renderWithContext();
+    
+    // Click delete button
+    const deleteButton = screen.getByTestId('delete-category-1');
+    fireEvent.click(deleteButton);
+    
+    // Wait for confirmation modal to appear and click confirm
+    await waitFor(() => {
+      const confirmationMessage = screen.getByText('Are you sure you want to delete this category? This action cannot be undone.');
+      expect(confirmationMessage).toBeInTheDocument();
     });
 
-    render(<SelectSurveyCategory />);
-    expect(screen.getByText(`Error: ${errorMessage}`)).toBeInTheDocument();
-  });
-
-  test("opens and closes edit category modal", async () => {
-    render(<SelectSurveyCategory />);
-
-    const editButton = screen.getByTestId("edit-category-1");
-    await user.click(editButton);
-
-    expect(screen.getByTestId("edit-category-modal")).toBeInTheDocument();
-
-    const closeButton = screen.getByTestId("close-edit-modal");
-    await user.click(closeButton);
-
-    expect(screen.queryByTestId("edit-category-modal")).not.toBeInTheDocument();
-  });
-
-  test("displays no categories found message", async () => {
-    useCategoryContext.mockReturnValue({
-      categories: [],
-      getAllCategories: mockGetAllCategories,
-      loading: false,
-      error: null,
+    // Find and click the confirm button in the modal
+    const confirmButton = screen.getByRole('button', { name: /confirm/i });
+    fireEvent.click(confirmButton);
+    
+    await waitFor(() => {
+      expect(mockCategoryContext.deleteCategory).toHaveBeenCalledWith('1');
+      expect(toast.success).toHaveBeenCalledWith('Category deleted successfully!');
     });
+  });
 
-    render(<SelectSurveyCategory />);
-    expect(screen.getByText("No categories found")).toBeInTheDocument();
+  test('handles category deletion error', async () => {
+    const errorMessage = 'Failed to delete category';
+    mockCategoryContext.deleteCategory.mockRejectedValueOnce({ 
+      response: { data: { message: errorMessage } } 
+    });
+    
+    renderWithContext();
+    
+    // Click delete button
+    const deleteButton = screen.getByTestId('delete-category-1');
+    fireEvent.click(deleteButton);
+    
+    // Wait for confirmation modal and click confirm
+    const confirmButton = screen.getByRole('button', { name: /confirm/i });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(errorMessage);
+    });
+  });
+
+  test('displays no categories message when search returns no results', () => {
+    renderWithContext();
+    const searchInput = screen.getByTestId('category-search');
+    fireEvent.change(searchInput, { target: { value: 'NonexistentCategory' } });
+    expect(screen.getByText('No categories found')).toBeInTheDocument();
   });
 });

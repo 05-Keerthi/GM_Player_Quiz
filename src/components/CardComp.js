@@ -2,7 +2,7 @@ import React from "react";
 import { ChevronRight } from "lucide-react";
 
 const Card = ({ icon, title, description, features, buttonText, onClick, bgColor }) => (
-  <div className={`relative p-6 rounded-2xl shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl ${bgColor}`}>
+  <div data-testid="card" className={`relative p-6 rounded-2xl shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl ${bgColor}`}>
     <div className="absolute top-4 right-4">
       {icon}
     </div>
