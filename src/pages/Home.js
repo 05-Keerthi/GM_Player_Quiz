@@ -20,7 +20,7 @@ import {
 import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
 import Navbar from "../components/NavbarComp";
-import UserManagement from "../components/Usercard";
+import UserManagement from "../components/UserManagement";
 import TenantManagement from "../components/TenantManagement";
 import CreateTenantModal from "../models/Tenant/CreateTenantModel";
 
