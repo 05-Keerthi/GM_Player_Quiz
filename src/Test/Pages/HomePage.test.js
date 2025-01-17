@@ -30,7 +30,7 @@ jest.mock("../../components/CardComp", () => {
   };
 });
 
-jest.mock("../../components/Usercard", () => {
+jest.mock("../../components/UserManagement", () => {
   return function MockUserManagement() {
     return <div data-testid="user-management">User Management</div>;
   };
