@@ -15,7 +15,6 @@ const UnifiedDetails = () => {
   const contentId = searchParams.get(
     contentType === "survey" ? "surveyId" : "quizId"
   );
-  const hostId = searchParams.get("hostId");
 
   const { currentQuiz, getQuizById, loading: quizLoading } = useQuizContext();
   const {

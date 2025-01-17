@@ -157,30 +157,8 @@ export default function App() {
         <Route path="/Activity-log" element={<ActivityLogPage />} />
 
         {/* Legacy Redirect Routes */}
-        <Route
-          path="/quiz-details"
-          element={
-            <Navigate
-              to={(location) => ({
-                pathname: "/details",
-                search: `type=quiz&${location.search.substring(1)}`,
-              })}
-              replace
-            />
-          }
-        />
-        <Route
-          path="/survey-details"
-          element={
-            <Navigate
-              to={(location) => ({
-                pathname: "/details",
-                search: `type=survey&${location.search.substring(1)}`,
-              })}
-              replace
-            />
-          }
-        />
+        <Route path="/quiz-details" element={<UnifiedDetails />} />
+        <Route path="/survey-details" element={<UnifiedDetails />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />

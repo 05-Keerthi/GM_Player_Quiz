@@ -111,7 +111,7 @@ const UnifiedList = ({ contentType }) => {
   const handleCardClick = (item) => {
     if (item.status === "active") {
       navigate(
-        `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+        `/${contentType}-details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
       );
     }
   };
