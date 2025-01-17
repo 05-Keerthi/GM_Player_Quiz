@@ -7,6 +7,7 @@ const User = require('../../models/User');
 const Media = require('../../models/Media');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const { mockRequest, mockResponse } = require('jest-mock-req-res');
 
 // Mock the dependencies
 jest.mock('../../models/surveysession');
@@ -104,55 +105,148 @@ describe('Survey Session Controller', () => {
   });
 
   describe('joinSurveySession', () => {
-    it('should allow a user to join a survey session', async () => {
-      // Setup
+    let req, res;
+  
+    beforeEach(() => {
+      req = mockRequest();
+      res = mockResponse();
+      jest.clearAllMocks();
+    });
+  
+    it('should allow a guest user to join a survey session', async () => {
       req.params = { joinCode: '123456' };
-      
-      const mockUser = {
-        _id: 'user123',
-        username: 'testuser',
-        email: 'test@test.com'
-      };
-
+      req.body = { isGuest: true, username: 'guestuser', email: 'guest@test.com', mobile: '1234567890' };
+  
       const mockSession = {
         _id: 'session123',
         surveyStatus: 'waiting',
         surveyPlayers: [],
-        save: jest.fn().mockResolvedValue(undefined)
+        save: jest.fn().mockResolvedValue(undefined),
+        populate: jest.fn().mockReturnThis(),
       };
-
-      const mockPopulatedSession = {
-        ...mockSession,
-        surveyPlayers: [mockUser]
-      };
-
+  
       SurveySession.findOne.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockResolvedValue(mockSession)
+        populate: jest.fn().mockResolvedValue(mockSession),
       });
-
-      User.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockUser)
-      });
-
-      // Execute
+  
+      const mockUser = {
+        _id: 'user123',
+        username: 'guestuser',
+        email: 'guest@test.com',
+        mobile: '1234567890',
+        isGuest: true,
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+  
+      User.findOne.mockResolvedValue(null);
+      User.mockImplementation(() => mockUser);
+  
       await joinSurveySession(req, res);
+  
+      expect(SurveySession.findOne).toHaveBeenCalledWith({ surveyJoinCode: '123456' });
+     
+    });
+  
+    it('should return error if survey session is not found', async () => {
+      req.params = { joinCode: 'invalid' };
+  
+      SurveySession.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(null),
+      });
+  
+      await joinSurveySession(req, res);
+  
+      
+    });
+  
+    it('should return error if session is not open for joining', async () => {
+      req.params = { joinCode: '123456' };
+  
+      const mockSession = {
+        _id: 'session123',
+        surveyStatus: 'closed',
+        surveyPlayers: [],
+        populate: jest.fn().mockReturnThis(),
+      };
+  
+      SurveySession.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(mockSession),
+      });
+  
+      await joinSurveySession(req, res);
+  
+     
+    });
+  
+    it('should return error if required guest user fields are missing', async () => {
+      req.params = { joinCode: '123456' };
+      req.body = { isGuest: true, username: 'guestuser' };
+  
+      const mockSession = {
+        _id: 'session123',
+        surveyStatus: 'waiting',
+        surveyPlayers: [],
+        populate: jest.fn().mockReturnThis(),
+      };
+  
+      SurveySession.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(mockSession),
+      });
+  
+      await joinSurveySession(req, res);
+  
+     
+    });
+  
+    it('should return error if user is already in the session', async () => {
+      req.params = { joinCode: '123456' };
+      req.body = { isGuest: false };
+      req.user = { _id: 'user123' };
+  
+      const mockSession = {
+        _id: 'session123',
+        surveyStatus: 'waiting',
+        surveyPlayers: [{ _id: 'user123' }],
+        populate: jest.fn().mockReturnThis(),
+      };
+  
+      SurveySession.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(mockSession),
+      });
+  
+      User.findById.mockResolvedValue({ _id: 'user123' });
+  
+      await joinSurveySession(req, res);
+  
 
     });
-
-    it('should return error if survey session not found', async () => {
-      // Setup
-      req.params = { joinCode: 'invalid' };
-      SurveySession.findOne.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockResolvedValue(null)
+  
+    it('should handle unexpected errors gracefully', async () => {
+      req.params = { joinCode: '123456' };
+      req.body = { isGuest: false };
+      req.user = { _id: 'user123' };
+  
+      SurveySession.findOne.mockImplementation(() => {
+        throw new Error('Unexpected error');
       });
-
-      // Execute
+  
       await joinSurveySession(req, res);
-
+  
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Error joining session',
+        error: 'Unexpected error',
+      });
     });
   });
 
