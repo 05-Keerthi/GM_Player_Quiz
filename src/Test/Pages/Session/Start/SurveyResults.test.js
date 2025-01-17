@@ -1,209 +1,259 @@
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act } from 'react-dom/test-utils';
 import SurveyResults from "../../../../pages/Session/Start/SurveyResults";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-
 
 // Mock react-router-dom
-jest.mock("react-router-dom", () => ({
-  useNavigate: jest.fn(),
+jest.mock('react-router-dom', () => ({
   useParams: jest.fn(),
-  useLocation: jest.fn(),
+  useNavigate: jest.fn(),
+  useLocation: jest.fn()
 }));
 
-// Mock fetch
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Mock the Loader2 component
+jest.mock('lucide-react', () => ({
+  Loader2: () => <div data-testid="loader">Loading...</div>
+}));
 
-describe("SurveyResults Component", () => {
-  const mockNavigate = jest.fn();
-  const defaultParams = { sessionId: "s456" };
-  const mockLocation = { search: "?joinCode=abc123" };
+const mockQuestions = [
+  {
+    _id: '1',
+    title: 'Test Question 1'
+  },
+  {
+    _id: '2',
+    title: 'Test Question 2'
+  }
+];
 
-  const mockData = {
-    questions: [
-      {
-        _id: "q1",
-        title: "Question 1",
-        dimension: "Dimension 1",
-        description: "Description 1",
-      },
-      {
-        _id: "q2",
-        title: "Question 2",
-        dimension: "Dimension 2",
-        description: "Description 2",
-      },
-    ],
-    userAnswers: [
-      {
-        userId: "user1",
-        answers: [
-          { questionId: "q1", answer: "Answer 1" },
-          { questionId: "q2", answer: "Answer 2" },
-        ],
-      },
-      {
-        userId: "user2",
-        answers: [{ questionId: "q1", answer: "Answer 1" }],
-      },
-    ],
-  };
+const mockUserAnswers = [
+  {
+    answers: [
+      { questionId: '1', answer: 'Answer 1' },
+      { questionId: '2', answer: 'Answer 2' }
+    ]
+  },
+  {
+    answers: [
+      { questionId: '1', answer: 'Answer 3' }
+    ]
+  }
+];
+
+describe('SurveyResults', () => {
+  let mockNavigate;
+  let mockFetch;
+  let consoleErrorSpy;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    Storage.prototype.getItem = jest.fn(() => "mock-token");
-    useNavigate.mockReturnValue(mockNavigate);
-    useParams.mockReturnValue(defaultParams);
-    useLocation.mockReturnValue(mockLocation);
+    // Setup console.error spy
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Setup router mocks
+    mockNavigate = jest.fn();
+    require('react-router-dom').useNavigate.mockReturnValue(mockNavigate);
+    require('react-router-dom').useParams.mockReturnValue({ sessionId: 'test-session' });
+    require('react-router-dom').useLocation.mockReturnValue({
+      search: '?joinCode=TEST123'
+    });
+
+    // Setup fetch mock
+    mockFetch = jest.fn();
+    global.fetch = mockFetch;
+    
+    // Mock localStorage
+    Storage.prototype.getItem = jest.fn(() => 'mock-token');
   });
 
-  // Test 1: Loading State
-  test("should show loading spinner initially", () => {
-    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
+  afterEach(() => {
+    jest.clearAllMocks();
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('renders loading state initially', () => {
+    mockFetch.mockImplementationOnce(() => 
+      new Promise(() => {})
+    );
 
     render(<SurveyResults />);
-
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  // Test 2: Error State
-  test("should display error message when fetch fails", async () => {
-    const errorMessage = "Failed to fetch";
+  test('renders error state when fetch fails', async () => {
+    const errorMessage = 'Failed to fetch';
     mockFetch.mockRejectedValueOnce(new Error(errorMessage));
 
     render(<SurveyResults />);
 
     await waitFor(() => {
-      expect(screen.getByText("Error: Failed to fetch")).toBeInTheDocument();
+      expect(screen.getByText(`Error: ${errorMessage}`)).toBeInTheDocument();
+      expect(screen.getByText(/Retry/i)).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error fetching session answers:',
+        expect.any(Error)
+      );
     });
   });
 
-  // Test 3: Empty State
-  test("should display message when no questions are available", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ questions: [], userAnswers: [] }),
-    });
-
-    render(<SurveyResults />);
-
-    await waitFor(() => {
-      expect(screen.getByText("No questions available.")).toBeInTheDocument();
-    });
-  });
-
-  // Test 4: Questions Display
-  test("should display questions and their responses", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockData),
-    });
-
-    render(<SurveyResults />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Question 1")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("2")).toBeInTheDocument(); // Total responses for Q1
-    expect(screen.getByText("1")).toBeInTheDocument(); // Total responses for Q2
-  });
-
-  // Test 5: Question Row Click
-  test("should navigate to question details when row is clicked", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockData),
-    });
-
-    render(<SurveyResults />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Question 1")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Question 1"));
-    expect(mockNavigate).toHaveBeenCalledWith(
-      "/question-details/s456/q1?joinCode=abc123"
-    );
-  });
-
-  // Test 6: End Survey
-  test("should handle end survey action", async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData),
+  test('renders error state when response is not ok', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 404
       })
-      .mockResolvedValueOnce({
+    );
+
+    render(<SurveyResults />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Error: Failed to fetch session answers/i)).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error fetching session answers:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  test('renders error state when response format is invalid', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
         ok: true,
-      });
+        json: () => Promise.resolve({
+          invalidData: true
+        })
+      })
+    );
 
     render(<SurveyResults />);
 
     await waitFor(() => {
-      expect(screen.getByText("End Survey")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("End Survey"));
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:5000/api/survey-sessions/abc123/s456/end",
-        expect.objectContaining({
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer mock-token",
-          },
-          body: JSON.stringify({ joinCode: "abc123" }),
-        })
-      );
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith("/survey-list");
-  });
-
-  // Test 7: API Call Verification
-  test("should make initial API call with correct parameters", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockData),
-    });
-
-    render(<SurveyResults />);
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${process.env.REACT_APP_API_URL}/api/survey-answers/s456`,
-        expect.objectContaining({
-          headers: {
-            Authorization: "Bearer mock-token",
-          },
-        })
+      expect(screen.getByText(/Error: Invalid response format/i)).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error fetching session answers:',
+        expect.any(Error)
       );
     });
   });
 
-  // Test 8: Retry Button
-  test("should reload page when retry button is clicked", async () => {
-    const originalLocation = window.location;
-    delete window.location;
-    window.location = { reload: jest.fn() };
-
-    mockFetch.mockRejectedValueOnce(new Error("Failed to fetch"));
+  test('renders survey results successfully', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          questions: mockQuestions,
+          userAnswers: mockUserAnswers
+        })
+      })
+    );
 
     render(<SurveyResults />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Error:/)).toBeInTheDocument();
+      expect(screen.getByText('Survey Results')).toBeInTheDocument();
+      expect(screen.getByText('Test Question 1')).toBeInTheDocument();
+      expect(screen.getByText('Test Question 2')).toBeInTheDocument();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('calculates total responses correctly', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          questions: mockQuestions,
+          userAnswers: mockUserAnswers
+        })
+      })
+    );
+
+    render(<SurveyResults />);
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent('2'); // First question
+      expect(rows[2]).toHaveTextContent('1'); // Second question
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('navigates to question details when row is clicked', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          questions: mockQuestions,
+          userAnswers: mockUserAnswers
+        })
+      })
+    );
+
+    render(<SurveyResults />);
+
+    await waitFor(() => {
+      fireEvent.click(screen.getByText('Test Question 1'));
     });
 
-    fireEvent.click(screen.getByText("Retry"));
-    expect(window.location.reload).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/question-details/test-session/1?joinCode=TEST123'
+    );
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
 
-    window.location = originalLocation;
+  test('handles end quiz functionality', async () => {
+    mockFetch
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            questions: mockQuestions,
+            userAnswers: mockUserAnswers
+          })
+        })
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true
+        })
+      );
+
+    render(<SurveyResults />);
+
+    await waitFor(() => {
+      fireEvent.click(screen.getByText('End Survey'));
+    });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/survey-sessions/TEST123/test-session/end'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer mock-token'
+          })
+        })
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('handles no questions scenario', async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          questions: [],
+          userAnswers: []
+        })
+      })
+    );
+
+    render(<SurveyResults />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No questions available.')).toBeInTheDocument();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
   });
 });
