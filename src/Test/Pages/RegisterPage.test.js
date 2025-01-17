@@ -2,7 +2,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RegisterPage } from "../../pages/RegisterPage";
+import  RegisterPage  from "../../pages/RegisterPage";
 import { useAuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";

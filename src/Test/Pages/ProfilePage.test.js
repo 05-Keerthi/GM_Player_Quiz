@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ProfilePage } from "../../pages/ProfilePage";
+import ProfilePage from "../../pages/ProfilePage";
 import { useAuthContext } from "../../context/AuthContext";
 import { useUserContext } from "../../context/userContext";
 import { useNavigate } from "react-router-dom";

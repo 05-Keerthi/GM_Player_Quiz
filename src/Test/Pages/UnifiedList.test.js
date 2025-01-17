@@ -179,9 +179,11 @@ describe('UnifiedList Component', () => {
       const activeQuizCard = screen.getByTestId('quiz-card-2');
       fireEvent.click(activeQuizCard);
       expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringContaining('/details?type=quiz&quizId=2')
+        expect.stringContaining('/quiz-details?type=quiz&quizId=2')
       );
     });
+
+    
   });
 
   describe('Status Changes', () => {

@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter, Link } from "react-router-dom";
-import { NotFoundPage } from "../../pages/NotFoundPage";
+import NotFoundPage from "../../pages/NotFoundPage";
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
