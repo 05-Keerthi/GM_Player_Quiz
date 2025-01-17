@@ -124,7 +124,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
             Enter your game PIN below
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" role="form">
             <div>
               <input
                 type="text"
