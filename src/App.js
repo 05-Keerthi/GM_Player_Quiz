@@ -5,16 +5,16 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { useAuthContext } from "./context/AuthContext";
-import { NotFoundPage } from "./pages/NotFoundPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import LoginPage from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
+import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/Home";
-import { ProfilePage } from "./pages/ProfilePage";
+import ProfilePage from "./pages/ProfilePage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import Reports from "./pages/Report/Report";
 import UserReport from "./pages/Report/UserReport";
 import ActivityLogPage from "./pages/Activity/ActivityLog";
-import { ProtectedRoute } from "./routes/ProtectedRoute";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 // Import all necessary components for Content and Session routes
 import SelectCategoryPage from "./pages/SelectCategoryPage";

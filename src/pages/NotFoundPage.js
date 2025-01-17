@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-
-export const NotFoundPage = () => {
+const NotFoundPage = () => {
   return (
     <div
       data-testid="not-found-container"
@@ -23,3 +22,5 @@ export const NotFoundPage = () => {
     </div>
   );
 };
+
+export default NotFoundPage;

@@ -1,254 +1,285 @@
-import React, { useState, useEffect } from "react";
-import Cookies from "js-cookie";
-import { useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { useAuthContext } from "../context/AuthContext";
-import { usePasswordReset } from "../context/passwordResetContext";
-import PasswordResetModal from "../models/User/PasswordResetModal";
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { AuthContext } from "./context/AuthContext";
+import App from "../App";
 
-const LoginPage = () => {
-  const navigate = useNavigate();
-  const { login } = useAuthContext();
-  const { state: passwordResetState, actions: passwordResetActions } =
-    usePasswordReset();
+// Mock the necessary components and functions
+jest.mock("../pages/LoginPage", () => () => <div>Login Page</div>);
+jest.mock("../pages/RegisterPage", () => () => <div>Register Page</div>);
+jest.mock("../pages/Home", () => () => <div>Home Page</div>);
+jest.mock("../pages/ProfilePage", () => () => <div>Profile Page</div>);
+jest.mock("../pages/TenantDetailsPage", () => () => (
+  <div>Tenant Details Page</div>
+));
+jest.mock("../pages/SelectCategoryPage", () => () => (
+  <div>Select Category Page</div>
+));
+jest.mock("../pages/SelectSurveyCategory", () => () => (
+  <div>Select Survey Category</div>
+));
+jest.mock("../pages/quizCreator", () => () => <div>Quiz Creator</div>);
+jest.mock("../pages/SurveyCreator", () => () => <div>Survey Creator</div>);
+jest.mock("../pages/UnifiedList", () => () => <div>Unified List</div>);
+jest.mock("../pages/UnifiedDetails", () => () => <div>Unified Details</div>);
+jest.mock("../pages/Preview", () => () => <div>Preview Page</div>);
+jest.mock("../pages/SurveyPreview", () => () => <div>Survey Preview Page</div>);
+jest.mock("../pages/Session/Lobby/AdminLobby", () => () => (
+  <div>Admin Lobby</div>
+));
+jest.mock("../pages/Session/Lobby/SurveyLobby", () => () => (
+  <div>Survey Lobby</div>
+));
+jest.mock("../pages/Session/UserLobby/UserLobby", () => () => (
+  <div>User Lobby</div>
+));
+jest.mock("../pages/Session/UserLobby/SurveyUserLobby", () => () => (
+  <div>Survey User Lobby</div>
+));
+jest.mock("../pages/Session/Start/AdminStart", () => () => (
+  <div>Admin Start</div>
+));
+jest.mock("../pages/Session/Start/AdminSurveyStart", () => () => (
+  <div>Admin Survey Start</div>
+));
+jest.mock("../pages/Session/Play/UserPlay", () => () => <div>User Play</div>);
+jest.mock("./pages/Session/Play/UserSurveyPlay", () => () => (
+  <div>User Survey Play</div>
+));
+jest.mock("../pages/Session/UserJoin/UnifiedJoin", () => () => (
+  <div>Unified Join</div>
+));
+jest.mock("../pages/Session/FinalLeaderboard", () => () => (
+  <div>Final Leaderboard</div>
+));
+jest.mock("../pages/Session/Start/SurveyResults", () => () => (
+  <div>Survey Results</div>
+));
+jest.mock("../pages/Session/Start/QuestionDetailsResult", () => () => (
+  <div>Question Details Result</div>
+));
+jest.mock("../pages/Report/Report", () => () => <div>Reports</div>);
+jest.mock("../pages/Report/UserReport", () => () => <div>User Report</div>);
+jest.mock("../pages/Activity/ActivityLog", () => () => (
+  <div>Activity Log Page</div>
+));
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [generalError, setGeneralError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-
-  useEffect(() => {
-    const rememberedEmail = Cookies.get("rememberedEmail");
-    if (rememberedEmail) {
-      setEmail(rememberedEmail);
-      setRememberMe(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!showForgotPasswordModal) {
-      setEmailError("");
-      setPasswordError("");
-      setGeneralError("");
-      passwordResetActions.reset();
-    }
-  }, [showForgotPasswordModal, passwordResetActions]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    let isValid = true;
-
-    // Clear all errors
-    setEmailError("");
-    setPasswordError("");
-    setGeneralError("");
-
-    // Validate email
-    if (!email) {
-      setEmailError("Enter email");
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError("Please enter a valid email address");
-      isValid = false;
-    }
-
-    // Validate password
-    if (!password) {
-      setPasswordError("Enter your password");
-      isValid = false;
-    }
-
-    if (isValid) {
-      try {
-        await login(email, password, rememberMe);
-        navigate("/");
-      } catch (error) {
-        const errorResponse = error.response?.data;
-
-        if (errorResponse?.message) {
-          if (errorResponse.message.toLowerCase().includes("password")) {
-            setPasswordError(errorResponse.message);
-          } else if (errorResponse.message.toLowerCase().includes("email")) {
-            setEmailError(errorResponse.message);
-          } else {
-            setGeneralError(errorResponse.message);
-          }
-        } else {
-          setGeneralError("An unexpected error occurred. Please try again.");
-        }
-      }
-    }
+describe("App", () => {
+  const renderWithRouter = (ui, { route = "/" } = {}) => {
+    window.history.pushState({}, "Test page", route);
+    return render(ui, { wrapper: MemoryRouter });
   };
 
-  const handleForgotPassword = () => {
-    setShowForgotPasswordModal(true);
-    // Pre-fill email in password reset modal if it exists
-    if (email) {
-      passwordResetActions.reset(); // Reset any previous state
-    }
-  };
+  test("renders LoginPage when not authenticated", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: false }}>
+        <App />
+      </AuthContext.Provider>
+    );
+    expect(screen.getByText("Login Page")).toBeInTheDocument();
+  });
 
-  const handlePasswordResetComplete = () => {
-    setShowForgotPasswordModal(false);
-    setGeneralError("");
-    setPassword(""); // Clear password field after reset
-  };
+  test("renders RegisterPage when not authenticated and on /register route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: false }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/register" }
+    );
+    expect(screen.getByText("Register Page")).toBeInTheDocument();
+  });
 
-  return (
-    <>
-      <div className="min-h-screen relative flex items-center justify-center bg-gray-100 p-4">
-        <div className="relative z-10 max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
-          <h2 className="text-2xl font-bold text-center mb-8">Login</h2>
+  test("renders HomePage when authenticated", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>
+    );
+    expect(screen.getByText("Home Page")).toBeInTheDocument();
+  });
 
-          {generalError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded relative">
-              <span>{generalError}</span>
-              <button
-                onClick={() => setGeneralError("")}
-                className="absolute top-1 right-1 text-red-500 hover:text-red-700"
-                aria-label="Close error message"
-              >
-                ×
-              </button>
-            </div>
-          )}
+  test("renders ProfilePage when authenticated and on /user/profile route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/user/profile" }
+    );
+    expect(screen.getByText("Profile Page")).toBeInTheDocument();
+  });
 
-          {passwordResetState.success && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded relative">
-              <span>
-                Password reset successful! Please login with your new password.
-              </span>
-              <button
-                onClick={() => passwordResetActions.reset()}
-                className="absolute top-1 right-1 text-green-500 hover:text-green-700"
-                aria-label="Close success message"
-              >
-                ×
-              </button>
-            </div>
-          )}
+  test("renders TenantDetailsPage when authenticated and on /tenants/:id route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/tenants/123" }
+    );
+    expect(screen.getByText("Tenant Details Page")).toBeInTheDocument();
+  });
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setEmailError("");
-                }}
-                className={`mt-1 block w-full rounded-md border ${
-                  emailError ? "border-red-500" : "border-gray-300"
-                }px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                placeholder="Enter your email"
-              />
-              {emailError && (
-                <p className="mt-1 text-sm text-red-600">{emailError}</p>
-              )}
-            </div>
+  test("renders SelectCategoryPage when on /selectQuizCategory route", () => {
+    renderWithRouter(<App />, { route: "/selectQuizCategory" });
+    expect(screen.getByText("Select Category Page")).toBeInTheDocument();
+  });
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordError("");
-                  }}
-                  className={`mt-1 block w-full rounded-md border ${
-                    passwordError ? "border-red-500" : "border-gray-300"
-                  }px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600"
-                >
-                  <FontAwesomeIcon
-                    icon={showPassword ? faEyeSlash : faEye}
-                    className="h-4 w-4"
-                  />
-                </button>
-              </div>
-              {passwordError && (
-                <p className="mt-1 text-sm text-red-600">{passwordError}</p>
-              )}
-            </div>
+  test("renders SelectSurveyCategory when on /selectSurveyCategory route", () => {
+    renderWithRouter(<App />, { route: "/selectSurveyCategory" });
+    expect(screen.getByText("Select Survey Category")).toBeInTheDocument();
+  });
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-700"
-                >
-                  Remember me
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
-              >
-                Forgot password?
-              </button>
-            </div>
+  test("renders QuizCreator when on /createQuiz/:quizId route", () => {
+    renderWithRouter(<App />, { route: "/createQuiz/123" });
+    expect(screen.getByText("Quiz Creator")).toBeInTheDocument();
+  });
 
-            <button
-              type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
-            >
-              Login
-            </button>
+  test("renders SurveyCreator when on /createSurvey/:surveyId route", () => {
+    renderWithRouter(<App />, { route: "/createSurvey/123" });
+    expect(screen.getByText("Survey Creator")).toBeInTheDocument();
+  });
 
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => navigate("/register")}
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
-              >
-                Don't have an account? Register
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+  test("renders UnifiedList with quiz type when on /quiz-list route", () => {
+    renderWithRouter(<App />, { route: "/quiz-list" });
+    expect(screen.getByText("Unified List")).toBeInTheDocument();
+  });
 
-      <PasswordResetModal
-        isOpen={showForgotPasswordModal}
-        onClose={() => setShowForgotPasswordModal(false)}
-        initialEmail={email}
-        onSuccess={handlePasswordResetComplete}
-      />
-    </>
-  );
-};
+  test("renders UnifiedList with survey type when on /survey-list route", () => {
+    renderWithRouter(<App />, { route: "/survey-list" });
+    expect(screen.getByText("Unified List")).toBeInTheDocument();
+  });
 
-export default LoginPage;
+  test("renders UnifiedDetails when on /details route", () => {
+    renderWithRouter(<App />, { route: "/details" });
+    expect(screen.getByText("Unified Details")).toBeInTheDocument();
+  });
+
+  test("renders PreviewPage when on /preview/:quizId route", () => {
+    renderWithRouter(<App />, { route: "/preview/123" });
+    expect(screen.getByText("Preview Page")).toBeInTheDocument();
+  });
+
+  test("renders SurveyPreviewPage when on /surveyPreview/:surveyId route", () => {
+    renderWithRouter(<App />, { route: "/surveyPreview/123" });
+    expect(screen.getByText("Survey Preview Page")).toBeInTheDocument();
+  });
+
+  test("renders AdminLobby when on /lobby route", () => {
+    renderWithRouter(<App />, { route: "/lobby" });
+    expect(screen.getByText("Admin Lobby")).toBeInTheDocument();
+  });
+
+  test("renders SurveyLobby when on /survey-lobby route", () => {
+    renderWithRouter(<App />, { route: "/survey-lobby" });
+    expect(screen.getByText("Survey Lobby")).toBeInTheDocument();
+  });
+
+  test("renders UnifiedJoin with quiz type when authenticated and on /join route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/join" }
+    );
+    expect(screen.getByText("Unified Join")).toBeInTheDocument();
+  });
+
+  test("renders UnifiedJoin with survey type when on /joinsurvey route", () => {
+    renderWithRouter(<App />, { route: "/joinsurvey" });
+    expect(screen.getByText("Unified Join")).toBeInTheDocument();
+  });
+
+  test("renders UserLobby when on /user-lobby route", () => {
+    renderWithRouter(<App />, { route: "/user-lobby" });
+    expect(screen.getByText("User Lobby")).toBeInTheDocument();
+  });
+
+  test("renders SurveyUserLobby when on /survey-user-lobby route", () => {
+    renderWithRouter(<App />, { route: "/survey-user-lobby" });
+    expect(screen.getByText("Survey User Lobby")).toBeInTheDocument();
+  });
+
+  test("renders AdminStart when on /start route", () => {
+    renderWithRouter(<App />, { route: "/start" });
+    expect(screen.getByText("Admin Start")).toBeInTheDocument();
+  });
+
+  test("renders AdminSurveyStart when on /start-survey route", () => {
+    renderWithRouter(<App />, { route: "/start-survey" });
+    expect(screen.getByText("Admin Survey Start")).toBeInTheDocument();
+  });
+
+  test("renders UserPlay when on /play route", () => {
+    renderWithRouter(<App />, { route: "/play" });
+    expect(screen.getByText("User Play")).toBeInTheDocument();
+  });
+
+  test("renders UserSurveyPlay when on /survey-play route", () => {
+    renderWithRouter(<App />, { route: "/survey-play" });
+    expect(screen.getByText("User Survey Play")).toBeInTheDocument();
+  });
+
+  test("renders FinalLeaderboard when on /leaderboard route", () => {
+    renderWithRouter(<App />, { route: "/leaderboard" });
+    expect(screen.getByText("Final Leaderboard")).toBeInTheDocument();
+  });
+
+  test("renders SurveyResults when on /results/:sessionId route", () => {
+    renderWithRouter(<App />, { route: "/results/123" });
+    expect(screen.getByText("Survey Results")).toBeInTheDocument();
+  });
+
+  test("renders QuestionDetailsResult when on /question-details/:sessionId/:questionId route", () => {
+    renderWithRouter(<App />, { route: "/question-details/123/456" });
+    expect(screen.getByText("Question Details Result")).toBeInTheDocument();
+  });
+
+  test("renders Reports when authenticated and on /reports route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/reports" }
+    );
+    expect(screen.getByText("Reports")).toBeInTheDocument();
+  });
+
+  test("renders UserReport when authenticated and on /userreports/:userId route", () => {
+    renderWithRouter(
+      <AuthContext.Provider value={{ isAuthenticated: true }}>
+        <App />
+      </AuthContext.Provider>,
+      { route: "/userreports/123" }
+    );
+    expect(screen.getByText("User Report")).toBeInTheDocument();
+  });
+
+  test("renders ActivityLogPage when on /Activity-log route", () => {
+    renderWithRouter(<App />, { route: "/Activity-log" });
+    expect(screen.getByText("Activity Log Page")).toBeInTheDocument();
+  });
+
+  test("redirects legacy /quiz-details route to /details with correct search params", () => {
+    renderWithRouter(<App />, { route: "/quiz-details?id=123" });
+    expect(window.location.pathname).toBe("/details");
+    expect(window.location.search).toBe("?type=quiz&id=123");
+  });
+
+  test("redirects legacy /survey-details route to /details with correct search params", () => {
+    renderWithRouter(<App />, { route: "/survey-details?id=123" });
+    expect(window.location.pathname).toBe("/details");
+    expect(window.location.search).toBe("?type=survey&id=123");
+  });
+
+  test("displays error toast when session expires", () => {
+    const resetSessionState = jest.fn();
+    render(
+      <AuthContext.Provider value={{ sessionExpired: true, resetSessionState }}>
+        <App />
+      </AuthContext.Provider>
+    );
+    expect(resetSessionState).toHaveBeenCalled();
+    expect(
+      screen.getByText("Your session has expired. Please log in again.")
+    ).toBeInTheDocument();
+  });
+});

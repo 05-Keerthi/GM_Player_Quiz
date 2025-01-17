@@ -5,7 +5,7 @@ import Navbar from "../components/NavbarComp";
 import { useAuthContext } from "../context/AuthContext";
 import { useUserContext } from "../context/userContext";
 
-export const ProfilePage = () => {
+const ProfilePage = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
   const { fetchUserById, updateUser, changePassword } = useUserContext();
   const [profileData, setProfileData] = useState(null);
@@ -386,3 +386,5 @@ export const ProfilePage = () => {
     </>
   );
 };
+
+export default ProfilePage;

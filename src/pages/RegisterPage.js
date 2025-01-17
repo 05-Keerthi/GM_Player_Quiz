@@ -8,7 +8,7 @@ import { useAuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
 
 // RegisterPage.jsx
-export const RegisterPage = () => {
+const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuthContext();
 
@@ -280,3 +280,4 @@ export const RegisterPage = () => {
     </div>
   );
 };
+export default RegisterPage;
