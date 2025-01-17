@@ -183,19 +183,43 @@ describe("SurveyCreator", () => {
   });
 
   test("renders initial survey creator with content", async () => {
+    const mockSurveyWithOrder = {
+      ...mockSurvey,
+      questions: mockQuestions,
+      slides: mockSlides,
+      order: [
+        { id: "q1", type: "question" },
+        { id: "q2", type: "question" },
+        { id: "s1", type: "slide" },
+        { id: "s2", type: "slide" },
+      ],
+    };
+
+    mockGetSurveyById.mockResolvedValue(mockSurveyWithOrder);
+
     render(<SurveyCreator />);
 
     expect(screen.getByText("Survey Creator")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId("survey-title-input")).toHaveValue(
-        "Test Survey"
-      );
+      expect(screen.getByDisplayValue("Test Survey")).toBeInTheDocument();
     });
 
-    await screen.findByTestId("content-list");
-    const contentList = screen.getByTestId("content-list");
-    expect(within(contentList).getAllByRole("button")).toHaveLength(4); // 2 questions + 2 slides
+    // Wait for first question to be rendered
+    await waitFor(() => {
+      expect(screen.getByText("First Question")).toBeInTheDocument();
+    });
+
+    // After first item is rendered, verify all other content
+    const questionItems = screen.getAllByText(/^Question \d+$/);
+    const slideItems = screen.getAllByText(/^Slide \d+$/);
+
+    expect(questionItems).toHaveLength(2);
+    expect(slideItems).toHaveLength(2);
+
+    expect(screen.getByText("Second Question")).toBeInTheDocument();
+    expect(screen.getByText("First Slide")).toBeInTheDocument();
+    expect(screen.getByText("Second Slide")).toBeInTheDocument();
   });
 
   test("handles adding a new question", async () => {
@@ -241,85 +265,42 @@ describe("SurveyCreator", () => {
   });
 
   test("handles reordering items", async () => {
-    // Mock initial survey data
-    const mockSurvey = {
-      _id: "survey123",
-      title: "Test Survey",
-      description: "Test Description",
+    const mockSurveyWithOrder = {
+      ...mockSurvey,
+      questions: [mockQuestions[0]],
+      slides: [mockSlides[0]],
       order: [
         { id: "q1", type: "question" },
         { id: "s1", type: "slide" },
       ],
     };
 
-    const mockQuestions = [
-      { _id: "q1", title: "First Question", type: "text" },
-    ];
-
-    const mockSlides = [
-      { _id: "s1", surveyTitle: "First Slide", content: "Content" },
-    ];
-
-    // Setup mocks
-    const mockGetSurveyById = jest.fn().mockResolvedValue(mockSurvey);
-    const mockUpdateSurvey = jest.fn().mockResolvedValue(mockSurvey);
-    const mockGetAllQuestions = jest.fn().mockResolvedValue(mockQuestions);
-    const mockGetAllSlides = jest.fn().mockResolvedValue(mockSlides);
-
-    // Mock context values
-    useSurveyContext.mockReturnValue({
-      currentSurvey: mockSurvey,
-      loading: false,
-      getSurveyById: mockGetSurveyById,
-      updateSurvey: mockUpdateSurvey,
-    });
-
-    useQuestionContext.mockReturnValue({
-      loading: false,
-      getAllQuestions: mockGetAllQuestions,
-      createQuestion: jest.fn(),
-      updateQuestion: jest.fn(),
-      deleteQuestion: jest.fn(),
-    });
-
-    useSurveySlideContext.mockReturnValue({
-      loading: false,
-      getAllSlides: mockGetAllSlides,
-      createSlide: jest.fn(),
-      updateSlide: jest.fn(),
-      deleteSlide: jest.fn(),
-    });
+    mockGetSurveyById.mockResolvedValue(mockSurveyWithOrder);
 
     render(<SurveyCreator />);
 
-    // Wait for content to load
+    // Wait for first item to be rendered
     await waitFor(() => {
-      expect(screen.getByTestId("content-list")).toBeInTheDocument();
+      expect(screen.getByTestId("content-item-0")).toBeInTheDocument();
     });
 
-    // Verify initial content items are rendered
-    const firstItem = await screen.findByTestId("content-item-0");
-    const secondItem = await screen.findByTestId("content-item-1");
+    // After first item is rendered, verify second item
+    expect(screen.getByTestId("content-item-1")).toBeInTheDocument();
 
-    expect(firstItem).toBeInTheDocument();
-    expect(secondItem).toBeInTheDocument();
+    const firstItem = screen.getByTestId("content-item-0");
+    const secondItem = screen.getByTestId("content-item-1");
 
     // Simulate drag and drop
     fireEvent.dragStart(firstItem, {
-      dataTransfer: {
-        setData: jest.fn(),
-      },
+      dataTransfer: { setData: jest.fn() },
     });
 
     fireEvent.drop(secondItem, {
-      dataTransfer: {
-        getData: () => "0",
-      },
+      dataTransfer: { getData: () => "0" },
     });
 
     fireEvent.dragEnd(firstItem);
 
-    // Verify updateSurvey was called with reordered items
     await waitFor(() => {
       expect(mockUpdateSurvey).toHaveBeenCalledWith(
         "survey123",
@@ -333,39 +314,40 @@ describe("SurveyCreator", () => {
     });
   });
 
+  
   test("handles deleting a question", async () => {
+    const mockSurveyWithOrder = {
+      ...mockSurvey,
+      questions: [mockQuestions[0]],
+      slides: [],
+      order: [{ id: "q1", type: "question" }],
+    };
+
+    mockGetSurveyById.mockResolvedValue(mockSurveyWithOrder);
     mockDeleteQuestion.mockResolvedValue({});
 
     render(<SurveyCreator />);
 
-    // Wait for content to load
     await waitFor(() => {
       expect(screen.getByTestId("delete-question-q1")).toBeInTheDocument();
     });
 
-    // Click delete button for the first question
     const deleteButton = screen.getByTestId("delete-question-q1");
-    await user.click(deleteButton);
+    await userEvent.click(deleteButton);
 
-    // Wait for confirmation modal
-    await waitFor(() => {
-      expect(screen.getByTestId("confirmation-modal")).toBeInTheDocument();
-    });
+    // Verify modal appears
+    const modal = screen.getByTestId("confirmation-modal");
+    expect(modal).toBeInTheDocument();
 
-    // Click confirm delete
     const confirmButton = screen.getByTestId("confirm-delete-button");
-    await user.click(confirmButton);
+    await userEvent.click(confirmButton);
 
-    // Verify delete calls
     await waitFor(() => {
       expect(mockDeleteQuestion).toHaveBeenCalledWith("survey123", "q1");
     });
 
-    await waitFor(() => {
-      expect(mockUpdateSurvey).toHaveBeenCalled();
-    });
+    expect(mockUpdateSurvey).toHaveBeenCalled();
   });
-
   test("handles updating survey settings", async () => {
     render(<SurveyCreator />);
 
