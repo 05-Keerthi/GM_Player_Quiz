@@ -198,19 +198,21 @@ describe('Socket.io Server', () => {
         });
     
         test('should handle join-survey-session event', (done) => {
-          const sessionData = {
+          const mockData = {
             sessionId: 'survey-session',
             userId: 'user123',
-            username: 'testUser'
+            username: 'TestUser',
+            isGuest: true
           };
     
+          clientSocket.emit('join-survey-session', mockData);
+    
           clientSocket.on('user-joined-survey', (data) => {
-            expect(data.userId).toBe(sessionData.userId);
-            expect(data.username).toBe(sessionData.username);
+            expect(data.userId).toBe(mockData.userId);
+            expect(data.username).toBe(mockData.username);
+            expect(data.isGuest).toBe(mockData.isGuest);
             done();
           });
-    
-          clientSocket.emit('join-survey-session', sessionData);
         });
     
         test('should handle next-survey-question event', (done) => {
@@ -254,31 +256,33 @@ describe('Socket.io Server', () => {
             questionId: 'question123',
             userId: 'user123',
             answer: 'Selected option',
-            timeTaken: 15
+            timeTaken: 15,
+            isGuest: false, // Added isGuest field
           };
-    
+        
           let surveyAnswerReceived = false;
           let confirmationReceived = false;
-    
+        
           clientSocket.on('survey-answer-submitted', (data) => {
             expect(data.questionId).toBe(answerData.questionId);
             expect(data.userId).toBe(answerData.userId);
             expect(data.answer).toBe(answerData.answer);
             expect(data.timeTaken).toBe(answerData.timeTaken);
+            expect(data.isGuest).toBe(answerData.isGuest); // Validate isGuest
             surveyAnswerReceived = true;
             if (confirmationReceived) done();
           });
-    
+        
           clientSocket.on('answer-submission-confirmed', (data) => {
             expect(data.status).toBe('success');
             expect(data.questionId).toBe(answerData.questionId);
             confirmationReceived = true;
             if (surveyAnswerReceived) done();
           });
-    
+        
           clientSocket.emit('survey-submit-answer', answerData);
         });
-    
+        
         test('should handle survey-completed event', (done) => {
           const sessionData = {
             sessionId: 'survey-session'
