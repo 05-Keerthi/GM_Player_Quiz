@@ -6,6 +6,7 @@ const router = require('../../routes/surveyAnswerRoutes');
 jest.mock('../../middlewares/auth', () => ({
   auth: jest.fn((req, res, next) => next()),
   isAdmin: jest.fn((req, res, next) => next()),
+  optionalAuth: jest.fn((req, res, next) => next()),
 }));
 
 // Mock controller functions
@@ -24,10 +25,11 @@ jest.mock('../../controllers/surveysubmitanswerController', () => ({
   ),
 }));
 
-const { auth, isAdmin } = require('../../middlewares/auth');
+const { auth, isAdmin, optionalAuth } = require('../../middlewares/auth');
 
 // Set up Express app
 const app = express();
+app.use(express.json()); // Required for parsing JSON request bodies
 app.use('/api', router);
 
 describe('Survey Answer Routes', () => {
@@ -36,20 +38,20 @@ describe('Survey Answer Routes', () => {
   });
 
   // Test POST /api/survey-submit-answer/:sessionId/:questionId
-  it('should call submitSurveyAnswer when a valid POST request is made to /api/survey-submit-answer/:sessionId/:questionId', async () => {
+  it('should call submitSurveyAnswer with optionalAuth when a valid POST request is made to /api/survey-submit-answer/:sessionId/:questionId', async () => {
     const sessionId = 'session123';
     const questionId = 'question456';
     const res = await request(app)
       .post(`/api/survey-submit-answer/${sessionId}/${questionId}`)
       .send({ answer: 'Sample Answer' });
 
-    expect(auth).toHaveBeenCalledTimes(1);
+    expect(optionalAuth).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(201);
     expect(res.body.message).toBe('Survey answer submitted successfully');
   });
 
   // Test GET /api/survey-answers/:sessionId
-  it('should call getAllAnswersForSession when a valid GET request is made to /api/survey-answers/:sessionId', async () => {
+  it('should call getAllAnswersForSession with auth and isAdmin when a valid GET request is made to /api/survey-answers/:sessionId', async () => {
     const sessionId = 'session123';
     const res = await request(app).get(`/api/survey-answers/${sessionId}`);
 
@@ -60,7 +62,7 @@ describe('Survey Answer Routes', () => {
   });
 
   // Test GET /api/survey-answers/:sessionId/:questionId
-  it('should call getAnswersForSpecificQuestion when a valid GET request is made to /api/survey-answers/:sessionId/:questionId', async () => {
+  it('should call getAnswersForSpecificQuestion with auth and isAdmin when a valid GET request is made to /api/survey-answers/:sessionId/:questionId', async () => {
     const sessionId = 'session123';
     const questionId = 'question456';
     const res = await request(app).get(

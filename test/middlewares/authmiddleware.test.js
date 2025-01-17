@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const { auth, isSuperAdmin, isAdmin, isTenantAdmin, isAdminOrTenantAdmin } = require('../../middlewares/auth');
+const { auth, isSuperAdmin, isAdmin, isTenantAdmin, isAdminOrTenantAdmin, optionalAuth } = require('../../middlewares/auth');
 
 // Mock the required models
 jest.mock('../../models/User');
@@ -216,6 +216,48 @@ describe('Authentication Middleware', () => {
         expect(mockRes.json).toHaveBeenCalledWith({
           message: 'Access denied. Admin only.'
         });
+      });
+    });
+
+    describe('optionalAuth middleware', () => {
+      test('should allow guest access if isGuest is true', async () => {
+        mockReq.body = { isGuest: true };
+    
+        await optionalAuth(mockReq, mockRes, nextFunction);
+    
+        expect(nextFunction).toHaveBeenCalled();
+      });
+    
+      test('should authenticate user if isGuest is false', async () => {
+        const validToken = 'valid-token';
+        const validUserId = new mongoose.Types.ObjectId();
+        mockReq.header.mockReturnValue(`Bearer ${validToken}`);
+        mockReq.body = { isGuest: false };
+    
+        jwt.verify = jest.fn().mockReturnValue({ id: validUserId });
+        BlacklistedToken.findOne.mockResolvedValue(null);
+        const mockUser = { _id: validUserId, email: 'test@example.com' };
+        User.findById.mockReturnValue({
+          select: jest.fn().mockResolvedValue(mockUser),
+        });
+    
+        await optionalAuth(mockReq, mockRes, nextFunction);
+    
+        expect(mockReq.user).toEqual(mockUser);
+        expect(nextFunction).toHaveBeenCalled();
+      });
+    
+      test('should return 401 if token is missing for authenticated user', async () => {
+        mockReq.body = { isGuest: false };
+        mockReq.header.mockReturnValue(null);
+    
+        await optionalAuth(mockReq, mockRes, nextFunction);
+    
+        expect(mockRes.status).toHaveBeenCalledWith(401);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          message: 'Access denied. No token provided.',
+        });
+        expect(nextFunction).not.toHaveBeenCalled();
       });
     });
   });
