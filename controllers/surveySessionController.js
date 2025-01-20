@@ -7,6 +7,7 @@ const SurveyQuestion = require("../models/surveyQuestion");
 const SurveyQuiz = require("../models/surveyQuiz");
 const SurveySlide = require("../models/surveySlide");
 const Media = require("../models/Media");
+const ActivityLog = require('../models/ActivityLog');
 
 exports.createSurveySession = async (req, res) => {
   const { surveyQuizId } = req.params; // Survey quiz ID from the request params
@@ -444,6 +445,25 @@ exports.endSurveySession = async (req, res) => {
     session.surveyStatus = "completed";
     session.endTime = Date.now();
     await session.save();
+
+    const surveyPlayersDetails = session.surveyPlayers.map(player => ({
+      username: player.username,
+      email: player.email,
+    }));
+    const serializedPlayers = JSON.stringify(surveyPlayersDetails); // Convert array to JSON string
+
+    const logEntry = new ActivityLog({
+     
+      activityType: "survey_play",
+      details: {
+        sessionId: session._id.toString(),
+        surveyStatus: session.surveyStatus,
+        endTime: session.endTime.toISOString(),
+        surveyPlayers: serializedPlayers, 
+      },
+    });
+
+    await logEntry.save();
 
     // Emit the session end event
     const io = req.app.get("socketio");

@@ -93,6 +93,7 @@ exports.createSurveyQuiz = async (req, res) => {
             username: req.user.username,
             surveyTitle: title,
             surveyDescription: description,
+            type,
           },
           createdAt: new Date(),
         });
