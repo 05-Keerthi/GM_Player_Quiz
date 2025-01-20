@@ -15,36 +15,16 @@ const {
 } = require("../controllers/surveySessionController");
 
 // Admin routes - require full authentication
-router.post(
-  "/survey-sessions/:surveyQuizId/create",
-  auth,
-  isAdminOrTenantAdmin,
-  createSurveySession
-);
+router.post("/survey-sessions/:surveyQuizId/create", auth, isAdminOrTenantAdmin, createSurveySession );
 
 // Routes that support both authenticated and guest users
-router.post("/survey-sessions/:joinCode/join", optionalAuth, joinSurveySession);
+router.post("/survey-sessions/:joinCode/join", optionalAuth, joinSurveySession );
 
 // Admin routes for session management
-router.post(
-  "/survey-sessions/:joinCode/:sessionId/start",
-  auth,
-  isAdminOrTenantAdmin,
-  startSurveySession
-);
+router.post("/survey-sessions/:joinCode/:sessionId/start", auth, isAdminOrTenantAdmin, startSurveySession );
 
-router.post(
-  "/survey-sessions/:joinCode/:sessionId/next",
-  auth,
-  isAdminOrTenantAdmin,
-  nextSurveyQuestion
-);
+router.post("/survey-sessions/:joinCode/:sessionId/next", auth, isAdminOrTenantAdmin, nextSurveyQuestion );
 
-router.post(
-  "/survey-sessions/:joinCode/:sessionId/end",
-  auth,
-  isAdminOrTenantAdmin,
-  endSurveySession
-);
+router.post( "/survey-sessions/:joinCode/:sessionId/end", auth, isAdminOrTenantAdmin, endSurveySession );
 
 module.exports = router;

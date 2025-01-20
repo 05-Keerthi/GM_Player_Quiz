@@ -17,7 +17,7 @@ exports.submitSurveyAnswer = async (req, res) => {
     }
 
     if (session.surveyStatus !== "in_progress") {
-        return res.status(400).json({ message: "Survey session is not in progress" });
+      return res.status(400).json({ message: "Survey session is not in progress" });
     }
 
     // Verify the question exists
@@ -34,20 +34,28 @@ exports.submitSurveyAnswer = async (req, res) => {
       surveySession: sessionId,
     });
 
+    let surveyAnswer;
+    let message;
+
     if (existingAnswer) {
-        return res.status(400).json({ message: "You have already submitted an answer for this question" });
+      // Update existing answer
+      existingAnswer.surveyAnswer = answer;
+      existingAnswer.timeTaken = timeTaken;
+      existingAnswer.updatedAt = new Date();
+      surveyAnswer = await existingAnswer.save();
+      message = "Answer updated successfully";
+    } else {
+      // Create new answer
+      surveyAnswer = new SurveyAnswer({
+        surveyQuestion: questionId,
+        surveyPlayers: userId,
+        surveySession: sessionId,
+        surveyAnswer: answer,
+        timeTaken,
+      });
+      await surveyAnswer.save();
+      message = "Answer submitted successfully";
     }
-
-    // Save the answer to the database
-    const surveyAnswer = new SurveyAnswer({
-      surveyQuestion: questionId,
-      surveyPlayers: userId,
-      surveySession: sessionId,
-      surveyAnswer: answer,
-      timeTaken,
-    });
-
-    await surveyAnswer.save();
 
     // Emit the 'survey-submit-answer' event to notify other clients
     const io = req.app.get("socketio");
@@ -57,11 +65,12 @@ exports.submitSurveyAnswer = async (req, res) => {
       userId,
       answer,
       timeTaken,
+      isUpdate: !!existingAnswer,
     });
 
     // Respond with a success message
     res.status(200).json({
-      message: "Answer submitted successfully",
+      message,
       surveyAnswer,
     });
   } catch (error) {
@@ -69,6 +78,73 @@ exports.submitSurveyAnswer = async (req, res) => {
     res.status(500).json({ message: "Error submitting survey answer", error });
   }
 };
+
+// exports.submitSurveyAnswer = async (req, res) => {
+//   const { sessionId, questionId } = req.params;
+//   const { answer, timeTaken } = req.body;
+//   const userId = req.user?._id || req.body.guestUserId;
+
+//   try {
+//     // Verify the session exists and is in progress
+//     const session = await SurveySession.findById(sessionId);
+
+//     if (!session) {
+//       return res.status(404).json({ message: "Survey session not found" });
+//     }
+
+//     if (session.surveyStatus !== "in_progress") {
+//         return res.status(400).json({ message: "Survey session is not in progress" });
+//     }
+
+//     // Verify the question exists
+//     const question = await SurveyQuestion.findById(questionId);
+
+//     if (!question) {
+//       return res.status(404).json({ message: "Survey question not found" });
+//     }
+
+//     // Check if the user has already answered this question in this session
+//     const existingAnswer = await SurveyAnswer.findOne({
+//       surveyQuestion: questionId,
+//       surveyPlayers: userId,
+//       surveySession: sessionId,
+//     });
+
+//     if (existingAnswer) {
+//         return res.status(400).json({ message: "You have already submitted an answer for this question" });
+//     }
+
+//     // Save the answer to the database
+//     const surveyAnswer = new SurveyAnswer({
+//       surveyQuestion: questionId,
+//       surveyPlayers: userId,
+//       surveySession: sessionId,
+//       surveyAnswer: answer,
+//       timeTaken,
+//     });
+
+//     await surveyAnswer.save();
+
+//     // Emit the 'survey-submit-answer' event to notify other clients
+//     const io = req.app.get("socketio");
+//     io.emit("survey-submit-answer", {
+//       sessionId,
+//       questionId,
+//       userId,
+//       answer,
+//       timeTaken,
+//     });
+
+//     // Respond with a success message
+//     res.status(200).json({
+//       message: "Answer submitted successfully",
+//       surveyAnswer,
+//     });
+//   } catch (error) {
+//     console.error("Error submitting survey answer:", error);
+//     res.status(500).json({ message: "Error submitting survey answer", error });
+//   }
+// };
   
 
 exports.getAllAnswersForSession = async (req, res) => {
