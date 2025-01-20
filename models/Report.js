@@ -1,13 +1,16 @@
 const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
-  quiz: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', required: true },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
-  totalQuestions: { type: Number, required: true },
-  correctAnswers: { type: Number, required: true },
-  incorrectAnswers: { type: Number, required: true },
-  totalScore: { type: Number, required: true },
+  quiz: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
+  surveyQuiz: { type: mongoose.Schema.Types.ObjectId, ref: 'SurveyQuiz' },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
+  surveySessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'SurveySession' },
+  totalQuestions: { type: Number },
+  surveyTotalQuestions: { type: Number },
+  correctAnswers: { type: Number },
+  incorrectAnswers: { type: Number },
+  totalScore: { type: Number },
   completedAt: { type: Date, default: Date.now },
 });
 

@@ -8,6 +8,7 @@ const SurveyQuiz = require("../models/surveyQuiz");
 const SurveySlide = require("../models/surveySlide");
 const Media = require("../models/Media");
 const ActivityLog = require('../models/ActivityLog');
+const Report = require("../models/Report");
 
 exports.createSurveySession = async (req, res) => {
   const { surveyQuizId } = req.params; // Survey quiz ID from the request params
@@ -434,8 +435,9 @@ exports.endSurveySession = async (req, res) => {
       surveyJoinCode: joinCode,
       _id: sessionId,
     })
-      .populate("surveyPlayers", "username email")
-      .populate("surveyHost", "username email");
+      .populate("surveyPlayers", "username email _id")
+      .populate("surveyHost", "username email _id")
+      .populate("surveyQuiz", "title");
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
@@ -446,33 +448,44 @@ exports.endSurveySession = async (req, res) => {
     session.endTime = Date.now();
     await session.save();
 
-    const surveyPlayersDetails = session.surveyPlayers.map(player => ({
-      username: player.username,
-      email: player.email,
-    }));
-    const serializedPlayers = JSON.stringify(surveyPlayersDetails); // Convert array to JSON string
+    // Generate reports and activity logs for each survey player
+    const reports = [];
+    const activityLogs = [];
+    for (const player of session.surveyPlayers) {
+      const reportData = {
+        surveyQuiz: session.surveyQuiz._id,
+        surveySessionId: session._id,
+        user: player._id,
+        surveyTotalQuestions: session.surveyQuestions.length,
+        completedAt: Date.now(),
+      };
 
-    const logEntry = new ActivityLog({
-     
-      activityType: "survey_play",
-      details: {
-        sessionId: session._id.toString(),
-        surveyStatus: session.surveyStatus,
-        endTime: session.endTime.toISOString(),
-        surveyPlayers: serializedPlayers, 
-      },
-    });
+      const report = new Report(reportData);
+      await report.save();
+      reports.push(report);
 
-    await logEntry.save();
+      const activityLog = await ActivityLog.create({
+        user: player._id,
+        activityType: "survey_play",
+        details: {
+          username: player.username,
+          email: player.email,
+          sessionId,
+        },
+      });
+      activityLogs.push(activityLog);
+    }
 
     // Emit the session end event
     const io = req.app.get("socketio");
-    io.emit("survey-session-ended", { session });
+    io.emit("survey-session-ended", { session, reports });
 
-    // Respond with the updated session
-    res
-      .status(200)
-      .json({ message: "Survey session ended successfully", session });
+    // Respond with the session and reports
+    res.status(200).json({
+      message: "Survey session ended successfully",
+      session,
+      reports,
+    });
   } catch (error) {
     console.error("End survey session error:", error);
     res.status(500).json({ message: "Error ending the survey session", error });

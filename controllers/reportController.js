@@ -6,6 +6,7 @@ exports.getAllReports = async (req, res) => {
   try {
     const reports = await Report.find()
       .populate("quiz")
+      .populate("surveyQuiz") 
       .populate("user")
       .sort({ completedAt: -1 });
 
@@ -32,8 +33,9 @@ exports.getUserReports = async (req, res) => {
   try {
     const reports = await Report.find({ user: userId })
       .populate("quiz")
+      .populate("surveyQuiz") 
       .populate("user")
-      .sort({ completedAt: -1 }); // Sort by most recent first
+      .sort({ completedAt: -1 });
 
     if (reports.length === 0) {
       return res.status(200).json({
@@ -59,6 +61,7 @@ exports.getReportByQuiz = async (req, res) => {
     const reports = await Report.find({ quiz: quizId })
       .populate("user")
       .populate("quiz")
+      .populate("surveyQuiz") 
       .sort({ completedAt: -1 });
 
     if (reports.length === 0) {
@@ -84,6 +87,7 @@ exports.getUserReportByQuiz = async (req, res) => {
   try {
     const report = await Report.findOne({ quiz: quizId, user: userId })
       .populate("quiz")
+      .populate("surveyQuiz") 
       .populate("user");
 
     if (!report) {
