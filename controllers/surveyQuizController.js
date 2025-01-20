@@ -3,6 +3,7 @@ const SurveyQuestion = require("../models/surveyQuestion");
 const SurveyQuiz = require("../models/surveyQuiz");
 const SurveySlide = require("../models/surveySlide");
 const Media = require("../models/Media");
+const ActivityLog = require('../models/ActivityLog'); 
 
 exports.createSurveyQuiz = async (req, res) => {
   try {
@@ -83,6 +84,20 @@ exports.createSurveyQuiz = async (req, res) => {
 
     // Save to database
     await surveyQuiz.save();
+
+    // Log the activity in the ActivityLog
+        const activityLog = new ActivityLog({
+          user: req.user._id, // The user who created the quiz
+          activityType: 'survey_create',
+          details: {
+            username: req.user.username,
+            surveyTitle: title,
+            surveyDescription: description,
+          },
+          createdAt: new Date(),
+        });
+    
+        await activityLog.save();
 
     // Fetch the saved surveyQuiz with populated fields
     const populatedSurveyQuiz = await SurveyQuiz.findById(surveyQuiz._id)
