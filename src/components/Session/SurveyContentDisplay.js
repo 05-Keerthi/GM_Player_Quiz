@@ -11,10 +11,11 @@ const SurveyContentDisplay = ({
   onEndSurvey,
   isSurveyEnded,
   submittedAnswers = [],
+  isSubmitted = false
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
-  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(isSubmitted);
 
   useEffect(() => {
     setSelectedOption(null);
@@ -28,17 +29,29 @@ const SurveyContentDisplay = ({
     }
   }, [timeLeft]);
 
+  useEffect(() => {
+    setIsAnswerSubmitted(isSubmitted);
+  }, [isSubmitted]);
+
   const isSlide = item?.type === "slide";
 
   const handleOptionSelect = (option) => {
-    if (isAdmin || isTimeUp || isAnswerSubmitted) return;
+    if (isAdmin || isTimeUp) return;
+    
+    // Allow selecting a different option even after submission
     setSelectedOption(option);
+    
+    // Submit/update the answer
     onSubmitAnswer?.({
       type: "single_select",
       answer: option.optionText,
       questionId: item._id,
     });
-    setIsAnswerSubmitted(true);
+    
+    // Mark as submitted if it wasn't already
+    if (!isAnswerSubmitted) {
+      setIsAnswerSubmitted(true);
+    }
   };
 
   const getTextColor = (backgroundColor) => {
@@ -144,13 +157,9 @@ const SurveyContentDisplay = ({
                       ? "border-blue-500 ring-2 ring-blue-500"
                       : "hover:opacity-90"
                   }
-                  ${
-                    isTimeUp || isAnswerSubmitted
-                      ? "opacity-60 cursor-not-allowed"
-                      : ""
-                  }
+                  ${isTimeUp ? "opacity-60 cursor-not-allowed" : ""}
                 `}
-                disabled={isAdmin || isTimeUp || isAnswerSubmitted}
+                disabled={isAdmin || isTimeUp}
               >
                 {option.optionText}
               </button>
@@ -160,7 +169,7 @@ const SurveyContentDisplay = ({
 
         {!isAdmin && isAnswerSubmitted && (
           <p className="text-green-600 font-medium text-center mt-4">
-            Answer submitted successfully!
+            {selectedOption ? "Answer updated successfully!" : "Answer submitted successfully!"}
           </p>
         )}
       </div>

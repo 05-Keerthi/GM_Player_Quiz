@@ -21,6 +21,7 @@ const AdminSurveyStart = () => {
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [optionCounts, setOptionCounts] = useState({});
+  const [userAnswers, setUserAnswers] = useState(new Map());
 
   const surveyId = searchParams.get("surveyId");
   const sessionId = searchParams.get("sessionId");
@@ -35,6 +36,7 @@ const AdminSurveyStart = () => {
       });
       setOptionCounts(initialCounts);
       setSubmittedAnswers([]);
+      setUserAnswers(new Map());
     }
   }, [currentItem]);
 
@@ -43,17 +45,40 @@ const AdminSurveyStart = () => {
     if (socket && currentItem?._id) {
       const handleAnswerSubmitted = (data) => {
         if (data.questionId === currentItem._id) {
-          // Update option counts
-          setOptionCounts((prev) => {
-            const newCounts = { ...prev };
-            const optionIndex = currentItem.answerOptions.findIndex(
+          setUserAnswers((prevAnswers) => {
+            const newAnswers = new Map(prevAnswers);
+            const previousAnswer = newAnswers.get(data.userId);
+            
+            // If user had a previous answer, decrement that count
+            if (previousAnswer) {
+              const prevOptionIndex = currentItem.answerOptions.findIndex(
+                (opt) => opt.optionText === previousAnswer
+              );
+              if (prevOptionIndex !== -1) {
+                setOptionCounts((prev) => ({
+                  ...prev,
+                  [prevOptionIndex]: Math.max(0, (prev[prevOptionIndex] || 0) - 1)
+                }));
+              }
+            }
+
+            // Set new answer
+            newAnswers.set(data.userId, data.answer);
+
+            // Increment count for new answer
+            const newOptionIndex = currentItem.answerOptions.findIndex(
               (opt) => opt.optionText === data.answer
             );
-            if (optionIndex !== -1) {
-              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            if (newOptionIndex !== -1) {
+              setOptionCounts((prev) => ({
+                ...prev,
+                [newOptionIndex]: (prev[newOptionIndex] || 0) + 1
+              }));
             }
-            return newCounts;
+
+            return newAnswers;
           });
+          setSubmittedAnswers((prev) => [...prev, data]);
         }
       };
 

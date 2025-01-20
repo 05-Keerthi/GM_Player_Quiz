@@ -22,6 +22,7 @@ const UserSurveyPlay = () => {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSurveyEnded, setIsSurveyEnded] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(null);
+  const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState(null);
 
   const sessionId = searchParams.get("sessionId");
 
@@ -168,7 +169,6 @@ const UserSurveyPlay = () => {
       !currentItem ||
       currentItem.type === "slide" ||
       timeLeft <= 0 ||
-      hasSubmitted ||
       !answer ||
       !questionStartTime ||
       !activeUser
@@ -177,7 +177,6 @@ const UserSurveyPlay = () => {
         hasCurrentItem: !!currentItem,
         isSlide: currentItem?.type === "slide",
         timeLeft,
-        hasSubmitted,
         hasAnswer: !!answer,
         hasQuestionStartTime: !!questionStartTime,
         hasActiveUser: !!activeUser,
@@ -186,20 +185,32 @@ const UserSurveyPlay = () => {
     }
 
     try {
-      console.log("Submitting answer:", { answer, activeUser });
-      setHasSubmitted(true);
+      console.log("Submitting/Updating answer:", { 
+        answer, 
+        activeUser,
+        isUpdate: hasSubmitted 
+      });
+      
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
-      const answerText =
-        answer.answer ||
-        answer.text ||
-        (Array.isArray(answer) ? answer.join(",") : answer);
+      const answerText = answer.answer || 
+                        answer.text || 
+                        (Array.isArray(answer) ? answer.join(",") : answer);
 
-      await submitSurveyAnswer(sessionId, currentItem._id, {
+      // Check if the new answer is different from the last submitted answer
+      if (hasSubmitted && answerText === lastSubmittedAnswer) {
+        console.log("Same answer submitted, skipping update");
+        return;
+      }
+
+      const response = await submitSurveyAnswer(sessionId, currentItem._id, {
         answer: answerText,
         timeTaken,
         isGuest: activeUser.isGuest || false,
         guestUserId: activeUser.isGuest ? activeUser._id : undefined,
       });
+
+      setHasSubmitted(true);
+      setLastSubmittedAnswer(answerText);
 
       if (socket) {
         socket.emit("survey-submit-answer", {
@@ -209,13 +220,20 @@ const UserSurveyPlay = () => {
           answer: answerText,
           timeTaken,
           isGuest: activeUser.isGuest || false,
+          isUpdate: hasSubmitted
         });
       }
+
+      console.log("Answer submission successful:", response);
     } catch (error) {
       console.error("Error submitting answer:", error);
-      setHasSubmitted(false);
+      // Don't reset hasSubmitted if it was an update attempt
+      if (!hasSubmitted) {
+        setHasSubmitted(false);
+      }
     }
   };
+
 
   if (authLoading) {
     return (

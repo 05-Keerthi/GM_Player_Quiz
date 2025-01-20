@@ -52,10 +52,32 @@ const SurveyResults = () => {
   const getTotalResponses = (questionId) => {
     return userAnswers.reduce((total, userAnswer) => {
       const hasAnswered = userAnswer.answers.some(
-        answer => answer.questionId === questionId && answer.answer
+        answer => answer.questionId === questionId
       );
       return hasAnswered ? total + 1 : total;
     }, 0);
+  };
+
+  const getInterestCounts = (questionId) => {
+    return userAnswers.reduce((acc, userAnswer) => {
+      const answer = userAnswer.answers.find(
+        answer => answer.questionId === questionId
+      );
+      
+      // Log the answer for debugging
+      console.log(`Question ${questionId} answer:`, answer);
+      
+      if (answer) {
+        // Check both lowercase and original cases
+        const answerValue = answer.answer?.toLowerCase?.() || answer.value?.toLowerCase?.();
+        if (answerValue === 'interested' || answerValue === 'yes' || answerValue === true || answerValue === 1) {
+          acc.interested += 1;
+        } else if (answerValue === 'not interested' || answerValue === 'no' || answerValue === false || answerValue === 0) {
+          acc.notInterested += 1;
+        }
+      }
+      return acc;
+    }, { interested: 0, notInterested: 0 });
   };
 
   const handleRowClick = (questionId) => {
@@ -65,7 +87,7 @@ const SurveyResults = () => {
   const handleEndQuiz = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/survey-sessions/${joinCode}/${sessionId}/end`,
+        `${process.env.REACT_APP_API_URL}/api/survey-sessions/${joinCode}/${sessionId}/end`,
         {
           method: "POST",
           headers: {
@@ -138,38 +160,41 @@ const SurveyResults = () => {
                     <th className="text-left p-3 border border-gray-200">
                       Question
                     </th>
-                    {/* <th className="text-left p-3 border border-gray-200">
-                      Dimension
-                    </th>
-                    <th className="text-left p-3 border border-gray-200">
-                      Description
-                    </th> */}
                     <th className="text-center p-3 border border-gray-200">
                       Total Responses
+                    </th>
+                    <th className="text-center p-3 border border-gray-200">
+                      Interested
+                    </th>
+                    <th className="text-center p-3 border border-gray-200">
+                      Not Interested
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((question) => (
-                    <tr
-                      key={question._id}
-                      onClick={() => handleRowClick(question._id)}
-                      className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <td className="p-3 border border-gray-200">
-                        {question.title}
-                      </td>
-                      {/* <td className="p-3 border border-gray-200">
-                        {question.dimension}
-                      </td>
-                      <td className="p-3 border border-gray-200">
-                        {question.description}
-                      </td> */}
-                      <td className="text-center p-3 border border-gray-200">
-                        {getTotalResponses(question._id)}
-                      </td>
-                    </tr>
-                  ))}
+                  {questions.map((question) => {
+                    const interestCounts = getInterestCounts(question._id);
+                    return (
+                      <tr
+                        key={question._id}
+                        onClick={() => handleRowClick(question._id)}
+                        className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <td className="p-3 border border-gray-200">
+                          {question.title}
+                        </td>
+                        <td className="text-center p-3 border border-gray-200">
+                          {getTotalResponses(question._id)}
+                        </td>
+                        <td className="text-center p-3 border border-gray-200">
+                          {interestCounts.interested}
+                        </td>
+                        <td className="text-center p-3 border border-gray-200">
+                          {interestCounts.notInterested}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

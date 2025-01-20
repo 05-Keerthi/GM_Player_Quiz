@@ -35,9 +35,14 @@ export const SurveyAnswerProvider = ({ children }) => {
         `/survey-submit-answer/${sessionId}/${questionId}`,
         answerData
       );
+      
+      // Update the dispatch to handle both new submissions and updates
       dispatch({
         type: SURVEY_ANSWER_ACTIONS.SUBMIT_ANSWER_SUCCESS,
-        payload: response.data,
+        payload: {
+          ...response.data,
+          isUpdate: response.data.message === "Answer updated successfully"
+        },
       });
       return response.data;
     } catch (error) {
