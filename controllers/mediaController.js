@@ -5,7 +5,7 @@ const path = require('path');
 // POST /api/media/upload (for multiple files)
 exports.uploadMedia = async (req, res) => {
   try {
-    const { files } = req; // For multiple files, `req.files` is used instead of `req.file`
+    const { files } = req; 
     if (!files || files.length === 0) {
       return res.status(400).json({ message: 'No files uploaded' });
     }

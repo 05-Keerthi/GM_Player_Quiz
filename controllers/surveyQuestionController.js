@@ -140,7 +140,7 @@ exports.getSurveyQuestions = async (req, res) => {
         // Return the survey question with the full image URL
         return {
           ...question.toObject(),
-          imageUrl: fullImageUrl || question.imageUrl, // Use full URL or the image ID if not found
+          imageUrl: fullImageUrl || question.imageUrl, 
         };
       })
     );
@@ -194,7 +194,7 @@ exports.getSurveyQuestionById = async (req, res) => {
     // Return the survey question with the full image URL (if available)
     const responseQuestion = {
       ...surveyQuestion.toObject(),
-      imageUrl: fullImageUrl || surveyQuestion.imageUrl, // Replace with full URL if available
+      imageUrl: fullImageUrl || surveyQuestion.imageUrl,
     };
 
     res.status(200).json({

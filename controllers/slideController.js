@@ -1,12 +1,12 @@
-const Slide = require("../models/slide"); // Slide model
-const Quiz = require("../models/quiz"); // Quiz model
+const Slide = require("../models/slide"); 
+const Quiz = require("../models/quiz"); 
 const Media = require("../models/Media");
 
 // add slide
 exports.addSlide = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { title, content, type, imageUrl, position } = req.body; // Include type in the request body
+    const { title, content, type, imageUrl, position } = req.body; 
 
     // Check if quiz exists
     const quiz = await Quiz.findById(quizId);
@@ -28,7 +28,7 @@ exports.addSlide = async (req, res) => {
 
     if (imageUrl) {
       // Fetch the image document by ID (using Media model)
-      const image = await Media.findById(imageUrl); // Make sure imageUrl is the media _id
+      const image = await Media.findById(imageUrl); 
       if (!image) {
         return res.status(404).json({ message: "Image not found" });
       }
@@ -48,7 +48,7 @@ exports.addSlide = async (req, res) => {
       title,
       content,
       type,
-      imageUrl: imageUrl || null, // Save the image ID if provided, otherwise null
+      imageUrl: imageUrl || null, 
       position,
     });
 
@@ -61,7 +61,7 @@ exports.addSlide = async (req, res) => {
     // Prepare the response slide object
     const responseSlide = {
       ...newSlide.toObject(),
-      imageUrl: fullImageUrl, // Replace image ID with the full URL if it exists, else null
+      imageUrl: fullImageUrl, 
     };
 
     res.status(201).json(responseSlide);
@@ -90,7 +90,7 @@ exports.getSlides = async (req, res) => {
     // Find slides related to the quiz and populate the imageUrl field
     const slides = await Slide.find({ quiz: quizId })
       .sort({ position: 1 })
-      .populate("imageUrl", "path"); // Populate the imageUrl field to fetch the path field from the Media collection
+      .populate("imageUrl", "path"); 
 
     if (slides.length === 0) {
       return res.status(404).json({ message: "No slides found for this quiz" });
@@ -124,7 +124,7 @@ exports.getSlide = async (req, res) => {
     const baseUrl =
       process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
-    const slide = await Slide.findById(id).populate("imageUrl", "path"); // Populate the imageUrl field to fetch the path
+    const slide = await Slide.findById(id).populate("imageUrl", "path"); 
 
     if (!slide) {
       return res.status(404).json({ message: "Slide not found" });

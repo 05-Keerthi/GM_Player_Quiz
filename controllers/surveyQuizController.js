@@ -136,7 +136,7 @@ exports.getAllSurveyQuizzes = async (req, res) => {
           surveyQuiz.slides.map(async (slide) => {
             let fullImageUrl = null;
             if (slide.imageUrl) {
-              const media = await Media.findById(slide.imageUrl); // Find media by its ObjectId
+              const media = await Media.findById(slide.imageUrl); 
               if (media && media.path) {
                 // Construct full URL, encoding spaces and normalizing slashes
                 const encodedPath = media.path
@@ -157,7 +157,7 @@ exports.getAllSurveyQuizzes = async (req, res) => {
           surveyQuiz.questions.map(async (question) => {
             let fullImageUrl = null;
             if (question.imageUrl) {
-              const media = await Media.findById(question.imageUrl); // Find media by its ObjectId
+              const media = await Media.findById(question.imageUrl); 
               if (media && media.path) {
                 // Construct full URL, encoding spaces and normalizing slashes
                 const encodedPath = media.path
@@ -168,7 +168,7 @@ exports.getAllSurveyQuizzes = async (req, res) => {
             }
             return {
               ...question.toObject(),
-              imageUrl: fullImageUrl, // Replace ObjectId with full URL
+              imageUrl: fullImageUrl, 
             };
           })
         );
@@ -210,7 +210,7 @@ exports.getSurveyQuizById = async (req, res) => {
       surveyQuiz.slides.map(async (slide) => {
         let fullImageUrl = null;
         if (slide.imageUrl) {
-          const media = await Media.findById(slide.imageUrl); // Find media by its ObjectId
+          const media = await Media.findById(slide.imageUrl); 
           if (media && media.path) {
             // Construct full URL, encoding spaces and normalizing slashes
             const encodedPath = media.path
@@ -221,7 +221,7 @@ exports.getSurveyQuizById = async (req, res) => {
         }
         return {
           ...slide.toObject(),
-          imageUrl: fullImageUrl, // Replace ObjectId with full URL
+          imageUrl: fullImageUrl, 
         };
       })
     );
@@ -280,7 +280,7 @@ exports.updateSurveyQuiz = async (req, res) => {
           .status(400)
           .json({ message: "Some question IDs are invalid" });
       }
-      surveyQuiz.questions = questions; // Update the questions
+      surveyQuiz.questions = questions; 
     }
 
     // Validate provided slides
@@ -289,7 +289,7 @@ exports.updateSurveyQuiz = async (req, res) => {
       if (slideRecords.length !== slides.length) {
         return res.status(400).json({ message: "Some slide IDs are invalid" });
       }
-      surveyQuiz.slides = slides; // Update the slides
+      surveyQuiz.slides = slides; 
     }
 
     // Update other fields
@@ -297,7 +297,7 @@ exports.updateSurveyQuiz = async (req, res) => {
     if (description) surveyQuiz.description = description;
     if (isPublic !== undefined) surveyQuiz.isPublic = isPublic;
     if (status) surveyQuiz.status = status;
-    if (order) surveyQuiz.order = order; // Update the order
+    if (order) surveyQuiz.order = order; 
 
     // Save the updated survey quiz
     const updatedSurveyQuiz = await surveyQuiz.save();

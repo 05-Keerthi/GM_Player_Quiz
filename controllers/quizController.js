@@ -60,7 +60,7 @@ exports.createQuiz = async (req, res) => {
       order: mixedOrder,
       tenantId,
       createdBy: req.user._id,
-      status: 'draft', // Default status as draft
+      status: 'draft',
       duration,
     });
 
@@ -68,7 +68,7 @@ exports.createQuiz = async (req, res) => {
 
     // Log the activity in the ActivityLog
     const activityLog = new ActivityLog({
-      user: req.user._id, // The user who created the quiz
+      user: req.user._id, 
       activityType: 'quiz_create',
       details: {
         username: req.user.username,
@@ -108,7 +108,7 @@ exports.getQuizzes = async (req, res) => {
           quiz.slides.map(async (slide) => {
             let fullImageUrl = null;
             if (slide.imageUrl) {
-              const media = await Media.findById(slide.imageUrl); // Find media by its ObjectId
+              const media = await Media.findById(slide.imageUrl); 
               if (media && media.path) {
                 // Construct full URL, encoding spaces and normalizing slashes
                 const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
@@ -117,7 +117,7 @@ exports.getQuizzes = async (req, res) => {
             }
             return {
               ...slide.toObject(),
-              imageUrl: fullImageUrl, // Replace ObjectId with full URL
+              imageUrl: fullImageUrl, 
             };
           })
         );
@@ -127,7 +127,7 @@ exports.getQuizzes = async (req, res) => {
           quiz.questions.map(async (question) => {
             let fullImageUrl = null;
             if (question.imageUrl) {
-              const media = await Media.findById(question.imageUrl); // Find media by its ObjectId
+              const media = await Media.findById(question.imageUrl); 
               if (media && media.path) {
                 // Construct full URL, encoding spaces and normalizing slashes
                 const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
@@ -136,7 +136,7 @@ exports.getQuizzes = async (req, res) => {
             }
             return {
               ...question.toObject(),
-              imageUrl: fullImageUrl, // Replace ObjectId with full URL
+              imageUrl: fullImageUrl, 
             };
           })
         );
@@ -176,7 +176,7 @@ exports.getQuizById = async (req, res) => {
       quiz.slides.map(async (slide) => {
         let fullImageUrl = null;
         if (slide.imageUrl) {
-          const media = await Media.findById(slide.imageUrl); // Find the media by its ObjectId
+          const media = await Media.findById(slide.imageUrl); 
           if (media && media.path) {
             // Construct the full image URL
             const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
@@ -185,7 +185,7 @@ exports.getQuizById = async (req, res) => {
         }
         return {
           ...slide.toObject(),
-          imageUrl: fullImageUrl, // Replace ObjectId with full URL
+          imageUrl: fullImageUrl, 
         };
       })
     );
@@ -195,7 +195,7 @@ exports.getQuizById = async (req, res) => {
       quiz.questions.map(async (question) => {
         let fullImageUrl = null;
         if (question.imageUrl) {
-          const media = await Media.findById(question.imageUrl); // Find the media by its ObjectId
+          const media = await Media.findById(question.imageUrl); 
           if (media && media.path) {
             // Construct the full image URL
             const encodedPath = media.path.replace(/ /g, '%20').replace(/\\/g, '/');
@@ -204,7 +204,7 @@ exports.getQuizById = async (req, res) => {
         }
         return {
           ...question.toObject(),
-          imageUrl: fullImageUrl, // Replace ObjectId with full URL
+          imageUrl: fullImageUrl, 
         };
       })
     );

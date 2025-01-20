@@ -11,8 +11,8 @@ const ActivityLog = require('../models/ActivityLog');
 const Report = require("../models/Report");
 
 exports.createSurveySession = async (req, res) => {
-  const { surveyQuizId } = req.params; // Survey quiz ID from the request params
-  const surveyHostId = req.user._id; // Assume req.user contains authenticated user information
+  const { surveyQuizId } = req.params; 
+  const surveyHostId = req.user._id; 
 
   try {
     // Generate a random join code

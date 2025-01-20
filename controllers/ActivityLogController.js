@@ -1,15 +1,14 @@
 const mongoose = require('mongoose');
 const ActivityLog = require('../models/ActivityLog');
 const Quiz = require('../models/quiz');
-const SurveyQuiz = require('../models/surveyQuiz'); // Add the SurveyQuiz model
-const Session = require('../models/session'); // Add the Session model
-const SurveySession = require('../models/surveysession'); // Add the SurveySession model
+const SurveyQuiz = require('../models/surveyQuiz'); 
+const Session = require('../models/session'); 
+const SurveySession = require('../models/surveysession'); 
 
 // Fetch all activity logs with counts for each activityType
 exports.getAllActivityLogs = async (req, res) => {
   try {
-    console.log('Fetching all activity logs...');
-
+  
     // Get all activity logs sorted by creation date
     const activityLogs = await ActivityLog.find().sort({ createdAt: -1 });
 
@@ -22,8 +21,8 @@ exports.getAllActivityLogs = async (req, res) => {
     const activityTypeCounts = await ActivityLog.aggregate([
       {
         $group: {
-          _id: '$activityType', // Group by activityType
-          count: { $sum: 1 }   // Count occurrences
+          _id: '$activityType', 
+          count: { $sum: 1 }  
         }
       }
     ]);
@@ -43,8 +42,8 @@ exports.getAllActivityLogs = async (req, res) => {
     const quizSessionCounts = await Quiz.aggregate([
       {
         $group: {
-          _id: '$status', // Group by status (e.g., draft, active, closed)
-          count: { $sum: 1 } // Count occurrences
+          _id: '$status', 
+          count: { $sum: 1 } 
         }
       }
     ]);
@@ -93,8 +92,8 @@ exports.getAllActivityLogs = async (req, res) => {
     const surveySessionStatusCounts = await SurveySession.aggregate([
       {
         $group: {
-          _id: '$surveyStatus', // Group by surveyStatus (e.g., waiting, in_progress, completed)
-          count: { $sum: 1 } // Count occurrences
+          _id: '$surveyStatus', 
+          count: { $sum: 1 } 
         }
       }
     ]);
@@ -118,8 +117,8 @@ exports.getAllActivityLogs = async (req, res) => {
     const surveyQuizCounts = await SurveyQuiz.aggregate([
       {
         $group: {
-          _id: { type: "$type", status: "$status" }, // Group by type and status
-          count: { $sum: 1 } // Count occurrences
+          _id: { type: "$type", status: "$status" }, 
+          count: { $sum: 1 }
         }
       }
     ]);
@@ -141,8 +140,6 @@ exports.getAllActivityLogs = async (req, res) => {
     // Add survey quiz counts to the response under 'survey_status'
     counts['survey_status'] = surveyQuizStatusCounts;
 
-    console.log('Logs fetched:', activityLogs);
-    console.log('Activity type counts:', counts);
 
     if (!activityLogs.length) {
       return res.status(200).json({

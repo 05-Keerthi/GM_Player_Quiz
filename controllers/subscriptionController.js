@@ -7,7 +7,7 @@ exports.createSubscription = async (req, res) => {
 
     // Create a new subscription
     const subscription = new Subscription({
-      user: req.user._id, // Assuming the user is authenticated and added to `req.user`
+      user: req.user._id, 
       planType,
       startDate,
       endDate,

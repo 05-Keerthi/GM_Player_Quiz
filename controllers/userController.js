@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const Tenant = require("../models/Tenant"); // Assuming you have a Tenant model
+const Tenant = require("../models/Tenant");
 const { sendPasswordChangeEmail } = require("../services/mailService");
 
 // Helper validation functions
@@ -18,8 +18,8 @@ function validateMobileNumber(mobile) {
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find({ role: { $in: ["user", "admin"] } })
-      .select("-password") // Exclude passwords from the response
-      .populate("tenantId"); // Populate tenantId field with tenant details
+      .select("-password") 
+      .populate("tenantId"); 
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -38,7 +38,7 @@ exports.getUserById = async (req, res) => {
         .json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id).populate("tenantId"); // Populate tenantId with tenant details
+    const user = await User.findById(id).populate("tenantId"); 
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -68,7 +68,7 @@ exports.updateUser = async (req, res) => {
     }
 
     // Find the user by ID and populate tenantId
-    const user = await User.findById(userId).populate("tenantId"); // Populate tenantId with tenant details
+    const user = await User.findById(userId).populate("tenantId"); 
 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
@@ -144,7 +144,7 @@ exports.updateUser = async (req, res) => {
         email: user.email,
         mobile: user.mobile,
         role: user.role,
-        tenantId: user.tenantId, // Tenant details will be included automatically after populate
+        tenantId: user.tenantId, 
         createdAt: user.createdAt,
       },
     });
@@ -169,8 +169,7 @@ exports.deleteUser = async (req, res) => {
         .json({ field: "id", message: "User ID is required" });
     }
 
-    const user = await User.findById(id).populate("tenantId"); // Populate tenantId with tenant details
-
+    const user = await User.findById(id).populate("tenantId"); 
     if (!user) {
       return res.status(404).json({ field: "id", message: "User not found" });
     }
@@ -211,7 +210,7 @@ exports.changePassword = async (req, res) => {
     }
 
     // Update the password
-    user.password = newPassword; // Trigger pre-save hook to hash the password
+    user.password = newPassword; 
     await user.save();
 
     // Send success email

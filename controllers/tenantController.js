@@ -66,10 +66,10 @@ const registerTenantAdmin = async (req, res) => {
     const newAdmin = new User({
       username: req.body.username,
       email: req.body.email,
-      password: req.body.password, // Ensure you hash the password before saving it
+      password: req.body.password, 
       mobile: req.body.mobile,
-      role: req.body.role, // Fixed role as tenant admin
-      tenantId: tenantId, // Assign the tenant ID
+      role: req.body.role, 
+      tenantId: tenantId, 
     });
 
     await newAdmin.save();
@@ -78,11 +78,11 @@ const registerTenantAdmin = async (req, res) => {
     await sendInviteEmail(
       newAdmin.email,
       tenant.name,
-      `${process.env.FRONTEND_URL}/login`, // Example invitation link
+      `${process.env.FRONTEND_URL}/login`, 
       {
         username: newAdmin.username,
         email: newAdmin.email,
-        password: req.body.password, // Send plain password (ensure it’s temporary)
+        password: req.body.password, 
       }
     );
 
@@ -116,7 +116,7 @@ const updateTenantAdmin = async (req, res) => {
 
     // Update only allowed fields
     const updates = {};
-    const allowedFields = ['username', 'email', 'mobile', 'password', 'role']; // Add fields you want to allow
+    const allowedFields = ['username', 'email', 'mobile', 'password', 'role']; 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
@@ -125,7 +125,7 @@ const updateTenantAdmin = async (req, res) => {
 
     // If password is being updated, ensure it is hashed
     if (updates.password) {
-      updates.password = await hashPassword(updates.password); // Replace with your hashing logic
+      updates.password = await hashPassword(updates.password); 
     }
 
     // Perform the update
@@ -231,7 +231,7 @@ const updateTenant = async (req, res) => {
     if (req.body.customDomain) {
       const existingTenant = await Tenant.findOne({
         customDomain: req.body.customDomain,
-        _id: { $ne: req.params.id } // Exclude current tenant from check
+        _id: { $ne: req.params.id } 
       });
       
       if (existingTenant) {

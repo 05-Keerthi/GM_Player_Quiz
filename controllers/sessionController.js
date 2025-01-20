@@ -330,7 +330,7 @@ exports.endSession = async (req, res) => {
 
     // Map user IDs to ranks
     const rankMap = leaderboardEntries.reduce((map, entry, index) => {
-      map[entry.player.toString()] = index + 1; // Rank starts at 1
+      map[entry.player.toString()] = index + 1; 
       return map;
     }, {});
 
