@@ -110,18 +110,6 @@ const getLast7DaysData = (activityData) => {
   return Array.from(activityMap.values());
 };
 
-const CustomSelect = ({ value, onChange }) => (
-  <select
-    value={value}
-    onChange={onChange}
-    className="px-3 py-1 border border-gray-200 rounded-full text-sm bg-white"
-  >
-    <option value="week">Day</option>
-    <option value="month">Week</option>
-    <option value="year">Month</option>
-  </select>
-);
-
 /* Stats Card Update */
 
 const StatsCard = ({ counts }) => {
@@ -146,17 +134,12 @@ const StatsCard = ({ counts }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-[50px] shadow-sm">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-gray-500 text-sm">Total Quizzes / Surveys</h3>
-        <CustomSelect value="week" onChange={() => {}} />
-      </div>
+    <div className="bg-white p-6 rounded-[50px] shadow-sm flex justify-center items-center ">
       <div className="space-y-6 text-center">
         <div>
           <div className="flex items-center gap-2 justify-center">
-            <span className="text-2xl font-semibold">{getTotalQuizzes()}</span>
-            <span className="flex items-center text-green-500 text-sm">
-              ↑ 12%
+            <span className="text-2xl font-semibold">
+              {getTotalQuizzes()}
             </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">Total Quizzes</p>
@@ -164,8 +147,9 @@ const StatsCard = ({ counts }) => {
 
         <div className="border-t pt-4">
           <div className="flex items-center gap-2 justify-center">
-            <span className="text-2xl font-semibold">{getTotalSurveys()}</span>
-            <span className="flex items-center text-red-500 text-sm">↓ 8%</span>
+            <span className="text-2xl font-semibold">
+              {getTotalSurveys()}
+            </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">Total Surveys</p>
         </div>
@@ -173,6 +157,7 @@ const StatsCard = ({ counts }) => {
     </div>
   );
 };
+
 
 const ProgressBars = ({ counts }) => (
   <div className="bg-white p-6 rounded-[50px] shadow-sm">
@@ -475,10 +460,8 @@ const AdminDashboard = () => {
       <div className="min-h-screen bg-blue-200 p-8">
         <div className="max-w-8xl mx-auto">
           {/* Filter Dropdown */}
-          <div className="flex justify-between items-center mb-8">
-            <div className="text-xl font-semibold text-red-700">
-              Admin Dashboard
-            </div>
+          <div className="flex justify-end items-center mb-8">
+         
             <div className="relative">
               <select
                 className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 pr-10 pl-4 appearance-none cursor-pointer"
