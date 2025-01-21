@@ -13,7 +13,7 @@ import ProfilePage from "./pages/ProfilePage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import Reports from "./pages/Report/Report";
 import UserReport from "./pages/Report/UserReport";
-import ActivityLogPage from "./pages/Activity/ActivityLog";
+import AdminDashboard from "./pages/Activity/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 // Import all necessary components for Content and Session routes
@@ -37,6 +37,7 @@ import UnifiedJoin from "./pages/Session/UserJoin/UnifiedJoin";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
+
 
 export default function App() {
   const { user, isAuthenticated, sessionExpired, resetSessionState } =
@@ -154,7 +155,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/Activity-log" element={<ActivityLogPage />} />
+        <Route path="/Activity-log" element={<AdminDashboard />} />
 
         {/* Legacy Redirect Routes */}
         <Route path="/quiz-details" element={<UnifiedDetails />} />
