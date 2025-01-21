@@ -11,6 +11,8 @@ const reportSchema = new mongoose.Schema({
   correctAnswers: { type: Number },
   incorrectAnswers: { type: Number },
   totalScore: { type: Number },
+  questionsAttempted: { type: Number },
+  questionsSkipped: { type: Number },
   completedAt: { type: Date, default: Date.now },
 });
 

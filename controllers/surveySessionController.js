@@ -9,6 +9,7 @@ const SurveySlide = require("../models/surveySlide");
 const Media = require("../models/Media");
 const ActivityLog = require('../models/ActivityLog');
 const Report = require("../models/Report");
+const SurveyAnswer = require("../models/surveyanswer");
 
 exports.createSurveySession = async (req, res) => {
   const { surveyQuizId } = req.params; 
@@ -437,7 +438,8 @@ exports.endSurveySession = async (req, res) => {
     })
       .populate("surveyPlayers", "username email _id")
       .populate("surveyHost", "username email _id")
-      .populate("surveyQuiz", "title");
+      .populate("surveyQuiz", "title")
+      .populate("surveyQuestions"); // Populate questions to calculate skipped/attempted
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
@@ -451,12 +453,26 @@ exports.endSurveySession = async (req, res) => {
     // Generate reports and activity logs for each survey player
     const reports = [];
     const activityLogs = [];
+    const totalQuestions = session.surveyQuestions.length;
+
     for (const player of session.surveyPlayers) {
+      // Fetch answers submitted by the player for this session
+      const answers = await SurveyAnswer.find({
+        surveySession: session._id,
+        surveyPlayers: player._id,
+      });
+
+      const questionsAttempted = answers.length;
+      const questionsSkipped = totalQuestions - questionsAttempted;
+
+      // Create the report for the player
       const reportData = {
         surveyQuiz: session.surveyQuiz._id,
         surveySessionId: session._id,
         user: player._id,
-        surveyTotalQuestions: session.surveyQuestions.length,
+        surveyTotalQuestions: totalQuestions,
+        questionsAttempted,
+        questionsSkipped,
         completedAt: Date.now(),
       };
 
@@ -464,6 +480,7 @@ exports.endSurveySession = async (req, res) => {
       await report.save();
       reports.push(report);
 
+      // Create an activity log for the player
       const activityLog = await ActivityLog.create({
         user: player._id,
         activityType: "survey_play",
