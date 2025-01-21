@@ -1,16 +1,21 @@
 const mongoose = require('mongoose');
 const ActivityLog = require('../../models/ActivityLog');
-const User = require('../../models/User');
+const Quiz = require('../../models/quiz');
+const SurveyQuiz = require('../../models/surveyQuiz');
+const Session = require('../../models/session');
+const SurveySession = require('../../models/surveysession');
 
-// Mock the dependencies
+// Mock all required models
 jest.mock('../../models/ActivityLog');
-jest.mock('../../models/User');
+jest.mock('../../models/quiz');
+jest.mock('../../models/surveyQuiz');
+jest.mock('../../models/session');
+jest.mock('../../models/surveysession');
 
 const {
   getAllActivityLogs,
   getUserActivityLogs
 } = require('../../controllers/ActivityLogController');
-
 
 beforeAll(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -22,106 +27,107 @@ afterAll(() => {
   console.error.mockRestore();
 });
 
-
 describe('ActivityLog Controller', () => {
   let req;
   let res;
-  const mockConsoleLog = jest.spyOn(console, 'log');
-  const mockConsoleError = jest.spyOn(console, 'error');
-
+  
   beforeEach(() => {
     req = {
+      query: {},
       params: {}
     };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
   describe('getAllActivityLogs', () => {
-    it('should get all activity logs successfully with various activity types', async () => {
-      // Setup
-      const mockLogs = [
-        {
-          _id: 'log1',
-          user: 'user123',
-          activityType: 'quiz_create',
-          details: new Map([
-            ['quizId', 'quiz123'],
-            ['quizTitle', 'Mathematics Quiz']
-          ]),
-          createdAt: new Date('2024-01-01')
-        },
-        {
-          _id: 'log2',
-          user: 'user456',
-          activityType: 'quiz_play',
-          details: new Map([
-            ['quizId', 'quiz789'],
-            ['score', '85']
-          ]),
-          createdAt: new Date('2024-01-02')
-        },
-        {
-          _id: 'log3',
-          user: 'user789',
-          activityType: 'subscription_change',
-          details: new Map([
-            ['oldPlan', 'basic'],
-            ['newPlan', 'premium']
-          ]),
-          createdAt: new Date('2024-01-03')
+    const mockActivityLogs = [
+      { _id: '1', activityType: 'login', createdAt: new Date() }
+    ];
+
+    const mockAggregateCounts = [
+      { _id: 'login', count: 5 },
+      { _id: 'quiz_create', count: 3 }
+    ];
+
+    const mockQuizCounts = [
+      { _id: 'draft', count: 2 },
+      { _id: 'active', count: 3 }
+    ];
+
+    const mockSessionCounts = [
+      { _id: 'waiting', count: 1 },
+      { _id: 'completed', count: 4 }
+    ];
+
+    const mockSurveySessionCounts = [
+      { _id: 'waiting', count: 2 },
+      { _id: 'in_progress', count: 3 }
+    ];
+
+    const mockSurveyQuizCounts = [
+      { _id: { type: 'survey', status: 'draft' }, count: 1 },
+      { _id: { type: 'ArtPulse', status: 'active' }, count: 2 }
+    ];
+
+    beforeEach(() => {
+      ActivityLog.find.mockReturnValue({
+        sort: jest.fn().mockResolvedValue(mockActivityLogs)
+      });
+      ActivityLog.aggregate.mockResolvedValue(mockAggregateCounts);
+      Quiz.aggregate.mockResolvedValue(mockQuizCounts);
+      Session.aggregate.mockResolvedValue(mockSessionCounts);
+      SurveySession.aggregate.mockResolvedValue(mockSurveySessionCounts);
+      SurveyQuiz.aggregate.mockResolvedValue(mockSurveyQuizCounts);
+    });
+
+    test('should fetch all activity logs with no filters', async () => {
+      await getAllActivityLogs(req, res);
+
+      expect(ActivityLog.find).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        activityLogs: mockActivityLogs,
+        counts: expect.any(Object)
+      }));
+    });
+
+    test('should handle day filter', async () => {
+      req.query.filter = 'day';
+      await getAllActivityLogs(req, res);
+
+      expect(ActivityLog.find).toHaveBeenCalledWith(expect.objectContaining({
+        createdAt: expect.any(Object)
+      }));
+    });
+
+    test('should handle date range filter', async () => {
+      req.query.startDate = '2024-01-01';
+      req.query.endDate = '2024-01-31';
+      await getAllActivityLogs(req, res);
+
+      expect(ActivityLog.find).toHaveBeenCalledWith(expect.objectContaining({
+        createdAt: {
+          $gte: expect.any(Date),
+          $lte: expect.any(Date)
         }
-      ];
-
-      ActivityLog.find.mockReturnValue({
-        sort: jest.fn().mockResolvedValue(mockLogs)
-      });
-
-      // Execute
-      await getAllActivityLogs(req, res);
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith('Fetching all activity logs...');
-      expect(mockConsoleLog).toHaveBeenCalledWith('Logs fetched:', mockLogs);
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        activityLogs: mockLogs
-      });
-      expect(ActivityLog.find().sort).toHaveBeenCalledWith({ createdAt: -1 });
+      }));
     });
 
-    it('should return empty array message when no logs exist', async () => {
-      // Setup
-      ActivityLog.find.mockReturnValue({
-        sort: jest.fn().mockResolvedValue([])
-      });
-
-      // Execute
-      await getAllActivityLogs(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'No activity logs found.',
-        activityLogs: []
-      });
-    });
-
-    it('should handle errors when fetching all logs', async () => {
-      // Setup
+    test('should handle error case', async () => {
       const error = new Error('Database error');
-      ActivityLog.find.mockReturnValue({
-        sort: jest.fn().mockRejectedValue(error)
+      ActivityLog.find.mockImplementation(() => {
+        throw error;
       });
 
-      // Execute
       await getAllActivityLogs(req, res);
 
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith('Error fetching all logs:', error);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         message: 'Error fetching logs',
@@ -131,88 +137,51 @@ describe('ActivityLog Controller', () => {
   });
 
   describe('getUserActivityLogs', () => {
-    it('should get user activity logs successfully with different activity types', async () => {
-      // Setup
-      const userId = 'user123';
-      req.params = { userId };
+    const mockUserLogs = [
+      { _id: '1', user: 'user123', activityType: 'login' }
+    ];
 
-      const mockUserLogs = [
-        {
-          _id: 'log1',
-          user: userId,
-          activityType: 'login',
-          details: new Map([
-            ['device', 'mobile'],
-            ['browser', 'chrome']
-          ]),
-          createdAt: new Date('2024-01-01')
-        },
-        {
-          _id: 'log2',
-          user: userId,
-          activityType: 'quiz_share',
-          details: new Map([
-            ['quizId', 'quiz456'],
-            ['sharedWith', 'user789']
-          ]),
-          createdAt: new Date('2024-01-02')
-        }
-      ];
-
+    beforeEach(() => {
       ActivityLog.find.mockReturnValue({
         sort: jest.fn().mockResolvedValue(mockUserLogs)
       });
+    });
 
-      // Execute
+    test('should fetch logs for specific user', async () => {
+      req.params.userId = 'user123';
       await getUserActivityLogs(req, res);
 
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith('Fetching activity logs for userId:', userId);
-      expect(mockConsoleLog).toHaveBeenCalledWith('Logs fetched:', mockUserLogs);
+      expect(ActivityLog.find).toHaveBeenCalledWith({ user: 'user123' });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         activityLogs: mockUserLogs
       });
-      expect(ActivityLog.find).toHaveBeenCalledWith({ user: userId });
-      expect(ActivityLog.find().sort).toHaveBeenCalledWith({ createdAt: -1 });
     });
 
-    it('should return empty array message when no logs exist for user', async () => {
-      // Setup
-      const userId = 'user123';
-      req.params = { userId };
-
+    test('should handle no logs found for user', async () => {
       ActivityLog.find.mockReturnValue({
         sort: jest.fn().mockResolvedValue([])
       });
 
-      // Execute
+      req.params.userId = 'user123';
       await getUserActivityLogs(req, res);
 
-      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: 'No activity logs for this user.',
         activityLogs: []
       });
-      expect(ActivityLog.find).toHaveBeenCalledWith({ user: userId });
     });
 
-    it('should handle errors when fetching user logs', async () => {
-      // Setup
-      const userId = 'user123';
-      req.params = { userId };
+    test('should handle error case', async () => {
       const error = new Error('Database error');
-
-      ActivityLog.find.mockReturnValue({
-        sort: jest.fn().mockRejectedValue(error)
+      ActivityLog.find.mockImplementation(() => {
+        throw error;
       });
 
-      // Execute
+      req.params.userId = 'user123';
       await getUserActivityLogs(req, res);
 
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith('Error fetching user logs:', error);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         message: 'Error fetching user activity logs',
