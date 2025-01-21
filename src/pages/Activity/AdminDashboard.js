@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Navbar from "../../components/NavbarComp";
+import UserActivityTable from "./UserActivityTable";
 
 const COLORS = [
   "#2563eb", // Royal Blue
@@ -138,18 +139,14 @@ const StatsCard = ({ counts }) => {
       <div className="space-y-6 text-center">
         <div>
           <div className="flex items-center gap-2 justify-center">
-            <span className="text-2xl font-semibold">
-              {getTotalQuizzes()}
-            </span>
+            <span className="text-2xl font-semibold">{getTotalQuizzes()}</span>
           </div>
           <p className="text-gray-500 text-sm mt-1">Total Quizzes</p>
         </div>
 
         <div className="border-t pt-4">
           <div className="flex items-center gap-2 justify-center">
-            <span className="text-2xl font-semibold">
-              {getTotalSurveys()}
-            </span>
+            <span className="text-2xl font-semibold">{getTotalSurveys()}</span>
           </div>
           <p className="text-gray-500 text-sm mt-1">Total Surveys</p>
         </div>
@@ -157,7 +154,6 @@ const StatsCard = ({ counts }) => {
     </div>
   );
 };
-
 
 const ProgressBars = ({ counts }) => (
   <div className="bg-white p-6 rounded-[50px] shadow-sm">
@@ -461,7 +457,6 @@ const AdminDashboard = () => {
         <div className="max-w-8xl mx-auto">
           {/* Filter Dropdown */}
           <div className="flex justify-end items-center mb-8">
-         
             <div className="relative">
               <select
                 className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 pr-10 pl-4 appearance-none cursor-pointer"
@@ -729,6 +724,9 @@ const AdminDashboard = () => {
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
+          <div>
+            <UserActivityTable />
           </div>
         </div>
       </div>
