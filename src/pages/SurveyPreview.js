@@ -351,7 +351,7 @@ const SurveyPreviewPage = () => {
                 Publishing...
               </>
             ) : (
-              "Publish & Continue"
+              "Publish"
             )}
           </button>
           <button

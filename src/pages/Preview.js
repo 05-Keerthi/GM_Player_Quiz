@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-toastify";
+import { useQuizContext } from "../context/quizContext";
 
 const QuizContent = ({ item, inPresentation = false }) => {
   const getContrastColor = (hexColor) => {
@@ -118,6 +120,7 @@ const QuizContent = ({ item, inPresentation = false }) => {
 };
 
 const PreviewPage = () => {
+  const navigate = useNavigate();
   const [orderedItems, setOrderedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [presentationMode, setPresentationMode] = useState(false);
@@ -125,6 +128,9 @@ const PreviewPage = () => {
   const [showBoxAnimation, setShowBoxAnimation] = useState(false);
   const { quizId } = useParams();
   const token = localStorage.getItem("token");
+  const { publishQuiz } = useQuizContext();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
 
   const fetchQuizData = async () => {
     try {
@@ -182,6 +188,21 @@ const PreviewPage = () => {
     }
     fetchQuizData();
   }, [quizId]);
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await publishQuiz(quizId);
+      // Show success toast
+      toast("Quiz published successfully", "success");
+      // Navigate to survey details
+      navigate(`/quiz-details?type=quiz&quizId=${quizId}&hostId=${userId}`);
+    } catch (error) {
+      toast(error.message || "Failed to publish survey", "error");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -249,6 +270,20 @@ const PreviewPage = () => {
           >
             <Play className="w-5 h-5" />
             Start Presentation
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={isPublishing}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isPublishing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              "Publish"
+            )}
           </button>
           <button
             onClick={() => window.history.back()}
