@@ -5,12 +5,59 @@ const SurveyQuiz = require('../models/surveyQuiz');
 const Session = require('../models/session'); 
 const SurveySession = require('../models/surveysession'); 
 
-// Fetch all activity logs with counts for each activityType
+// Fetch all activity logs with counts for each activityType and filtering options
 exports.getAllActivityLogs = async (req, res) => {
   try {
-  
-    // Get all activity logs sorted by creation date
-    const activityLogs = await ActivityLog.find().sort({ createdAt: -1 });
+    const { filter, startDate, endDate } = req.query;
+
+    // Define a base filter
+    let dateFilter = {};
+
+    // Apply filters based on the query
+    const now = new Date();
+    if (filter === 'day') {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+          $lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+        },
+      };
+    } else if (filter === 'week') {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      dateFilter = {
+        createdAt: {
+          $gte: weekStart,
+          $lt: weekEnd,
+        },
+      };
+    } else if (filter === 'month') {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getFullYear(), now.getMonth(), 1),
+          $lt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        },
+      };
+    } else if (filter === 'year') {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getFullYear(), 0, 1),
+          $lt: new Date(now.getFullYear() + 1, 0, 1),
+        },
+      };
+    } else if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        },
+      };
+    }
+
+    // Get filtered activity logs sorted by creation date
+    const activityLogs = await ActivityLog.find(dateFilter).sort({ createdAt: -1 });
 
     // Define all possible activity types
     const allActivityTypes = [
@@ -19,6 +66,7 @@ exports.getAllActivityLogs = async (req, res) => {
 
     // Get counts for each activityType
     const activityTypeCounts = await ActivityLog.aggregate([
+      { $match: dateFilter },
       {
         $group: {
           _id: '$activityType', 
@@ -40,6 +88,7 @@ exports.getAllActivityLogs = async (req, res) => {
 
     // Fetch counts for 'quiz_session' statuses from Quiz model
     const quizSessionCounts = await Quiz.aggregate([
+      { $match: dateFilter },
       {
         $group: {
           _id: '$status', 
@@ -65,10 +114,11 @@ exports.getAllActivityLogs = async (req, res) => {
 
     // Fetch counts for 'quiz_session_status' from Session model
     const sessionStatusCounts = await Session.aggregate([
+      { $match: dateFilter },
       {
         $group: {
-          _id: '$status', // Group by status (e.g., waiting, in_progress, completed)
-          count: { $sum: 1 } // Count occurrences
+          _id: '$status', 
+          count: { $sum: 1 } 
         }
       }
     ]);
@@ -90,6 +140,7 @@ exports.getAllActivityLogs = async (req, res) => {
 
     // Fetch counts for 'survey_session_status' from SurveySession model
     const surveySessionStatusCounts = await SurveySession.aggregate([
+      { $match: dateFilter },
       {
         $group: {
           _id: '$surveyStatus', 
@@ -115,6 +166,7 @@ exports.getAllActivityLogs = async (req, res) => {
 
     // Fetch counts for 'survey_session' statuses from SurveyQuiz model, grouped by type and status
     const surveyQuizCounts = await SurveyQuiz.aggregate([
+      { $match: dateFilter },
       {
         $group: {
           _id: { type: "$type", status: "$status" }, 
@@ -140,7 +192,6 @@ exports.getAllActivityLogs = async (req, res) => {
     // Add survey quiz counts to the response under 'survey_status'
     counts['survey_status'] = surveyQuizStatusCounts;
 
-
     if (!activityLogs.length) {
       return res.status(200).json({
         message: 'No activity logs found.',
@@ -158,6 +209,7 @@ exports.getAllActivityLogs = async (req, res) => {
     return res.status(500).json({ message: 'Error fetching logs', error });
   }
 };
+
 
 
 
