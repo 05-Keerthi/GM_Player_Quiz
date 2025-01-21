@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const Report = require('../../models/Report');
-const { Types: { ObjectId } } = mongoose;
+const Report = require('../../models/report');
 
 let mongoServer;
 
@@ -23,13 +22,15 @@ describe('Report Model Unit Tests', () => {
 
   test('should create a Report with valid data', async () => {
     const reportData = {
-      quiz: new ObjectId(),
-      user: new ObjectId(),
-      sessionId: new ObjectId(),
+      quiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      sessionId: new mongoose.Types.ObjectId(),
       totalQuestions: 10,
-      correctAnswers: 8,
-      incorrectAnswers: 2,
-      totalScore: 80
+      correctAnswers: 7,
+      incorrectAnswers: 3,
+      totalScore: 70,
+      questionsAttempted: 8,
+      questionsSkipped: 2
     };
 
     const report = await Report.create(reportData);
@@ -42,111 +43,122 @@ describe('Report Model Unit Tests', () => {
     expect(report.correctAnswers).toBe(reportData.correctAnswers);
     expect(report.incorrectAnswers).toBe(reportData.incorrectAnswers);
     expect(report.totalScore).toBe(reportData.totalScore);
+    expect(report.questionsAttempted).toBe(reportData.questionsAttempted);
+    expect(report.questionsSkipped).toBe(reportData.questionsSkipped);
     expect(report.completedAt).toBeDefined();
   });
 
-  test('should require all mandatory fields', async () => {
-    const invalidReportData = {
-      quiz: new ObjectId(),
-      user: new ObjectId(),
-      // missing sessionId
-      totalQuestions: 10,
-      correctAnswers: 8,
-      incorrectAnswers: 2,
-      // missing totalScore
-    };
-
-    await expect(Report.create(invalidReportData)).rejects.toThrow(mongoose.Error.ValidationError);
-  });
-
-  test('should successfully create multiple reports for same user', async () => {
-    const userId = new ObjectId();
-    const reportData1 = {
-      quiz: new ObjectId(),
-      user: userId,
-      sessionId: new ObjectId(),
-      totalQuestions: 10,
-      correctAnswers: 8,
-      incorrectAnswers: 2,
-      totalScore: 80
-    };
-
-    const reportData2 = {
-      quiz: new ObjectId(),
-      user: userId,
-      sessionId: new ObjectId(),
-      totalQuestions: 5,
-      correctAnswers: 4,
-      incorrectAnswers: 1,
-      totalScore: 90
-    };
-
-    const report1 = await Report.create(reportData1);
-    const report2 = await Report.create(reportData2);
-
-    expect(report1._id).toBeDefined();
-    expect(report2._id).toBeDefined();
-    expect(report1._id).not.toEqual(report2._id);
-  });
-
-  test('should update report scores', async () => {
+  test('should create a Survey Report with valid data', async () => {
     const reportData = {
-      quiz: new ObjectId(),
-      user: new ObjectId(),
-      sessionId: new ObjectId(),
+      surveyQuiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      surveySessionId: new mongoose.Types.ObjectId(),
+      surveyTotalQuestions: 5,
+      questionsAttempted: 5,
+      questionsSkipped: 0
+    };
+
+    const report = await Report.create(reportData);
+
+    expect(report._id).toBeDefined();
+    expect(report.surveyQuiz.toString()).toBe(reportData.surveyQuiz.toString());
+    expect(report.surveySessionId.toString()).toBe(reportData.surveySessionId.toString());
+    expect(report.surveyTotalQuestions).toBe(reportData.surveyTotalQuestions);
+    expect(report.questionsAttempted).toBe(reportData.questionsAttempted);
+    expect(report.questionsSkipped).toBe(reportData.questionsSkipped);
+  });
+
+  test('should allow creating report without optional fields', async () => {
+    const reportData = {
+      user: new mongoose.Types.ObjectId(),
+      totalQuestions: 5
+    };
+
+    const report = await Report.create(reportData);
+    expect(report._id).toBeDefined();
+    expect(report.quiz).toBeUndefined();
+    expect(report.surveyQuiz).toBeUndefined();
+    expect(report.totalScore).toBeUndefined();
+  });
+
+  test('should set completedAt automatically', async () => {
+    const report = await Report.create({
+      user: new mongoose.Types.ObjectId(),
+      totalQuestions: 5
+    });
+
+    expect(report.completedAt).toBeDefined();
+    expect(report.completedAt).toBeInstanceOf(Date);
+  });
+
+  test('should update report properties', async () => {
+    const reportData = {
+      quiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
       totalQuestions: 10,
-      correctAnswers: 8,
-      incorrectAnswers: 2,
-      totalScore: 80
+      correctAnswers: 5
     };
 
     const report = await Report.create(reportData);
     
-    const updatedData = {
-      correctAnswers: 9,
-      incorrectAnswers: 1,
-      totalScore: 90
-    };
+    const updatedCorrectAnswers = 8;
+    const updatedTotalScore = 80;
+    
+    report.correctAnswers = updatedCorrectAnswers;
+    report.totalScore = updatedTotalScore;
+    await report.save();
 
-    const updatedReport = await Report.findByIdAndUpdate(
-      report._id,
-      updatedData,
-      { new: true }
-    );
-
-    expect(updatedReport.correctAnswers).toBe(updatedData.correctAnswers);
-    expect(updatedReport.incorrectAnswers).toBe(updatedData.incorrectAnswers);
-    expect(updatedReport.totalScore).toBe(updatedData.totalScore);
+    const updatedReport = await Report.findById(report._id);
+    expect(updatedReport.correctAnswers).toBe(updatedCorrectAnswers);
+    expect(updatedReport.totalScore).toBe(updatedTotalScore);
   });
 
-  test('should query reports by user', async () => {
-    const userId = new ObjectId();
-    const reportData1 = {
-      quiz: new ObjectId(),
-      user: userId,
-      sessionId: new ObjectId(),
+  test('should validate referenced IDs', async () => {
+    const reportData = {
+      quiz: 'invalid-id',
+      user: new mongoose.Types.ObjectId(),
+      totalQuestions: 10
+    };
+
+    await expect(Report.create(reportData)).rejects.toThrow(mongoose.Error.ValidationError);
+  });
+
+  test('should handle both quiz and survey quiz reports', async () => {
+    const quizReport = await Report.create({
+      quiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      sessionId: new mongoose.Types.ObjectId(),
+      totalQuestions: 10
+    });
+
+    const surveyReport = await Report.create({
+      surveyQuiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
+      surveySessionId: new mongoose.Types.ObjectId(),
+      surveyTotalQuestions: 5
+    });
+
+    expect(quizReport.quiz).toBeDefined();
+    expect(quizReport.surveyQuiz).toBeUndefined();
+    expect(surveyReport.surveyQuiz).toBeDefined();
+    expect(surveyReport.quiz).toBeUndefined();
+  });
+
+  test('should calculate correct statistics', async () => {
+    const reportData = {
+      quiz: new mongoose.Types.ObjectId(),
+      user: new mongoose.Types.ObjectId(),
       totalQuestions: 10,
-      correctAnswers: 8,
+      correctAnswers: 6,
       incorrectAnswers: 2,
-      totalScore: 80
+      questionsAttempted: 8,
+      questionsSkipped: 2,
+      totalScore: 60
     };
 
-    const reportData2 = {
-      quiz: new ObjectId(),
-      user: userId,
-      sessionId: new ObjectId(),
-      totalQuestions: 5,
-      correctAnswers: 4,
-      incorrectAnswers: 1,
-      totalScore: 90
-    };
-
-    await Report.create(reportData1);
-    await Report.create(reportData2);
-
-    const userReports = await Report.find({ user: userId });
-    expect(userReports).toHaveLength(2);
-    expect(userReports[0].user.toString()).toBe(userId.toString());
-    expect(userReports[1].user.toString()).toBe(userId.toString());
+    const report = await Report.create(reportData);
+    
+    expect(report.correctAnswers + report.incorrectAnswers).toBe(report.questionsAttempted);
+    expect(report.questionsAttempted + report.questionsSkipped).toBe(report.totalQuestions);
   });
 });

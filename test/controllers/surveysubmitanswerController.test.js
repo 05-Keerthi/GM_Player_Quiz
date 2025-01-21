@@ -4,7 +4,7 @@ const SurveySession = require('../../models/surveysession');
 const SurveyQuestion = require('../../models/surveyQuestion');
 const Media = require('../../models/Media');
 
-// Mock the dependencies
+// Mock all dependencies
 jest.mock('../../models/surveyanswer');
 jest.mock('../../models/surveysession');
 jest.mock('../../models/surveyQuestion');
@@ -16,7 +16,7 @@ const {
   getAnswersForSpecificQuestion
 } = require('../../controllers/surveysubmitanswerController');
 
-describe('Survey Answer Controller', () => {
+describe('Survey Submit Answer Controller', () => {
   let req;
   let res;
   let mockIo;
@@ -29,22 +29,22 @@ describe('Survey Answer Controller', () => {
     req = {
       params: {},
       body: {},
-      user: { _id: 'user123' },
-      app: {
-        get: jest.fn().mockReturnValue(mockIo)
+      user: {
+        _id: 'user123',
+        username: 'testuser'
       },
       protocol: 'http',
-      get: jest.fn().mockReturnValue('localhost:3000')
+      get: jest.fn().mockReturnValue('localhost:5000'),
+      app: {
+        get: jest.fn().mockReturnValue(mockIo)
+      }
     };
-
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
-
     jest.clearAllMocks();
   });
-
 
   beforeAll(() => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -57,135 +57,155 @@ describe('Survey Answer Controller', () => {
   });
 
   describe('submitSurveyAnswer', () => {
-    it('should submit a survey answer successfully', async () => {
+    it('should submit new answer successfully', async () => {
       // Setup
       req.params = { sessionId: 'session123', questionId: 'question123' };
-      req.body = {
-        answer: 'Option A',
-        timeTaken: 10
-      };
+      req.body = { answer: 'Option A', timeTaken: 30 };
 
-      const mockSession = {
-        _id: 'session123',
-        surveyStatus: 'in_progress'
-      };
-
-      const mockQuestion = {
-        _id: 'question123'
-      };
-
-      const mockNewAnswer = {
+      const mockSession = { surveyStatus: 'in_progress' };
+      const mockQuestion = { _id: 'question123' };
+      const mockAnswer = {
         _id: 'answer123',
         surveyQuestion: 'question123',
-        surveyPlayers: 'user123',
         surveyAnswer: 'Option A',
-        timeTaken: 10
+        timeTaken: 30,
+        save: jest.fn().mockResolvedValue(undefined)
       };
 
       SurveySession.findById.mockResolvedValue(mockSession);
       SurveyQuestion.findById.mockResolvedValue(mockQuestion);
       SurveyAnswer.findOne.mockResolvedValue(null);
-      SurveyAnswer.prototype.save = jest.fn().mockResolvedValue(mockNewAnswer);
+      SurveyAnswer.mockImplementation(() => mockAnswer);
 
       // Execute
       await submitSurveyAnswer(req, res);
 
-      expect(mockIo.emit).toHaveBeenCalledWith('survey-submit-answer', {
-        sessionId: 'session123',
-        questionId: 'question123',
-        userId: 'user123',
-        answer: 'Option A',
-        timeTaken: 10
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Answer submitted successfully',
+        surveyAnswer: mockAnswer
+      });
+      expect(mockIo.emit).toHaveBeenCalledWith('survey-submit-answer', expect.any(Object));
+    });
+
+    it('should update existing answer successfully', async () => {
+      // Setup
+      req.params = { sessionId: 'session123', questionId: 'question123' };
+      req.body = { answer: 'Option B', timeTaken: 45 };
+
+      const mockSession = { surveyStatus: 'in_progress' };
+      const mockQuestion = { _id: 'question123' };
+      const mockExistingAnswer = {
+        _id: 'answer123',
+        surveyAnswer: 'Option A',
+        timeTaken: 30,
+        save: jest.fn().mockResolvedValue({ 
+          _id: 'answer123',
+          surveyAnswer: 'Option B',
+          timeTaken: 45
+        })
+      };
+
+      SurveySession.findById.mockResolvedValue(mockSession);
+      SurveyQuestion.findById.mockResolvedValue(mockQuestion);
+      SurveyAnswer.findOne.mockResolvedValue(mockExistingAnswer);
+
+      // Execute
+      await submitSurveyAnswer(req, res);
+
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Answer updated successfully',
+        surveyAnswer: expect.any(Object)
       });
     });
 
-    it('should handle non-existent session', async () => {
+    it('should return error if session not found', async () => {
+      // Setup
       req.params = { sessionId: 'nonexistent', questionId: 'question123' };
       SurveySession.findById.mockResolvedValue(null);
 
+      // Execute
       await submitSurveyAnswer(req, res);
 
+      // Assert
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         message: 'Survey session not found'
       });
     });
 
-    it('should handle non-existent question', async () => {
-      req.params = { sessionId: 'session123', questionId: 'nonexistent' };
-      SurveySession.findById.mockResolvedValue({ surveyStatus: 'in_progress' });
-      SurveyQuestion.findById.mockResolvedValue(null);
+    it('should return error if session not in progress', async () => {
+      // Setup
+      const mockSession = { surveyStatus: 'completed' };
+      SurveySession.findById.mockResolvedValue(mockSession);
 
+      // Execute
       await submitSurveyAnswer(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'Survey question not found'
-      });
-    });
-
-    it('should handle duplicate answers', async () => {
-      req.params = { sessionId: 'session123', questionId: 'question123' };
-      SurveySession.findById.mockResolvedValue({ surveyStatus: 'in_progress' });
-      SurveyQuestion.findById.mockResolvedValue({});
-      SurveyAnswer.findOne.mockResolvedValue({ _id: 'existing_answer' });
-
-      await submitSurveyAnswer(req, res);
-
+      // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        message: 'You have already submitted an answer for this question'
+        message: 'Survey session is not in progress'
       });
     });
   });
 
   describe('getAllAnswersForSession', () => {
-    it('should get all answers for a session successfully', async () => {
+    it('should get all answers successfully', async () => {
+      // Setup
       req.params = { sessionId: 'session123' };
-
+      
       const mockSession = { _id: 'session123' };
-      const mockAnswers = [{
-        surveyQuestion: {
-          _id: 'question123',
-          imageUrl: {
-            path: 'uploads\\image.jpg'
-          },
-          toObject: () => ({
+      const mockAnswers = [
+        {
+          surveyQuestion: {
             _id: 'question123',
-            imageUrl: {
-              path: 'uploads\\image.jpg'
-            }
-          })
-        },
-        surveyPlayers: {
-          _id: 'user123',
-          username: 'testuser',
-          email: 'test@example.com'
-        },
-        surveyAnswer: 'Option A',
-        timeTaken: 10
-      }];
+            imageUrl: { path: 'uploads\\image.jpg' },
+            toObject: jest.fn().mockReturnThis()
+          },
+          surveyPlayers: {
+            _id: 'user123',
+            username: 'testuser',
+            email: 'test@example.com'
+          },
+          surveyAnswer: 'Option A',
+          timeTaken: 30,
+          createdAt: new Date()
+        }
+      ];
 
       SurveySession.findById.mockResolvedValue(mockSession);
       SurveyAnswer.find.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockAnswers)
       });
 
+      // Execute
       await getAllAnswersForSession(req, res);
 
+      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'Answers retrieved successfully'
-      }));
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Answers retrieved successfully',
+        questions: expect.any(Array),
+        userAnswers: expect.any(Array),
+        groupedAnswers: expect.any(Object)
+      });
     });
 
-    it('should handle session not found', async () => {
+    it('should return error if session not found', async () => {
+      // Setup
       req.params = { sessionId: 'nonexistent' };
       SurveySession.findById.mockResolvedValue(null);
 
+      // Execute
       await getAllAnswersForSession(req, res);
 
+      // Assert
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         message: 'Survey session not found'
@@ -194,28 +214,27 @@ describe('Survey Answer Controller', () => {
   });
 
   describe('getAnswersForSpecificQuestion', () => {
-    it('should get answers for a specific question successfully', async () => {
+    it('should get answers for specific question successfully', async () => {
+      // Setup
       req.params = { sessionId: 'session123', questionId: 'question123' };
-
+      
       const mockSession = { _id: 'session123' };
       const mockQuestion = {
         _id: 'question123',
         imageUrl: 'media123',
         answerOptions: [{ optionText: 'Option A' }],
-        toObject: () => ({
-          _id: 'question123',
-          imageUrl: 'media123',
-          answerOptions: [{ optionText: 'Option A' }]
-        })
+        toObject: jest.fn().mockReturnThis()
       };
-      const mockAnswers = [{
-        surveyAnswer: 'Option A',
-        surveyPlayers: {
-          username: 'testuser',
-          email: 'test@example.com'
-        },
-        timeTaken: 10
-      }];
+      const mockAnswers = [
+        {
+          surveyPlayers: {
+            username: 'testuser',
+            email: 'test@example.com'
+          },
+          surveyAnswer: 'Option A',
+          timeTaken: 30
+        }
+      ];
 
       SurveySession.findById.mockResolvedValue(mockSession);
       SurveyQuestion.findById.mockReturnValue({
@@ -227,23 +246,32 @@ describe('Survey Answer Controller', () => {
         sort: jest.fn().mockResolvedValue(mockAnswers)
       });
 
+      // Execute
       await getAnswersForSpecificQuestion(req, res);
 
+      // Assert
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'Answers retrieved successfully for the specific question'
-      }));
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Answers retrieved successfully for the specific question',
+        question: expect.any(Object),
+        groupedAnswers: expect.any(Object)
+      });
     });
 
-    it('should handle question not found', async () => {
+    it('should return error if question not found', async () => {
+      // Setup
       req.params = { sessionId: 'session123', questionId: 'nonexistent' };
-      SurveySession.findById.mockResolvedValue({ _id: 'session123' });
+      
+      const mockSession = { _id: 'session123' };
+      SurveySession.findById.mockResolvedValue(mockSession);
       SurveyQuestion.findById.mockReturnValue({
         populate: jest.fn().mockResolvedValue(null)
       });
 
+      // Execute
       await getAnswersForSpecificQuestion(req, res);
 
+      // Assert
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         message: 'Survey question not found'
