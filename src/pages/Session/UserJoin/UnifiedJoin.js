@@ -3,11 +3,70 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useSessionContext } from "../../../context/sessionContext";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import { useAuthContext } from "../../../context/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+
+const Modal = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div
+        className="relative w-full max-w-md bg-white rounded-lg shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const GuestForm = ({ guestData, onChange, error }) => (
+  <div className="p-6 space-y-4">
+    <h2 className="text-xl font-bold text-center mb-4">Enter Guest Details</h2>
+    <div className="space-y-4">
+      <input
+        type="text"
+        name="username"
+        value={guestData.username}
+        onChange={onChange}
+        placeholder="Username"
+        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      <input
+        type="email"
+        name="email"
+        value={guestData.email}
+        onChange={onChange}
+        placeholder="Email"
+        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      <input
+        type="tel"
+        name="mobile"
+        value={guestData.mobile}
+        onChange={onChange}
+        placeholder="Mobile (10 digits)"
+        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+    </div>
+    {error && (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        {error}
+      </div>
+    )}
+  </div>
+);
 
 const UnifiedJoin = ({ type = "quiz" }) => {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
+  const [showGuestForm, setShowGuestForm] = useState(false);
   const [guestData, setGuestData] = useState({
     username: "",
     email: "",
@@ -70,6 +129,11 @@ const UnifiedJoin = ({ type = "quiz" }) => {
       return;
     }
 
+    if (isSurvey && !isAuthenticated && !showGuestForm) {
+      setShowGuestForm(true);
+      return;
+    }
+
     try {
       let response;
 
@@ -105,13 +169,17 @@ const UnifiedJoin = ({ type = "quiz" }) => {
       ...prev,
       [name]: value,
     }));
+    setError(""); // Clear error when user makes changes
+  };
+
+  const handleSubmitGuestForm = async () => {
+    if (validateGuestData()) {
+      await handleSubmit({ preventDefault: () => {} });
+    }
   };
 
   const isSubmitDisabled = () => {
     if (loading || joinCode.length < 6) return true;
-    if (isSurvey && !isAuthenticated) {
-      return !guestData.username || !guestData.email || !guestData.mobile;
-    }
     return false;
   };
 
@@ -138,36 +206,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
               />
             </div>
 
-            {isSurvey && !isAuthenticated && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="username"
-                  value={guestData.username}
-                  onChange={handleGuestDataChange}
-                  placeholder="Username"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <input
-                  type="email"
-                  name="email"
-                  value={guestData.email}
-                  onChange={handleGuestDataChange}
-                  placeholder="Email"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <input
-                  type="tel"
-                  name="mobile"
-                  value={guestData.mobile}
-                  onChange={handleGuestDataChange}
-                  placeholder="Mobile (10 digits)"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
-
-            {error && (
+            {error && !showGuestForm && (
               <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
                 {error}
               </div>
@@ -183,6 +222,8 @@ const UnifiedJoin = ({ type = "quiz" }) => {
                   <Loader2 className="w-6 h-6 animate-spin" />
                   Joining...
                 </>
+              ) : isSurvey && !isAuthenticated ? (
+                "Join as Guest"
               ) : (
                 "Join"
               )}
@@ -196,6 +237,36 @@ const UnifiedJoin = ({ type = "quiz" }) => {
           </p>
         </div>
       </div>
+
+      <Modal
+        isOpen={showGuestForm}
+        onClose={() => {
+          setShowGuestForm(false);
+          setError("");
+        }}
+      >
+        <GuestForm
+          guestData={guestData}
+          onChange={handleGuestDataChange}
+          error={error}
+        />
+        <div className="p-6 pt-0">
+          <button
+            onClick={handleSubmitGuestForm}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Joining...
+              </>
+            ) : (
+              "Continue"
+            )}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

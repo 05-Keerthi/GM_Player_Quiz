@@ -6,6 +6,32 @@ import io from "socket.io-client";
 import Navbar from "../../../components/NavbarComp";
 import SurveyInviteModal from "../../../models/SurveyInviteModal";
 
+const PlayerCard = ({ participant }) => {
+  const playerId = participant._id || participant.id || "unknown";
+  const username = participant.username || participant.name || "Anonymous";
+  const initial = username[0]?.toUpperCase() || "?";
+  const isGuest = participant.isGuest;
+
+  return (
+    <div
+      key={playerId}
+      className="bg-indigo-50 rounded-lg p-4 flex items-center justify-center"
+    >
+      <div className="text-center">
+        {isGuest && (
+          <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full mb-2">
+            Guest
+          </span>
+        )}
+        <div className="w-12 h-12 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
+          <span className="text-white text-lg font-bold">{initial}</span>
+        </div>
+        <p className="text-indigo-900 font-semibold truncate">{username}</p>
+      </div>
+    </div>
+  );
+};
+
 const SurveyLobby = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -60,11 +86,9 @@ const SurveyLobby = () => {
     const handleSurveyPlayersJoined = (data) => {
       console.log("Survey player joined data:", data);
       setSurveyPlayers((currentSurveyPlayers) => {
-        // Make sure we're getting the full user object from the data
         const newPlayer = data.user || data;
         if (!newPlayer || !newPlayer._id) return currentSurveyPlayers;
 
-        // Check if player already exists and add with full details if not
         if (!currentSurveyPlayers.some((p) => p._id === newPlayer._id)) {
           return [
             ...currentSurveyPlayers,
@@ -72,6 +96,7 @@ const SurveyLobby = () => {
               _id: newPlayer._id,
               username: newPlayer.username,
               email: newPlayer.email,
+              isGuest: newPlayer.isGuest || false, // Track guest status
             },
           ];
         }
@@ -182,30 +207,12 @@ const SurveyLobby = () => {
 
       <div className="bg-white rounded-lg p-6 shadow-lg">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {surveyPlayers.map((participant) => {
-            const playerId = participant._id || participant.id || "unknown";
-            const username =
-              participant.username || participant.name || "Anonymous";
-            const initial = username[0]?.toUpperCase() || "?";
-
-            return (
-              <div
-                key={playerId}
-                className="bg-indigo-50 rounded-lg p-4 flex items-center justify-center"
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-lg font-bold">
-                      {initial}
-                    </span>
-                  </div>
-                  <p className="text-indigo-900 font-semibold truncate">
-                    {username}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+          {surveyPlayers.map((participant) => (
+            <PlayerCard
+              key={participant._id || participant.id || "unknown"}
+              participant={participant}
+            />
+          ))}
         </div>
       </div>
     </div>
