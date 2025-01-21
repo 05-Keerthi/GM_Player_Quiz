@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { X, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useSurveyContext } from "../context/surveyContext";
+import { toast } from "react-toastify";
 
 const SurveyPreviewPage = () => {
+  const navigate = useNavigate();
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [presentationMode, setPresentationMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { surveyId } = useParams();
   const token = localStorage.getItem("token");
-
+  const { publishSurvey } = useSurveyContext();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
   const fetchSurveyData = async () => {
     try {
       const response = await axios.get(
@@ -73,6 +78,23 @@ const SurveyPreviewPage = () => {
   useEffect(() => {
     fetchSurveyData();
   }, [surveyId]);
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await publishSurvey(surveyId);
+      // Show success toast
+      toast("Survey published successfully", "success");
+      // Navigate to survey details
+      navigate(
+        `/survey-details?type=survey&surveyId=${surveyId}&hostId=${userId}`
+      );
+    } catch (error) {
+      toast(error.message || "Failed to publish survey", "error");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const startPresentation = () => {
     setPresentationMode(true);
@@ -317,6 +339,20 @@ const SurveyPreviewPage = () => {
           >
             <Play className="w-5 h-5" />
             Start Presentation
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={isPublishing}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isPublishing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              "Publish & Continue"
+            )}
           </button>
           <button
             onClick={() => window.history.back()}

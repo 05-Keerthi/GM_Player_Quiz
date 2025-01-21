@@ -201,7 +201,7 @@ const UnifiedList = ({ contentType }) => {
           toast.success(`${surveyType} published successfully!`);
           await getAllItems();
           navigate(
-            `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+            `/${contentType}-details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
           );
         }
       } else {
@@ -211,7 +211,7 @@ const UnifiedList = ({ contentType }) => {
 
         if (newStatus === "active" && isQuiz) {
           navigate(
-            `/details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
+            `/${contentType}-details?type=${contentType}&${contentType}Id=${item._id}&hostId=${user.id}`
           );
         }
       }
