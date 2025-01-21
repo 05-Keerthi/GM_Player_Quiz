@@ -37,17 +37,17 @@ const SurveyContentDisplay = ({
 
   const handleOptionSelect = (option) => {
     if (isAdmin || isTimeUp) return;
-    
+
     // Allow selecting a different option even after submission
     setSelectedOption(option);
-    
+
     // Submit/update the answer
     onSubmitAnswer?.({
       type: "single_select",
       answer: option.optionText,
       questionId: item._id,
     });
-    
+
     // Mark as submitted if it wasn't already
     if (!isAnswerSubmitted) {
       setIsAnswerSubmitted(true);
@@ -141,7 +141,13 @@ const SurveyContentDisplay = ({
             className="w-full max-h-64 object-contain rounded-lg mb-4"
           />
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          className={`grid ${
+            item?.answerOptions?.length === 2
+              ? "grid-cols-2"
+              : "grid-cols-1 md:grid-cols-2"
+          } gap-4`}
+        >
           {item?.answerOptions?.map((option) => {
             const backgroundColor = option.color || "#ffffff";
             const textColor = getTextColor(backgroundColor);
@@ -169,7 +175,9 @@ const SurveyContentDisplay = ({
 
         {!isAdmin && isAnswerSubmitted && (
           <p className="text-green-600 font-medium text-center mt-4">
-            {selectedOption ? "Answer updated successfully!" : "Answer submitted successfully!"}
+            {selectedOption
+              ? "Answer updated successfully!"
+              : "Answer submitted successfully!"}
           </p>
         )}
       </div>
