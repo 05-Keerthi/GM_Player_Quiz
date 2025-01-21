@@ -397,10 +397,16 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
         </label>
         <input
           id="timer-input"
-          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          min="0"
-          type="number"
-          value="30"
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          type="text"
+          pattern="[0-9]*"
+          maxLength="4"
+          value={formData.timer}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, "");
+            handleInputChange("timer", parseInt(value) || 0);
+          }}
+          placeholder="Enter time in seconds"
         />
 
         {/* Action Buttons */}
