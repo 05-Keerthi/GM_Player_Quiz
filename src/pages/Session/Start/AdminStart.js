@@ -97,15 +97,18 @@ const AdminStart = () => {
   };
 
   const initializeOptionCounts = (options) => {
+    if (!options) return;
     const initialCounts = {};
-    options?.forEach((_, index) => {
-      initialCounts[index] = 0;
+    options.forEach((option) => {
+      initialCounts[option._id] = 0;
     });
     setOptionCounts(initialCounts);
     setTotalVotes(0);
   };
 
   const handleAnswerUpdate = (answerDetails) => {
+    if (!currentItem || !answerDetails) return;
+
     if (currentItem.type === "open_ended") {
       setSubmittedAnswers((prev) => [...prev, answerDetails.answer]);
     } else if (currentItem.type === "multiple_select") {
@@ -116,34 +119,46 @@ const AdminStart = () => {
   };
 
   const updateMultiSelectCounts = (answer) => {
+    if (!currentItem?.options) return;
+
     setOptionCounts((prev) => {
       const newCounts = { ...prev };
       let selectedAnswers = parseAnswers(answer);
 
-      selectedAnswers.forEach((answer) => {
-        const optionIndex = currentItem.options.findIndex(
-          (opt) => opt.text === answer
+      selectedAnswers.forEach((answerText) => {
+        const selectedOption = currentItem.options.find(
+          (opt) => opt.text === answerText
         );
-        if (optionIndex !== -1) {
-          newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+        if (selectedOption) {
+          const optionId = selectedOption._id;
+          newCounts[optionId] = (newCounts[optionId] || 0) + 1;
         }
       });
+
       return newCounts;
     });
+
     setTotalVotes((prev) => prev + 1);
   };
 
   const updateSingleAnswerCounts = (answer) => {
+    if (!currentItem?.options) return;
+
     setOptionCounts((prev) => {
       const newCounts = { ...prev };
-      const optionIndex = currentItem.options.findIndex(
+      // Find the option that matches the answer text
+      const selectedOption = currentItem.options.find(
         (opt) => opt.text === answer
       );
-      if (optionIndex !== -1) {
-        newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+
+      if (selectedOption) {
+        const optionId = selectedOption._id;
+        newCounts[optionId] = (newCounts[optionId] || 0) + 1;
       }
+
       return newCounts;
     });
+
     setTotalVotes((prev) => prev + 1);
   };
 

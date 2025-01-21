@@ -100,60 +100,64 @@ const UserPlay = () => {
     }
   }, [socket, navigate]);
 
-  const handleSubmitAnswer = async (answer) => {
-    if (
-      !currentItem ||
-      currentItem.type === "classic" ||
-      timeLeft <= 0 ||
-      isTimeUp ||
-      hasSubmitted ||
-      !answer ||
-      !questionStartTime ||
-      !user
-    ) {
-      return;
+  
+const handleSubmitAnswer = async (answer) => {
+  if (
+    !currentItem ||
+    currentItem.type === "classic" ||
+    timeLeft <= 0 ||
+    isTimeUp ||
+    hasSubmitted ||
+    !answer ||
+    !questionStartTime ||
+    !user
+  ) {
+    return;
+  }
+
+  try {
+    const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+    let answerToSubmit;
+    
+    // Handle different question types
+    if (currentItem.type === "multiple_select") {
+      answerToSubmit = answer.answer;
+    } else if (currentItem.type === "open_ended") {
+      answerToSubmit = answer.answer;
+    } else if (currentItem.type === "poll") {
+      // For poll questions, send the selected option text
+      answerToSubmit = answer.text;
+    } else {
+      answerToSubmit = answer.text;
     }
 
-    try {
-      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+    const answerData = {
+      answer: answerToSubmit,
+      userId: user._id,
+      timeTaken,
+    };
 
-      const answerData = {
-        answer:
-          currentItem.type === "multiple_select"
-            ? answer.answer
-            : currentItem.type === "open_ended"
-            ? answer.answer
-            : answer.text,
-        userId: user._id,
+    await submitAnswer(sessionId, currentItem._id, answerData);
+    setHasSubmitted(true);
+
+    if (socket) {
+      const answerDetails = {
+        questionId: currentItem._id,
+        userId: user.id,
+        answer: answerToSubmit,
         timeTaken,
+        type: currentItem.type,
       };
 
-      await submitAnswer(sessionId, currentItem._id, answerData);
-      setHasSubmitted(true);
-
-      if (socket) {
-        const answerDetails = {
-          questionId: currentItem._id,
-          userId: user.id,
-          answer:
-            currentItem.type === "multiple_select"
-              ? answer.answer
-              : currentItem.type === "open_ended"
-              ? answer.answer
-              : answer.text,
-          timeTaken,
-          type: currentItem.type,
-        };
-
-        socket.emit("answer-submitted", {
-          sessionId,
-          answerDetails,
-        });
-      }
-    } catch (error) {
-      console.error("Error submitting answer:", error);
+      socket.emit("answer-submitted", {
+        sessionId,
+        answerDetails,
+      });
     }
-  };
+  } catch (error) {
+    console.error("Error submitting answer:", error);
+  }
+};
 
   if (authLoading) {
     return (

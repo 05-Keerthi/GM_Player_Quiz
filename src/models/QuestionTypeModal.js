@@ -95,9 +95,10 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
     setQuestion((prev) => ({
       ...prev,
       type: type,
-      options: type === "open_ended" 
-        ? []
-        : type === "true_false"
+      options:
+        type === "open_ended"
+          ? []
+          : type === "true_false"
           ? [
               { text: "True", isCorrect: false, color: "#ffffff" },
               { text: "False", isCorrect: false, color: "#ffffff" },
@@ -185,7 +186,11 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
 
   const handleCorrectAnswerChange = (index) => {
     setQuestion((prev) => {
-      if (prev.type === "multiple_choice" || prev.type === "true_false") {
+      if (
+        prev.type === "multiple_choice" ||
+        prev.type === "true_false" ||
+        prev.type === "poll"
+      ) {
         const newOptions = prev.options.map((opt, i) => ({
           ...opt,
           isCorrect: i === index,
@@ -204,7 +209,10 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
   const addOption = () => {
     setQuestion((prev) => ({
       ...prev,
-      options: [...prev.options, { text: "", isCorrect: false, color: "#ffffff" }],
+      options: [
+        ...prev.options,
+        { text: "", isCorrect: false, color: "#ffffff" },
+      ],
     }));
   };
 
@@ -225,19 +233,26 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
         throw new Error("Correct answer is required for open-ended questions");
       }
 
-      if (question.type !== "open_ended" && question.options.some(opt => !opt.text)) {
+      if (
+        question.type !== "open_ended" &&
+        question.options.some((opt) => !opt.text)
+      ) {
         throw new Error("All options must have text");
       }
 
       const payload = {
         title: question.title,
         type: question.type,
-        options: question.type === "open_ended" ? [] : question.options.map((opt) => ({
-          text: opt.text,
-          isCorrect: opt.isCorrect,
-          color: opt.color,
-        })),
-        correctAnswer: question.type === "open_ended" ? question.correctAnswer : "",
+        options:
+          question.type === "open_ended"
+            ? []
+            : question.options.map((opt) => ({
+                text: opt.text,
+                isCorrect: opt.isCorrect,
+                color: opt.color,
+              })),
+        correctAnswer:
+          question.type === "open_ended" ? question.correctAnswer : "",
         points: question.points,
         timer: question.timer,
         imageUrl: question.imageUrl,
@@ -262,7 +277,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
             {error}
           </div>
         )}
-        
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
             {step === 1 ? "Select Question Type" : "Create Question"}
@@ -407,7 +422,9 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                   >
                     <input
                       type={
-                        selectedType === "multiple_select" ? "checkbox" : "radio"
+                        selectedType === "multiple_select"
+                          ? "checkbox"
+                          : "radio"
                       }
                       checked={option.isCorrect}
                       onChange={() => handleCorrectAnswerChange(index)}
@@ -416,7 +433,9 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                     <input
                       type="text"
                       value={option.text}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
+                      onChange={(e) =>
+                        handleOptionChange(index, e.target.value)
+                      }
                       className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors rounded-lg"
                       placeholder={`Option ${index + 1}`}
                       style={{
@@ -426,18 +445,21 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
                     />
                     <ColorPicker
                       color={option.color}
-                      onChange={(color) => handleOptionColorChange(index, color)}
+                      onChange={(color) =>
+                        handleOptionColorChange(index, color)
+                      }
                     />
                     {!["true_false"].includes(selectedType) &&
                       question.options.length > 2 && (
                         <button
-                        aria-label="removeOption"
+                          aria-label="removeOption"
                           onClick={() => removeOption(index)}
                           className="text-red-500 hover:bg-red-100 p-2 rounded-full"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
-                      )}</div>
+                      )}
+                  </div>
                 ))}
               </div>
             )}

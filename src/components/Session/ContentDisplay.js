@@ -48,9 +48,10 @@ const ContentDisplay = ({
         setOptionCounts(passedOptionCounts);
         setTotalVotes(passedTotalVotes);
       } else {
+        // Initialize counts for each option
         const initialCounts = {};
         item.options?.forEach((option) => {
-          initialCounts[option._id] = 0;
+          initialCounts[option._id || option.id] = 0; // Handle both _id and id
         });
         setOptionCounts(initialCounts);
         setTotalVotes(0);
@@ -77,11 +78,12 @@ const ContentDisplay = ({
         if (answerDetails.questionId === item._id) {
           setOptionCounts((prev) => {
             const newCounts = { ...prev };
-            const optionIndex = item.options.findIndex(
+            const selectedOption = item.options.find(
               (opt) => opt.text === answerDetails.answer
             );
-            if (optionIndex !== -1) {
-              newCounts[optionIndex] = (newCounts[optionIndex] || 0) + 1;
+            if (selectedOption) {
+              const optionId = selectedOption._id || selectedOption.id;
+              newCounts[optionId] = (newCounts[optionId] || 0) + 1;
             }
             return newCounts;
           });
@@ -133,23 +135,23 @@ const ContentDisplay = ({
 
   const handleMultipleSelectSubmit = () => {
     if (selectedOptions.length === 0 || isTimeUp || isAnswerSubmitted) return;
-  
-    console.log('Selected options:', selectedOptions);
-    
+
+    console.log("Selected options:", selectedOptions);
+
     // For multiple select, send both indices and text
-    const selectedIndices = selectedOptions.map((opt) => 
+    const selectedIndices = selectedOptions.map((opt) =>
       item.options.findIndex((itemOpt) => itemOpt._id === opt._id)
     );
-    
-    const selectedTexts = selectedOptions.map(opt => opt.text);
-    
-    console.log('Selected indices:', selectedIndices);
-    console.log('Selected texts:', selectedTexts);
-    
+
+    const selectedTexts = selectedOptions.map((opt) => opt.text);
+
+    console.log("Selected indices:", selectedIndices);
+    console.log("Selected texts:", selectedTexts);
+
     onSubmitAnswer?.({
       type: "multiple_select",
       answer: selectedIndices,
-      text: selectedTexts.join(', ')
+      text: selectedTexts.join(", "),
     });
     setIsAnswerSubmitted(true);
   };
@@ -345,14 +347,15 @@ const ContentDisplay = ({
           <div className="mt-8">
             <div className="w-full bg-white rounded-lg p-6 shadow-md space-y-3">
               {item.options.map((option, index) => {
-                const count = optionCounts[option._id] || 0;
+                const optionId = option._id || option.id;
+                const count = optionCounts[optionId] || 0;
                 const percentage = getPercentage(count);
                 const backgroundColor = option.color || "#ffffff";
                 const textColor = getContrastColor(backgroundColor);
 
                 return (
-                  <div key={`progress-${index}`} className="relative">
-                    <div className="h-12 w-full bg-gray-100 rounded-full relative">
+                  <div key={`progress-${optionId}`} className="relative">
+                    <div className="h-12 w-full bg-gray-100 rounded-full relative overflow-hidden">
                       <div
                         className="h-full transition-all duration-500 rounded-full absolute top-0 left-0"
                         style={{
@@ -382,6 +385,9 @@ const ContentDisplay = ({
                   </div>
                 );
               })}
+              <div className="text-right text-sm text-gray-500 mt-2">
+                Total Votes: {totalVotes}
+              </div>
             </div>
           </div>
         )}
