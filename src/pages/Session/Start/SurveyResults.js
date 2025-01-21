@@ -7,6 +7,7 @@ const SurveyResults = () => {
   const [userAnswers, setUserAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasInterestColumns, setHasInterestColumns] = useState(false);
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const location = useLocation();
@@ -35,6 +36,16 @@ const SurveyResults = () => {
         if (data.questions && data.userAnswers) {
           setQuestions(data.questions);
           setUserAnswers(data.userAnswers);
+          
+          // Check if any question has interest-related answers
+          const hasInterestAnswers = data.userAnswers.some(userAnswer =>
+            userAnswer.answers.some(answer => {
+              const answerValue = answer.answer?.toLowerCase?.() || answer.value?.toLowerCase?.();
+              return answerValue === 'interested' || 
+                     answerValue === 'not interested';
+            })
+          );
+          setHasInterestColumns(hasInterestAnswers);
         } else {
           throw new Error("Invalid response format");
         }
@@ -64,15 +75,11 @@ const SurveyResults = () => {
         answer => answer.questionId === questionId
       );
       
-      // Log the answer for debugging
-      console.log(`Question ${questionId} answer:`, answer);
-      
       if (answer) {
-        // Check both lowercase and original cases
         const answerValue = answer.answer?.toLowerCase?.() || answer.value?.toLowerCase?.();
-        if (answerValue === 'interested' || answerValue === 'yes' || answerValue === true || answerValue === 1) {
+        if (answerValue === 'interested') {
           acc.interested += 1;
-        } else if (answerValue === 'not interested' || answerValue === 'no' || answerValue === false || answerValue === 0) {
+        } else if (answerValue === 'not interested') {
           acc.notInterested += 1;
         }
       }
@@ -163,17 +170,21 @@ const SurveyResults = () => {
                     <th className="text-center p-3 border border-gray-200">
                       Total Responses
                     </th>
-                    <th className="text-center p-3 border border-gray-200">
-                      Interested
-                    </th>
-                    <th className="text-center p-3 border border-gray-200">
-                      Not Interested
-                    </th>
+                    {hasInterestColumns && (
+                      <>
+                        <th className="text-center p-3 border border-gray-200">
+                          Interested
+                        </th>
+                        <th className="text-center p-3 border border-gray-200">
+                          Not Interested
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {questions.map((question) => {
-                    const interestCounts = getInterestCounts(question._id);
+                    const interestCounts = hasInterestColumns ? getInterestCounts(question._id) : null;
                     return (
                       <tr
                         key={question._id}
@@ -186,12 +197,16 @@ const SurveyResults = () => {
                         <td className="text-center p-3 border border-gray-200">
                           {getTotalResponses(question._id)}
                         </td>
-                        <td className="text-center p-3 border border-gray-200">
-                          {interestCounts.interested}
-                        </td>
-                        <td className="text-center p-3 border border-gray-200">
-                          {interestCounts.notInterested}
-                        </td>
+                        {hasInterestColumns && (
+                          <>
+                            <td className="text-center p-3 border border-gray-200">
+                              {interestCounts.interested}
+                            </td>
+                            <td className="text-center p-3 border border-gray-200">
+                              {interestCounts.notInterested}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
