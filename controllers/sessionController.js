@@ -308,8 +308,8 @@ exports.endSession = async (req, res) => {
   try {
     // Find the session
     const session = await Session.findOne({ joinCode, _id: sessionId })
-      .populate("players", "username email")
-      .populate("host", "username email")
+      .populate("players", "username email mobile")
+      .populate("host", "username email mobile")
       .populate("quiz", "title description");
 
     if (!session) {
@@ -340,6 +340,8 @@ exports.endSession = async (req, res) => {
     for (const player of session.players) {
       const userId = player._id;
       const username = player.username;
+      const email = player.email;
+      const mobile = player.mobile;
 
       const leaderboardEntry = leaderboardEntries.find(
         (entry) => entry.player.toString() === userId.toString()
@@ -379,6 +381,8 @@ exports.endSession = async (req, res) => {
         details: {
           sessionId,
           username,
+          email,
+          mobile,
           quizTitle,
           quizDescription,
           rank,

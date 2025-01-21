@@ -91,6 +91,8 @@ exports.createSurveyQuiz = async (req, res) => {
           activityType: 'survey_create',
           details: {
             username: req.user.username,
+            email: req.user.email,
+            mobile: req.user.mobile,
             surveyTitle: title,
             surveyDescription: description,
             type,

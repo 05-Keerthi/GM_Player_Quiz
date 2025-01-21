@@ -436,8 +436,8 @@ exports.endSurveySession = async (req, res) => {
       surveyJoinCode: joinCode,
       _id: sessionId,
     })
-      .populate("surveyPlayers", "username email _id")
-      .populate("surveyHost", "username email _id")
+      .populate("surveyPlayers", "username email _id mobile")
+      .populate("surveyHost", "username email _id mobile")
       .populate("surveyQuiz", "title")
       .populate("surveyQuestions"); // Populate questions to calculate skipped/attempted
 
@@ -487,6 +487,7 @@ exports.endSurveySession = async (req, res) => {
         details: {
           username: player.username,
           email: player.email,
+          mobile: player.mobile,
           sessionId,
         },
       });
