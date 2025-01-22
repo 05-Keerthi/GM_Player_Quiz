@@ -199,6 +199,7 @@ const ReportsView = () => {
     <div className="min-h-screen bg-gray-100">
       <Navbar />
       <div className="max-w-7xl mx-auto py-8 px-4">
+      <div className="text-2xl font-semibold text-gray-600 mb-4">Reports</div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div className="bg-white shadow-lg rounded-lg p-6">

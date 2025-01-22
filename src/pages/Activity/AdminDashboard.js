@@ -296,81 +296,81 @@ const SmallChart = ({ counts }) => {
   );
 };
 
-const CustomCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState([14, 25, 28]);
+// const CustomCalendar = () => {
+//   const [currentDate, setCurrentDate] = useState(new Date());
+//   const [selectedDates, setSelectedDates] = useState([14, 25, 28]);
 
-  const daysInMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  ).getDate();
+//   const daysInMonth = new Date(
+//     currentDate.getFullYear(),
+//     currentDate.getMonth() + 1,
+//     0
+//   ).getDate();
 
-  const firstDayOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  ).getDay();
+//   const firstDayOfMonth = new Date(
+//     currentDate.getFullYear(),
+//     currentDate.getMonth(),
+//     1
+//   ).getDay();
 
-  const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+//   const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
-  };
+//   const prevMonth = () => {
+//     setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
+//   };
 
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
-  };
+//   const nextMonth = () => {
+//     setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
+//   };
 
-  return (
-    <div className="bg-white p-6 rounded-[50px] shadow-sm">
-      <div className="flex justify-center items-center mb-4">
-        <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
-          <ChevronLeft className="text-orange-500 text-xl" />
-        </button>
-        <h3 className="text-gray-500 text-sm capitalize mx-2">
-          {currentDate.toLocaleString("default", { month: "long" })}
-        </h3>
-        <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
-          <ChevronRight className="text-orange-500 text-xl" />
-        </button>
-      </div>
+//   return (
+//     <div className="bg-white p-6 rounded-[50px] shadow-sm">
+//       <div className="flex justify-center items-center mb-4">
+//         <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
+//           <ChevronLeft className="text-orange-500 text-xl" />
+//         </button>
+//         <h3 className="text-gray-500 text-sm capitalize mx-2">
+//           {currentDate.toLocaleString("default", { month: "long" })}
+//         </h3>
+//         <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
+//           <ChevronRight className="text-orange-500 text-xl" />
+//         </button>
+//       </div>
 
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((day) => (
-          <div key={day} className="text-xs text-gray-500 text-center">
-            {day}
-          </div>
-        ))}
+//       <div className="grid grid-cols-7 gap-2">
+//         {days.map((day) => (
+//           <div key={day} className="text-xs text-gray-500 text-center">
+//             {day}
+//           </div>
+//         ))}
 
-        {Array.from({ length: firstDayOfMonth }).map((_, index) => (
-          <div key={`empty-${index}`} className="text-center py-2"></div>
-        ))}
+//         {Array.from({ length: firstDayOfMonth }).map((_, index) => (
+//           <div key={`empty-${index}`} className="text-center py-2"></div>
+//         ))}
 
-        {Array.from({ length: daysInMonth }).map((_, index) => {
-          const day = index + 1;
-          const isSelected = selectedDates.includes(day);
-          return (
-            <div
-              key={day}
-              className={`text-center py-1 text-sm rounded-full ${
-                isSelected ? "text-white" : "text-gray-700"
-              } ${
-                isSelected && day === 14
-                  ? "bg-purple-500"
-                  : isSelected
-                  ? "bg-orange-400"
-                  : "hover:bg-gray-100"
-              }`}
-            >
-              {day}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+//         {Array.from({ length: daysInMonth }).map((_, index) => {
+//           const day = index + 1;
+//           const isSelected = selectedDates.includes(day);
+//           return (
+//             <div
+//               key={day}
+//               className={`text-center py-1 text-sm rounded-full ${
+//                 isSelected ? "text-white" : "text-gray-700"
+//               } ${
+//                 isSelected && day === 14
+//                   ? "bg-purple-500"
+//                   : isSelected
+//                   ? "bg-orange-400"
+//                   : "hover:bg-gray-100"
+//               }`}
+//             >
+//               {day}
+//             </div>
+//           );
+//         })}
+//       </div>
+//     </div>
+//   );
+// };
 
 const AdminDashboard = () => {
   const [activityData, setActivityData] = useState(null);
@@ -456,7 +456,8 @@ const AdminDashboard = () => {
       <div className="min-h-screen bg-blue-200 p-8">
         <div className="max-w-8xl mx-auto">
           {/* Filter Dropdown */}
-          <div className="flex justify-end items-center mb-8">
+          <div className="flex justify-between items-center mb-8">
+            <div className="text-2xl font-semibold text-gray-600">Activity Dashboard</div>
             <div className="relative">
               <select
                 className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 pr-10 pl-4 appearance-none cursor-pointer"
@@ -483,7 +484,7 @@ const AdminDashboard = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard counts={activityData?.counts} />
-            <CustomCalendar />
+            {/* <CustomCalendar /> */}
             <ProgressBars counts={activityData?.counts} />
             <SmallChart counts={activityData?.counts} />
           </div>

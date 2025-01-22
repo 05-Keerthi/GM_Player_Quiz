@@ -21,6 +21,7 @@ import Navbar from "../../components/NavbarComp";
 import { useReportContext } from "../../context/ReportContext";
 import { paginateData, PaginationControls } from "../../utils/pagination";
 import QuizDetailsModal from "../../models/QuizDetailsModal";
+import SurveyDetailsModal from "../../models/SurveyDetailsModal";
 
 ChartJS.register(ArcElement, ChartTooltip, ChartLegend);
 
@@ -32,7 +33,8 @@ const UserReport = () => {
   const [quizSearchFilter, setQuizSearchFilter] = useState("");
   const [surveySearchFilter, setSurveySearchFilter] = useState("");
   const [selectedQuiz, setSelectedQuiz] = useState(null);
-  const itemsPerPage = 10;
+  const [selectedSurvey, setSelectedSurvey] = useState(null);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     if (userId) {
@@ -46,6 +48,14 @@ const UserReport = () => {
 
   const handleCloseModal = () => {
     setSelectedQuiz(null);
+  };
+
+  const handleSurveyClick = (survey) => {
+    setSelectedSurvey(survey);
+  };
+
+  const handleCloseSurveyModal = () => {
+    setSelectedSurvey(null);
   };
 
   // Prepare data for weekly line chart
@@ -213,6 +223,7 @@ const UserReport = () => {
     <div className="min-h-screen bg-gray-100">
       <Navbar />
       <div className="max-w-7xl mx-auto py-8 px-4">
+        <div className="text-2xl font-semibold text-gray-600 mb-4">Reports</div>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div
@@ -332,7 +343,7 @@ const UserReport = () => {
               className="border border-gray-300 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
-     
+
           <div className="overflow-x-auto">
             <table
               data-testid="quiz-history-table"
@@ -405,7 +416,8 @@ const UserReport = () => {
                   <tr
                     key={report._id}
                     data-testid="survey-history-row"
-                    className="hover:bg-gray-100 border-b"
+                    className="hover:bg-gray-100 cursor-pointer border-b"
+                    onClick={() => handleSurveyClick(report)}
                   >
                     <td className="px-6 py-4">
                       {report.surveyQuiz?.title || "N/A"}
@@ -435,6 +447,12 @@ const UserReport = () => {
         open={Boolean(selectedQuiz)}
         onClose={handleCloseModal}
         quiz={selectedQuiz}
+      />
+
+      <SurveyDetailsModal
+        open={Boolean(selectedSurvey)}
+        onClose={handleCloseSurveyModal}
+        survey={selectedSurvey}
       />
     </div>
   );
