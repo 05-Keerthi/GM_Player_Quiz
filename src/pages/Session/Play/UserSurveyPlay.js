@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
 import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
+import SurveyProgress from "../../../components/Session/Progress";
 
 const UserSurveyPlay = () => {
   const [searchParams] = useSearchParams();
@@ -13,6 +14,7 @@ const UserSurveyPlay = () => {
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
   const { checkGuestStatus } = useSurveySessionContext();
   const { submitSurveyAnswer } = useSurveyAnswerContext();
+  const [progress, setProgress] = useState("0/0");
 
   const [activeUser, setActiveUser] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
@@ -83,46 +85,52 @@ const UserSurveyPlay = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleNextQuestion = (data) => {
-      console.log("Received next question data:", data);
-      const { type, question, isLastQuestion, initialTime } = data;
+// In the handleNextQuestion socket event handler:
+const handleNextQuestion = (data) => {
+  console.log("Received next question data:", data);
+  const { type, question, isLastQuestion, initialTime, progress } = data;  // Add progress here
 
-      if (!question) {
-        console.log("No question data received");
-        return;
-      }
+  if (!question) {
+    console.log("No question data received");
+    return;
+  }
 
-      const transformedItem =
-        type === "slide"
-          ? {
-              _id: question._id,
-              type: "slide",
-              title: question.surveyTitle || question.title,
-              content: question.surveyContent || question.content,
-              imageUrl: question.imageUrl,
-              surveyQuiz: question.surveyQuiz,
-            }
-          : {
-              _id: question._id,
-              title: question.title,
-              type: type || "single_select",
-              imageUrl: question.imageUrl,
-              description: question.description,
-              timer: initialTime || 30,
-              answerOptions: (question.answerOptions || []).map((option) => ({
-                _id: option._id,
-                optionText: option.optionText || option.text,
-                color: option.color,
-              })),
-            };
+  const transformedItem =
+    type === "slide"
+      ? {
+          _id: question._id,
+          type: "slide",
+          title: question.surveyTitle || question.title,
+          content: question.surveyContent || question.content,
+          imageUrl: question.imageUrl,
+          surveyQuiz: question.surveyQuiz,
+        }
+      : {
+          _id: question._id,
+          title: question.title,
+          type: type || "single_select",
+          imageUrl: question.imageUrl,
+          description: question.description,
+          timer: initialTime || 30,
+          answerOptions: (question.answerOptions || []).map((option) => ({
+            _id: option._id,
+            optionText: option.optionText || option.text,
+            color: option.color,
+          })),
+        };
 
-      console.log("Setting transformed item:", transformedItem);
-      setCurrentItem(transformedItem);
-      setTimeLeft(initialTime || 30);
-      setIsLastItem(isLastQuestion);
-      setHasSubmitted(false);
-      setQuestionStartTime(type !== "slide" ? Date.now() : null);
-    };
+  console.log("Setting transformed item:", transformedItem);
+  setCurrentItem(transformedItem);
+  setTimeLeft(initialTime || 30);
+  setIsLastItem(isLastQuestion);
+  setHasSubmitted(false);
+  setQuestionStartTime(type !== "slide" ? Date.now() : null);
+  
+  // Add this line to update progress
+  if (progress) {
+    setProgress(progress ||"1/1");
+  }
+};
 
     const handleTimerSync = (data) => {
       if (data && typeof data.timeLeft === "number") {
@@ -290,6 +298,11 @@ const UserSurveyPlay = () => {
               </span>
             </div>
           )}
+
+          <SurveyProgress 
+  progress={progress} 
+  className="mb-4" 
+/>
           <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
@@ -300,6 +313,7 @@ const UserSurveyPlay = () => {
             isSubmitted={hasSubmitted}
             socket={socket}
           />
+
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import io from "socket.io-client";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
 import SurveyContentDisplay from "../../../components/Session/SurveyContentDisplay";
 import SurveyResults from "./SurveyResults";
+import SurveyProgress from "../../../components/Session/Progress";
 
 const AdminSurveyStart = () => {
   const [searchParams] = useSearchParams();
@@ -22,6 +23,7 @@ const AdminSurveyStart = () => {
   const [showResults, setShowResults] = useState(false);
   const [optionCounts, setOptionCounts] = useState({});
   const [userAnswers, setUserAnswers] = useState(new Map());
+  const [progress, setProgress] = useState("0/0");
 
   const surveyId = searchParams.get("surveyId");
   const sessionId = searchParams.get("sessionId");
@@ -130,7 +132,8 @@ const AdminSurveyStart = () => {
 
             setCurrentItem(transformedItem);
             setIsLastItem(response.isLastItem || false);
-
+            setProgress(response.progress || "0/0");
+           
             if (type !== "slide") {
               const initialTime = transformedItem.timer || 30;
               setTimeLeft(initialTime);
@@ -247,6 +250,7 @@ const AdminSurveyStart = () => {
 
         setCurrentItem(transformedItem);
         setIsLastItem(response.isLastItem || false);
+        setProgress(response.progress || "0/0");
 
         if (type !== "slide") {
           const newTime = transformedItem.timer || 30;
@@ -262,6 +266,7 @@ const AdminSurveyStart = () => {
             item: transformedItem,
             isLastItem: response.isLastItem || false,
             initialTime: type !== "slide" ? transformedItem.timer || 30 : null,
+            progress: response.progress // Add this line
           });
         }
       }
@@ -339,6 +344,11 @@ const AdminSurveyStart = () => {
             </div>
           ) : (
             <>
+
+            <SurveyProgress 
+  progress={progress} 
+  className="mb-4" 
+/>
               {/* Live Response Counter */}
               {currentItem?.answerOptions && (
                 <div className="mb-2 flex justify-end rounded-full">
@@ -380,6 +390,7 @@ const AdminSurveyStart = () => {
                 isSurveyEnded={isSurveyEnded}
                 submittedAnswers={submittedAnswers}
               />
+ 
             </>
           )}
         </div>
