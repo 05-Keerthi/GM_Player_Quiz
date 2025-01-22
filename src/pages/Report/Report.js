@@ -3,11 +3,20 @@ import { useParams } from "react-router-dom";
 import { useReportContext } from "../../context/ReportContext";
 import { useAuthContext } from "../../context/AuthContext";
 import Navbar from "../../components/NavbarComp";
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { PaginationControls } from "../../utils/pagination";
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ReportsView = () => {
   const { quizId } = useParams();
@@ -23,25 +32,33 @@ const ReportsView = () => {
     clearError,
   } = useReportContext();
 
-  const [filteredReports, setFilteredReports] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [filteredQuizReports, setFilteredQuizReports] = useState([]);
+  const [filteredSurveyReports, setFilteredSurveyReports] = useState([]);
+  const [currentQuizPage, setCurrentQuizPage] = useState(1);
+  const [currentSurveyPage, setCurrentSurveyPage] = useState(1);
   const [reportsPerPage] = useState(5);
-  const [quizTitleFilter, setQuizTitleFilter] = useState("");
-  const [usernameFilter, setUsernameFilter] = useState("");
-  const [searchFilter, setSearchFilter] = useState("");
+  const [quizSearchFilter, setQuizSearchFilter] = useState("");
+  const [surveySearchFilter, setSurveySearchFilter] = useState("");
+  const [weeklyData, setWeeklyData] = useState([]);
 
   // Calculate current reports for pagination
-  const indexOfLastReport = currentPage * reportsPerPage;
-  const indexOfFirstReport = indexOfLastReport - reportsPerPage;
-  const currentReports = filteredReports.slice(
-    indexOfFirstReport,
-    indexOfLastReport
+  const indexOfLastQuizReport = currentQuizPage * reportsPerPage;
+  const indexOfFirstQuizReport = indexOfLastQuizReport - reportsPerPage;
+  const currentQuizReports = filteredQuizReports.slice(
+    indexOfFirstQuizReport,
+    indexOfLastQuizReport
+  );
+
+  const indexOfLastSurveyReport = currentSurveyPage * reportsPerPage;
+  const indexOfFirstSurveyReport = indexOfLastSurveyReport - reportsPerPage;
+  const currentSurveyReports = filteredSurveyReports.slice(
+    indexOfFirstSurveyReport,
+    indexOfLastSurveyReport
   );
 
   // Handle page change
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
+  const handleQuizPageChange = (page) => setCurrentQuizPage(page);
+  const handleSurveyPageChange = (page) => setCurrentSurveyPage(page);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -57,69 +74,111 @@ const ReportsView = () => {
     };
 
     fetchReports();
-
-    return () => {
-      clearError();
-    };
+    return () => clearError();
   }, [quizId, isAdmin]);
 
   useEffect(() => {
     if (isAdmin) {
-      let filtered = reports;
+      let quizReports = reports.filter((report) => report.quiz);
+      let surveyReports = reports.filter((report) => report.surveyQuiz);
 
-      if (searchFilter) {
-        const searchTerm = searchFilter.toLowerCase();
-        filtered = filtered.filter((report) => {
-          const quizTitle = (report.quiz?.title || "").toLowerCase();
-          const username = (report.user?.username || "").toLowerCase();
+      if (quizSearchFilter) {
+        const searchTerm = quizSearchFilter.toLowerCase();
+        quizReports = quizReports.filter((report) => {
+          const quizTitle = report.quiz?.title.toLowerCase() || "";
+          const username = report.user?.username.toLowerCase() || "";
           return (
             quizTitle.includes(searchTerm) || username.includes(searchTerm)
           );
         });
       }
 
-      setFilteredReports(filtered);
-      setCurrentPage(1);
-    }
-  }, [reports, searchFilter, isAdmin]);
+      if (surveySearchFilter) {
+        const searchTerm = surveySearchFilter.toLowerCase();
+        surveyReports = surveyReports.filter((report) => {
+          const surveyTitle = report.surveyQuiz?.title.toLowerCase() || "";
+          const username = report.user?.username.toLowerCase() || "";
+          return (
+            surveyTitle.includes(searchTerm) || username.includes(searchTerm)
+          );
+        });
+      }
 
-  const totalQuizzes = filteredReports.length;
-  const totalScore = filteredReports.reduce(
+      setFilteredQuizReports(quizReports);
+      setFilteredSurveyReports(surveyReports);
+      setCurrentQuizPage(1);
+      setCurrentSurveyPage(1);
+    }
+  }, [reports, quizSearchFilter, surveySearchFilter, isAdmin]);
+
+  useEffect(() => {
+    const today = new Date();
+    const pastWeek = new Date(today);
+    pastWeek.setDate(today.getDate() - 7);
+
+    const filteredReportsForWeek = reports.filter(
+      (report) => new Date(report.completedAt) >= pastWeek
+    );
+
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    const groupedData = weekdays.reduce((data, weekday) => {
+      data[weekday] = { weekday, quizzes: 0, surveys: 0 };
+      return data;
+    }, {});
+
+    filteredReportsForWeek.forEach((report) => {
+      const weekday = weekdays[new Date(report.completedAt).getDay()];
+      if (report.quiz) {
+        groupedData[weekday].quizzes++;
+      } else if (report.surveyQuiz) {
+        groupedData[weekday].surveys++;
+      }
+    });
+
+    setWeeklyData(Object.values(groupedData));
+  }, [reports]);
+
+  // Calculate statistics
+  const totalQuizzes = filteredQuizReports.length;
+  const totalSurveys = filteredSurveyReports.length;
+  const totalScore = filteredQuizReports.reduce(
     (sum, report) => sum + report.totalScore,
     0
   );
   const averageScore =
     totalQuizzes > 0 ? (totalScore / totalQuizzes).toFixed(2) : 0;
 
-  const totalCorrectAnswers = filteredReports.reduce(
+  const totalCorrectAnswers = filteredQuizReports.reduce(
     (sum, report) => sum + report.correctAnswers,
     0
   );
-  const totalIncorrectAnswers = filteredReports.reduce(
+  const totalIncorrectAnswers = filteredQuizReports.reduce(
     (sum, report) => sum + report.incorrectAnswers,
     0
   );
 
-  const chartData = {
-    labels: ["Correct Answers", "Incorrect Answers"],
-    datasets: [
-      {
-        data: [totalCorrectAnswers, totalIncorrectAnswers],
-        backgroundColor: ["#10B981", "#EF4444"],
-        hoverBackgroundColor: ["#059669", "#DC2626"],
-      },
-    ],
-  };
+  const pieChartData = [
+    { name: "Correct Answers", value: totalCorrectAnswers },
+    { name: "Incorrect Answers", value: totalIncorrectAnswers },
+  ];
+
+  const COLORS = ["#10B981", "#EF4444"];
 
   if (loading) {
     return (
       <>
         <Navbar />
-        <div
-          data-testid="loading-spinner"
-          className="flex justify-center items-center h-screen"
-        >
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="flex justify-center items-center h-screen">
+          Loading...
         </div>
       </>
     );
@@ -129,20 +188,8 @@ const ReportsView = () => {
     return (
       <>
         <Navbar />
-        <div
-          data-testid="error-message"
-          className="flex justify-center items-center h-screen text-red-500"
-        >
-          <div className="text-center">
-            <p className="text-xl font-semibold mb-4">{error.message}</p>
-            <button
-              data-testid="retry-button"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
-          </div>
+        <div className="flex justify-center items-center h-screen text-red-500">
+          Error: {error.message}
         </div>
       </>
     );
@@ -151,156 +198,216 @@ const ReportsView = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
-      <div className="max-w-6xl mx-auto py-8 px-4">
-        <h1 className="text-4xl font-bold text-center text-indigo-600 mb-8">
-          Quiz Reports
-        </h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-          <div
-            data-testid="total-quizzes-card"
-            className="bg-white shadow-lg rounded-lg p-6"
-          >
+      <div className="max-w-7xl mx-auto py-8 px-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+          <div className="bg-white shadow-lg rounded-lg p-6">
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Total Quizzes
+              Total Quiz Sessions
             </h3>
-            <p
-              data-testid="total-quizzes-value"
-              className="text-4xl font-bold text-gray-800"
-            >
-              {totalQuizzes}
-            </p>
+            <p className="text-4xl font-bold text-gray-800">{totalQuizzes}</p>
           </div>
-          <div
-            data-testid="total-score-card"
-            className="bg-white shadow-lg rounded-lg p-6"
-          >
+          <div className="bg-white shadow-lg rounded-lg p-6">
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Total Score
+              Total Survey Sessions
             </h3>
-            <p
-              data-testid="total-score-value"
-              className="text-4xl font-bold text-gray-800"
-            >
-              {totalScore}
-            </p>
+            <p className="text-4xl font-bold text-gray-800">{totalSurveys}</p>
           </div>
-          <div
-            data-testid="average-score-card"
-            className="bg-white shadow-lg rounded-lg p-6"
-          >
+          <div className="bg-white shadow-lg rounded-lg p-6">
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Average Score
+              Total Quiz Score
             </h3>
-            <p
-              data-testid="average-score-value"
-              className="text-4xl font-bold text-gray-800"
-            >
-              {averageScore}
-            </p>
+            <p className="text-4xl font-bold text-gray-800">{totalScore}</p>
+          </div>
+          <div className="bg-white shadow-lg rounded-lg p-6">
+            <h3 className="text-xl font-semibold text-indigo-600 mb-4">
+              Avg Quiz Score
+            </h3>
+            <p className="text-4xl font-bold text-gray-800">{averageScore}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Pie Chart */}
           <div className="bg-white shadow-lg rounded-lg p-8">
             <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
-              Answers Overview
+              Quiz Answers Overview
             </h2>
-            <div className="flex justify-center">
-              <div
-                data-testid="pie-chart-container"
-                className="w-full h-96 flex items-center justify-center"
-              >
-                <div className="w-80 h-80">
+            <div className="w-full h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
                   <Pie
-                    data={chartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: true,
-                    }}
-                  />
-                </div>
-              </div>
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-white shadow-lg rounded-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between bg-indigo-600 text-white px-6 py-4 rounded-t-lg">
-              <div className="flex justify-center">
-                <input
-                  data-testid="combined-filter"
-                  type="text"
-                  placeholder="Search by Quiz Title or Username"
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="border border-white bg-white text-indigo-600 rounded-md px-4 py-2 w-full md:w-96"
+          {/* Line Chart */}
+          <div className="bg-white shadow-lg rounded-lg p-8">
+            <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+              Weekly Sessions Comparison
+            </h2>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="weekday" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="quizzes"
+                  stroke="#8884d8"
+                  strokeWidth={2}
                 />
-              </div>
-            </div>
+                <Line
+                  type="monotone"
+                  dataKey="surveys"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-            {filteredReports.length === 0 ? (
-              <p
-                data-testid="no-reports-message"
-                className="text-xl text-center text-gray-500 py-8"
-              >
-                No reports found
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table
-                  data-testid="reports-table"
-                  className="w-full table-auto border-collapse"
-                >
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-600 uppercase text-sm">
-                      <th className="px-6 py-4 text-left">Quiz</th>
-                      <th className="px-6 py-4 text-left">User</th>
-                      <th className="px-6 py-4 text-left">Questions</th>
-                      <th className="px-6 py-4 text-left">Correct/Incorrect</th>
-                      <th className="px-6 py-4 text-left">Score</th>
-                      <th className="px-6 py-4 text-left">Completed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentReports.map((report) => (
-                      <tr
-                        key={report._id}
-                        className="border-b border-gray-200 hover:bg-gray-100"
-                      >
-                        <td className="px-6 py-4">
-                          {report.quiz?.title || "N/A"}
-                        </td>
-                        <td className="px-6 py-4">
-                          {report.user?.username || "N/A"}
-                        </td>
-                        <td className="px-6 py-4">{report.totalQuestions}</td>
-                        <td className="px-6 py-4">
-                          <span className="text-green-500">
-                            {report.correctAnswers}
-                          </span>{" "}
-                          /{" "}
-                          <span className="text-red-500">
-                            {report.incorrectAnswers}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">{report.totalScore}</td>
-                        <td className="px-6 py-4">
-                          {new Date(report.completedAt).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {/* Quiz Reports Table */}
+        <div className="bg-white shadow-lg rounded-lg p-8">
+          <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+            Quiz Reports
+          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <input
+              type="text"
+              placeholder="Search by Quiz Title or Username"
+              value={quizSearchFilter}
+              onChange={(e) => setQuizSearchFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-4 py-2 w-full"
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600 uppercase text-sm">
+                  <th className="px-6 py-4 text-left">Quiz</th>
+                  <th className="px-6 py-4 text-left">User</th>
+                  <th className="px-6 py-4 text-left">Questions</th>
+                  <th className="px-6 py-4 text-left">Correct/Incorrect</th>
+                  <th className="px-6 py-4 text-left">Score</th>
+                  <th className="px-6 py-4 text-left">Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentQuizReports.map((report) => (
+                  <tr
+                    key={report._id}
+                    className="border-b border-gray-200 hover:bg-gray-100"
+                  >
+                    <td className="px-6 py-4">{report.quiz?.title || "N/A"}</td>
+                    <td className="px-6 py-4">
+                      {report.user?.username || "N/A"}
+                    </td>
+                    <td className="px-6 py-4">{report.totalQuestions}</td>
+                    <td className="px-6 py-4">
+                      <span className="text-green-500">
+                        {report.correctAnswers}
+                      </span>
+                      {" / "}
+                      <span className="text-red-500">
+                        {report.incorrectAnswers}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{report.totalScore}</td>
+                    <td className="px-6 py-4">
+                      {new Date(report.completedAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentQuizPage}
+              totalPages={Math.ceil(
+                filteredQuizReports.length / reportsPerPage
+              )}
+              onPageChange={handleQuizPageChange}
+            />
+          </div>
+        </div>
 
-            <div className="px-6 py-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={Math.ceil(filteredReports.length / reportsPerPage)}
-                onPageChange={handlePageChange}
-              />
-            </div>
+        {/* Survey Reports Table */}
+        <div className="bg-white shadow-lg rounded-lg p-8 mt-8">
+          <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+            Survey Reports
+          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <input
+              type="text"
+              placeholder="Search by Survey Title or Username"
+              value={surveySearchFilter}
+              onChange={(e) => setSurveySearchFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-4 py-2 w-full"
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600 uppercase text-sm">
+                  <th className="px-6 py-4 text-left">Survey</th>
+                  <th className="px-6 py-4 text-left">User</th>
+                  <th className="px-6 py-4 text-left">Questions</th>
+                  <th className="px-6 py-4 text-left">Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentSurveyReports.map((report) => (
+                  <tr
+                    key={report._id}
+                    className="border-b border-gray-200 hover:bg-gray-100"
+                  >
+                    <td className="px-6 py-4">
+                      {report.surveyQuiz?.title || "N/A"}
+                    </td>
+                    <td className="px-6 py-4">
+                      {report.user?.username || "N/A"}
+                    </td>
+                    <td className="px-6 py-4">{report.surveyTotalQuestions}</td>
+                    <td className="px-6 py-4">
+                      {new Date(report.completedAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentSurveyPage}
+              totalPages={Math.ceil(
+                filteredSurveyReports.length / reportsPerPage
+              )}
+              onPageChange={handleSurveyPageChange}
+            />
           </div>
         </div>
       </div>
