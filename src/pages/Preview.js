@@ -24,59 +24,72 @@ const QuizContent = ({ item, inPresentation = false }) => {
 
     if (!options) return null;
 
-    return (
-      <div className="space-y-4" data-testid="options-container">
-        {options.map((option, idx) => {
-          const OptionWrapper = inPresentation ? motion.div : "div";
-          const optionProps = inPresentation
-            ? {
-                initial: { opacity: 0, x: -20 },
-                animate: { opacity: 1, x: 0 },
-                transition: { delay: idx * 0.1 },
-              }
-            : {};
+    // Group options into pairs
+    const rows = [];
+    for (let i = 0; i < options.length; i += 2) {
+      rows.push(options.slice(i, i + 2));
+    }
 
-          return (
-            <OptionWrapper
-              key={idx}
-              data-testid={`option-${idx}`}
-              {...optionProps}
-              style={{
-                backgroundColor:
-                  option.color || option.backgroundColor || "#ffffff",
-                color: getContrastColor(option.color || option.backgroundColor),
-              }}
-              className="p-4 rounded-lg border-2 transition-all hover:scale-[1.01]"
-            >
-              <label className="flex items-center gap-3">
-                <div
-                  className={`
-                  w-6 h-6 rounded-full border-2 flex items-center justify-center
-                  ${
-                    option.isCorrect
-                      ? "border-green-500 text-green-500"
-                      : "border-gray-400 text-gray-400"
+    return (
+      <div className="grid gap-4" data-testid="options-container">
+        {rows.map((row, rowIdx) => (
+          <div key={rowIdx} className="grid grid-cols-2 gap-4">
+            {row.map((option, idx) => {
+              const actualIdx = rowIdx * 2 + idx;
+              const OptionWrapper = inPresentation ? motion.div : "div";
+              const optionProps = inPresentation
+                ? {
+                    initial: { opacity: 0, x: -20 },
+                    animate: { opacity: 1, x: 0 },
+                    transition: { delay: actualIdx * 0.1 },
                   }
-                `}
+                : {};
+
+              return (
+                <OptionWrapper
+                  key={idx}
+                  data-testid={`option-${actualIdx}`}
+                  {...optionProps}
+                  style={{
+                    backgroundColor:
+                      option.color || option.backgroundColor || "#ffffff",
+                    color: getContrastColor(
+                      option.color || option.backgroundColor
+                    ),
+                  }}
+                  className="p-4 rounded-lg border-2 transition-all hover:scale-[1.01]"
                 >
-                  {option.isCorrect && "✓"}
-                </div>
-                <span className="text-lg" data-testid={`option-text-${idx}`}>
-                  {option.text || option.optionText}
-                </span>
-                {option.isCorrect && (
-                  <span
-                    className="text-sm font-medium ml-2"
-                    data-testid="correct-answer-label"
-                    style={{ color: option.isCorrect ? "#22c55e" : "inherit" }}
-                  >
-                    (Correct Answer)
-                  </span>
-                )}
-              </label>
-            </OptionWrapper>
-          );
-        })}
+                  <label className="flex items-center gap-3">
+                    <div
+                      className={`
+                        w-6 h-6 rounded-full border-2 flex items-center justify-center
+                        ${
+                          option.isCorrect
+                            ? "border-green-500 text-green-500"
+                            : "border-gray-400 text-gray-400"
+                        }
+                      `}
+                    >
+                      {option.isCorrect && "✓"}
+                    </div>
+                    <span className="text-lg" data-testid={`option-text-${actualIdx}`}>
+                      {option.text || option.optionText}
+                    </span>
+                    {option.isCorrect && (
+                      <span
+                        className="text-sm font-medium ml-2"
+                        data-testid="correct-answer-label"
+                        style={{ color: option.isCorrect ? "#22c55e" : "inherit" }}
+                      >
+                        (Correct Answer)
+                      </span>
+                    )}
+                  </label>
+                </OptionWrapper>
+              );
+            })}
+          </div>
+        ))}
       </div>
     );
   };
@@ -193,9 +206,7 @@ const PreviewPage = () => {
     setIsPublishing(true);
     try {
       await publishQuiz(quizId);
-      // Show success toast
       toast("Quiz published successfully", "success");
-      // Navigate to survey details
       navigate(`/quiz-details?type=quiz&quizId=${quizId}&hostId=${userId}`);
     } catch (error) {
       toast(error.message || "Failed to publish survey", "error");
@@ -407,7 +418,7 @@ const PreviewPage = () => {
                     }
                   `}
                 >
-                  <ChevronLeft className="w-6 h-6" />
+               <ChevronLeft className="w-6 h-6" />
                 </button>
               </div>
 
