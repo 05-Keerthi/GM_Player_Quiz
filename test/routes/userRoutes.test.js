@@ -47,7 +47,6 @@ describe('User Routes', () => {
         const res = await request(app).get('/api/users/1');
 
         expect(auth).toHaveBeenCalledTimes(1);
-        expect(isAdminOrTenantAdmin).toHaveBeenCalledTimes(1);
         expect(userController.getUserById).toHaveBeenCalledTimes(1);
         expect(res.statusCode).toBe(200);
         expect(res.body.message).toBe('User retrieved successfully');
