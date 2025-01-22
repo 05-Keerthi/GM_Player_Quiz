@@ -248,7 +248,10 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
             <input
               type="text"
               value={formData.dimension}
-              onChange={(e) => handleInputChange("dimension", e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "");
+                handleInputChange("timer", value === "" ? 30 : parseInt(value));
+              }}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Enter dimension"
             />
@@ -404,7 +407,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
           value={formData.timer}
           onChange={(e) => {
             const value = e.target.value.replace(/\D/g, "");
-            handleInputChange("timer", parseInt(value) || 30);
+            handleInputChange("timer", parseInt(value) || 0);
           }}
           placeholder="Enter time in seconds"
         />
