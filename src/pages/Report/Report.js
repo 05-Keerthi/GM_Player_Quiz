@@ -204,13 +204,13 @@ const ReportsView = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div className="bg-white shadow-lg rounded-lg p-6">
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Total Quiz Sessions
+            Total Users Participated in Quiz
             </h3>
             <p className="text-4xl font-bold text-gray-800">{totalQuizzes}</p>
           </div>
           <div className="bg-white shadow-lg rounded-lg p-6">
             <h3 className="text-xl font-semibold text-indigo-600 mb-4">
-              Total Survey Sessions
+              Total Users Participated in Surveys
             </h3>
             <p className="text-4xl font-bold text-gray-800">{totalSurveys}</p>
           </div>
