@@ -235,7 +235,7 @@ describe('SurveyQuestionEditor', () => {
   it('handles timer value changes', () => {
     render(<SurveyQuestionEditor onUpdate={mockOnUpdate} onClose={mockOnClose} />);
     
-    const timerInput = screen.getByRole('spinbutton', { name: /Timer \(seconds\)/i });
+    const timerInput = screen.getByLabelText(/Timer \(seconds\)/i);
     fireEvent.change(timerInput, { target: { value: '30' } });
     
     expect(timerInput.value).toBe('30');

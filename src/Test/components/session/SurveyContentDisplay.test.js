@@ -179,8 +179,12 @@ describe("SurveyContentDisplay Component", () => {
     // Click on an option
     fireEvent.click(optionButton);
 
-    // Check if the button is disabled after selecting
-    expect(optionButton).toBeDisabled();
+    // Check if the submit answer function was called
+    expect(mockOnSubmitAnswer).toHaveBeenCalledWith({
+      type: "single_select",
+      answer: "Option A",
+      questionId: "1",
+    });
   });
 
   test("shows survey completion message when the survey is ended", () => {
