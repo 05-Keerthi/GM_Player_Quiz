@@ -90,7 +90,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
     if (codeFromUrl) {
       setJoinCode(codeFromUrl.replace(/\D/g, "").slice(0, 6));
     }
-  }, [location, isAuthenticated, isSurvey]);
+  }, [location]);
 
   const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -120,6 +120,47 @@ const UnifiedJoin = ({ type = "quiz" }) => {
     return true;
   };
 
+  const cacheQuizData = (sessionData) => {
+    const quizInfo = {
+      title: sessionData.quiz.title,
+      description: sessionData.quiz.description,
+      totalQuestions: sessionData.quiz.questions?.length || 0,
+      categories: sessionData.quiz.categories || [],
+      order: sessionData.quiz.order || [],
+      status: sessionData.status,
+    };
+
+    // Store in both sessionStorage and localStorage
+    sessionStorage.setItem("quizData", JSON.stringify(quizInfo));
+    localStorage.setItem(
+      "quiz_session_data",
+      JSON.stringify({
+        data: quizInfo,
+        timestamp: Date.now(),
+        sessionId: sessionData._id,
+      })
+    );
+  };
+
+  const cacheSurveyData = (sessionData) => {
+    const surveyInfo = {
+      title: sessionData.surveyQuiz.title,
+      description: sessionData.surveyQuiz.description,
+      categories: sessionData.surveyQuiz.categories || [],
+    };
+
+    // Store in both sessionStorage and localStorage
+    sessionStorage.setItem("surveyData", JSON.stringify(surveyInfo));
+    localStorage.setItem(
+      "survey_session_data",
+      JSON.stringify({
+        data: surveyInfo,
+        timestamp: Date.now(),
+        sessionId: sessionData._id,
+      })
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -146,8 +187,15 @@ const UnifiedJoin = ({ type = "quiz" }) => {
           isGuest: !isAuthenticated,
           ...(!isAuthenticated && guestData),
         });
+
+        if (response.session?.surveyQuiz) {
+          cacheSurveyData(response.session);
+        }
       } else {
         response = await joinSession(joinCode);
+        if (response.session?.quiz) {
+          cacheQuizData(response.session);
+        }
       }
 
       if (response.session) {
@@ -159,7 +207,31 @@ const UnifiedJoin = ({ type = "quiz" }) => {
         setError("Invalid response from server");
       }
     } catch (err) {
-      setError(err.response?.data?.message || `Invalid Game PIN`);
+      const errorMessage = err.response?.data?.message;
+
+      if (errorMessage?.includes("Already joined")) {
+        const sessionId = err.response?.data?.session?._id;
+
+        if (isSurvey) {
+          const surveyData = err.response?.data?.session?.surveyQuiz;
+          if (sessionId && surveyData) {
+            cacheSurveyData(err.response.data.session);
+            navigate(
+              `/survey-user-lobby?code=${joinCode}&sessionId=${sessionId}`
+            );
+            return;
+          }
+        } else {
+          const quizData = err.response?.data?.session?.quiz;
+          if (sessionId && quizData) {
+            cacheQuizData(err.response.data.session);
+            navigate(`/user-lobby?code=${joinCode}&sessionId=${sessionId}`);
+            return;
+          }
+        }
+      }
+
+      setError(errorMessage || "Invalid Game PIN");
     }
   };
 
@@ -169,7 +241,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
       ...prev,
       [name]: value,
     }));
-    setError(""); // Clear error when user makes changes
+    setError("");
   };
 
   const handleSubmitGuestForm = async () => {
@@ -179,8 +251,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
   };
 
   const isSubmitDisabled = () => {
-    if (loading || joinCode.length < 6) return true;
-    return false;
+    return loading || joinCode.length < 6;
   };
 
   return (
@@ -192,7 +263,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
             Enter your game PIN below
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6" role="form">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <input
                 type="text"

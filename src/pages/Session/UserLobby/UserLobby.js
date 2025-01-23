@@ -1,29 +1,84 @@
-// UserLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useSessionContext } from "../../../context/sessionContext";
-
 import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
+import { useSessionContext } from "../../../context/sessionContext";
+
+const CACHE_KEY = "quiz_session_data";
+const SOCKET_RECONNECTION_ATTEMPTS = 3;
 
 const UserLobby = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
-  const [currentItem, setCurrentItem] = useState(null);
-  const [currentItemType, setCurrentItemType] = useState(null);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [socket, setSocket] = useState(null);
   const { joinSession, loading: sessionLoading } = useSessionContext();
+
+  const [socket, setSocket] = useState(null);
+  const [error, setError] = useState(null);
+  const [reconnectionAttempts, setReconnectionAttempts] = useState(0);
 
   const joinCode = searchParams.get("code");
   const sessionId = searchParams.get("sessionId");
 
-  // Initialize socket and join session
+  // Initialize quiz data from cache
+  const [quizData, setQuizData] = useState(() => {
+    try {
+      const sessionData = sessionStorage.getItem("quizData");
+      if (sessionData) {
+        return JSON.parse(sessionData);
+      }
+
+      const localData = localStorage.getItem(CACHE_KEY);
+      if (localData) {
+        const parsedData = JSON.parse(localData);
+        if (Date.now() - parsedData.timestamp < 24 * 60 * 60 * 1000) {
+          sessionStorage.setItem("quizData", JSON.stringify(parsedData.data));
+          return parsedData.data;
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Cache initialization error:", error);
+      return null;
+    }
+  });
+
+  // Cache quiz data with timestamp
+  const cacheQuizData = (data) => {
+    try {
+      const quizInfo = {
+        title: data.quiz.title,
+        description: data.quiz.description,
+        totalQuestions: data.quiz.questions?.length || 0,
+        categories: data.quiz.categories || [],
+        order: data.quiz.order || [],
+        status: data.status,
+      };
+
+      sessionStorage.setItem("quizData", JSON.stringify(quizInfo));
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data: quizInfo,
+          timestamp: Date.now(),
+          sessionId,
+        })
+      );
+      setQuizData(quizInfo);
+    } catch (error) {
+      console.error("Cache storage error:", error);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && user && joinCode && sessionId) {
-      const newSocket = io(`${process.env.REACT_APP_API_URL}`);
+      const newSocket = io(`${process.env.REACT_APP_API_URL}`, {
+        reconnectionAttempts: SOCKET_RECONNECTION_ATTEMPTS,
+        reconnectionDelay: 1000,
+      });
       setSocket(newSocket);
 
       newSocket.emit("join-session", {
@@ -31,176 +86,157 @@ const UserLobby = () => {
         joinCode,
         userId: user._id,
         username: user.username,
+        isReconnection: true,
       });
 
-      return () => newSocket.disconnect();
-    }
-  }, [isAuthenticated, user, joinCode, sessionId]);
+      newSocket.on("connect", () => {
+        console.log("Socket connected");
+        setError(null);
+        setReconnectionAttempts(0);
+      });
 
-  // Listen for game events
-  useEffect(() => {
-    if (socket) {
-      socket.on("session-started", (data) => {
-        console.log("Session started data:", data);
-        navigate(
-          `/play?quizId=${data.session.quiz._id}&sessionId=${sessionId}`
+      newSocket.on("reconnect_attempt", (attempt) => {
+        setReconnectionAttempts(attempt);
+        setError(
+          `Reconnection attempt ${attempt}/${SOCKET_RECONNECTION_ATTEMPTS}`
         );
       });
 
-      socket.on("next-item", ({ type, item }) => {
-        console.log("Next item received:", { type, item });
-        setCurrentItem(item);
-        setCurrentItemType(type);
-        setSelectedAnswer(null);
-      });
-
-      socket.on("session-ended", () => {
-        navigate("/results");
+      newSocket.on("reconnect_failed", () => {
+        setError(
+          "Connection lost. Please refresh the page or check your internet connection."
+        );
       });
 
       return () => {
-        socket.off("session-started");
-        socket.off("next-item");
-        socket.off("session-ended");
+        newSocket.disconnect();
       };
     }
+  }, [isAuthenticated, user, joinCode, sessionId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("session-started", (data) => {
+      if (data.session?.quiz) {
+        cacheQuizData(data.session);
+      }
+      navigate(`/play?quizId=${data.session.quiz._id}&sessionId=${sessionId}`);
+    });
+
+    socket.on("session-ended", () => {
+      sessionStorage.removeItem("quizData");
+      localStorage.removeItem(CACHE_KEY);
+      navigate("/join");
+    });
+
+    socket.on("quiz-data-update", (data) => {
+      cacheQuizData(data);
+    });
+
+    return () => {
+      socket.off("session-started");
+      socket.off("session-ended");
+      socket.off("quiz-data-update");
+    };
   }, [socket, navigate, sessionId]);
-
-  const handleAnswerSubmit = (option) => {
-    if (currentItemType !== "question" || selectedAnswer || !user) return;
-
-    setSelectedAnswer(option);
-    if (socket) {
-      socket.emit("answer-submitted", {
-        sessionId,
-        answerDetails: {
-          answer: option.text,
-          questionId: currentItem._id,
-          userId: user._id,
-        },
-      });
-    }
-  };
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-purple-100 flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <Loader2 role="status" className="w-6 h-6 animate-spin" />
+          <Loader2 className="w-6 h-6 animate-spin" />
           <span>Loading...</span>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">Authentication Required</h2>
-          </div>
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Please log in or register to join the session.
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => navigate("/login")}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Login
-              </button>
-              <button
-                onClick={() => navigate("/register")}
-                className="w-full border border-blue-600 text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                Register
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Joining session...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentItem) {
-    return (
-      <div className="min-h-screen bg-purple-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <div className="text-center py-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Waiting for session to start...
-            </h2>
-            <p className="text-gray-600">
-              The host will begin the session shortly
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-purple-100 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
-        <div className="p-6 border-b">
-          {currentItemType === "question" ? (
-            <>
-              <h2 className="text-xl font-bold">{currentItem.title}</h2>
-              {currentItem.imageUrl && (
-                <img
-                  src={currentItem.imageUrl}
-                  alt="Question"
-                  className="mt-4 rounded-lg w-full"
-                />
-              )}
-            </>
+    <div className="min-h-screen bg-purple-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg">
+        <div className="p-6 border-b border-gray-200">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">Waiting for Host</h2>
+            {reconnectionAttempts > 0 && (
+              <p className="text-sm text-gray-500 mt-2">
+                Reconnection attempt: {reconnectionAttempts}/
+                {SOCKET_RECONNECTION_ATTEMPTS}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {quizData ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2">{quizData.title}</h3>
+                <p className="text-gray-600">{quizData.description}</p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">Categories:</h4>
+                    <div className="space-y-2">
+                      {quizData.categories.map((category) => (
+                        <div
+                          key={category._id}
+                          className="p-2 bg-white rounded border border-gray-200"
+                        >
+                          <p className="font-medium">{category.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Total Questions</p>
+                        <p className="text-xl font-semibold">
+                          {quizData.totalQuestions}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Status</p>
+                        <p className="text-xl font-semibold capitalize">
+                          {quizData.status}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center mt-6">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+                  <p className="text-gray-600 mt-2">
+                    The quiz will begin when the host starts the session
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div>
-              <h2 className="text-xl font-bold mb-2">{currentItem.title}</h2>
-              <p className="text-gray-700">{currentItem.content}</p>
-              {currentItem.imageUrl && (
-                <img
-                  src={currentItem.imageUrl}
-                  alt={currentItem.title}
-                  className="mt-4 rounded-lg w-full"
-                />
-              )}
+            <div className="flex justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center">
+              <p>{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-2 text-blue-600 hover:text-blue-700 underline"
+              >
+                Try reconnecting
+              </button>
             </div>
           )}
         </div>
-        {currentItemType === "question" && (
-          <div className="p-6">
-            <div className="grid grid-cols-2 gap-4">
-              {currentItem.options?.map((option) => (
-                <button
-                  key={option._id}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={selectedAnswer !== null}
-                  className={`h-24 text-lg rounded-lg border transition-colors ${
-                    selectedAnswer === option
-                      ? "bg-blue-100 border-blue-500 text-blue-700"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  {option.text}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
