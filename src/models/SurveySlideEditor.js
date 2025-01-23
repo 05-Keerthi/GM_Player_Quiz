@@ -155,7 +155,7 @@ const SurveySlideEditor = ({ slide, onUpdate, onClose }) => {
         {/* Slide Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Slide Title
+            Slide Title <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -169,7 +169,7 @@ const SurveySlideEditor = ({ slide, onUpdate, onClose }) => {
         {/* Content */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Content
+            Content <span className="text-red-500">*</span>
           </label>
           <textarea
             value={formData.surveyContent}

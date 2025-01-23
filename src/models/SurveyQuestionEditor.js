@@ -23,6 +23,12 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Generate years array for the year picker
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 51 }, (_, i) => currentYear - i).sort(
+    (a, b) => b - a
+  );
+
   useEffect(() => {
     if (question) {
       setFormData(processQuestionData(question));
@@ -248,10 +254,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
             <input
               type="text"
               value={formData.dimension}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "");
-                handleInputChange("timer", value === "" ? 30 : parseInt(value));
-              }}
+              onChange={(e) => handleInputChange("dimension", e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Enter dimension"
             />
@@ -260,13 +263,19 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Year
             </label>
-            <input
-              type="text"
+
+            <select
               value={formData.year}
               onChange={(e) => handleInputChange("year", e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter year"
-            />
+              className="w-full h-[50px] px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+            >
+              <option value="">Select Year</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -392,25 +401,27 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
         </div>
 
         {/* Timer Field */}
-        <label
-          class="block text-sm font-medium text-gray-700 mb-1"
-          for="timer-input"
-        >
-          Timer (seconds)
-        </label>
-        <input
-          id="timer-input"
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          type="text"
-          pattern="[0-9]*"
-          maxLength="4"
-          value={formData.timer}
-          onChange={(e) => {
-            const value = e.target.value.replace(/\D/g, "");
-            handleInputChange("timer", parseInt(value) || 0);
-          }}
-          placeholder="Enter time in seconds"
-        />
+        <div>
+          <label
+            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="timer-input"
+          >
+            Timer (seconds)
+          </label>
+          <input
+            id="timer-input"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            type="text"
+            pattern="[0-9]*"
+            maxLength="4"
+            value={formData.timer}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, "");
+              handleInputChange("timer", value === "" ? 0 : parseInt(value));
+            }}
+            placeholder="Enter time in seconds"
+          />
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-4 pt-6 border-t">
