@@ -124,7 +124,8 @@ const UnifiedJoin = ({ type = "quiz" }) => {
     const quizInfo = {
       title: sessionData.quiz.title,
       description: sessionData.quiz.description,
-      totalQuestions: sessionData.quiz.questions?.length || 0,
+      questions: sessionData.quiz.questions,
+      slides: sessionData.quiz.slides || [],
       categories: sessionData.quiz.categories || [],
       order: sessionData.quiz.order || [],
       status: sessionData.status,
@@ -147,6 +148,10 @@ const UnifiedJoin = ({ type = "quiz" }) => {
       title: sessionData.surveyQuiz.title,
       description: sessionData.surveyQuiz.description,
       categories: sessionData.surveyQuiz.categories || [],
+      slides: sessionData.surveyQuiz.slides || [],
+      questions: sessionData.surveyQuiz.questions || [],
+      order: sessionData.surveyQuiz.order || [],
+      status: sessionData.status,
     };
 
     // Store in both sessionStorage and localStorage
