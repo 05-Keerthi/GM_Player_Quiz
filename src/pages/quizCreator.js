@@ -1015,9 +1015,32 @@ const QuizCreator = () => {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="text-sm text-gray-500 truncate">
-                        {item.data.title}
-                      </p>
+                      
+                    {/* Title */}
+                    <p className="text-sm text-gray-500 truncate">
+                              {item.type === "question"
+                                ? item.data.title
+                                : item.data.title}
+                            </p>
+
+                            {/* Image Preview */}
+                            {item.data.imageUrl && (
+                              <div className="mt-2 h-20 flex items-center justify-center">
+                                <img
+                                  src={
+                                    item.type === "question"
+                                      ? item.data.imageUrl
+                                      : item.data.imageUrl
+                                  }
+                                  alt={
+                                    item.type === "question"
+                                      ? "Question image"
+                                      : "Slide image"
+                                  }
+                                  className="max-h-full max-w-full object-contain shadow-md rounded p-1"
+                                />
+                              </div>
+                            )}
                     </div>
                   ))}
                 </div>
