@@ -79,7 +79,15 @@ exports.joinSession = async (req, res) => {
     // Find the session using joinCode
     let session = await Session.findOne({ joinCode })
       .populate("players", "username email")
-      .populate("host", "username email");
+      .populate("host", "username email")
+      .populate({
+        path: "quiz",
+        select: "title description categories slides questions order",
+        populate: {
+          path: "categories",
+          select: "name description", 
+        },
+      });
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -116,7 +124,15 @@ exports.joinSession = async (req, res) => {
     // Refresh the populated session
     session = await Session.findById(session._id)
       .populate("players", "username email")
-      .populate("host", "username email");
+      .populate("host", "username email")
+      .populate({
+        path: "quiz",
+        select: "title description categories slides questions order",
+        populate: {
+          path: "categories",
+          select: "name description", 
+        },
+      });
 
     // Emit the join event with full user details
     const io = req.app.get("socketio");

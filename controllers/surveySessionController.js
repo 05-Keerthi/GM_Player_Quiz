@@ -90,7 +90,14 @@ exports.joinSurveySession = async (req, res) => {
         path: "surveyHost",
         select: "username email",
       })
-      .populate("surveyQuiz")
+      .populate({
+        path: "surveyQuiz",
+        select: "title description categories type slides questions order", 
+        populate: {
+          path: "categories",
+          select: "name description", 
+        },
+      })
       .populate("surveyQuestions")
       .populate("surveyCurrentQuestion");
 
@@ -195,7 +202,14 @@ exports.joinSurveySession = async (req, res) => {
         path: "surveyHost",
         select: "username email",
       })
-      .populate("surveyQuiz")
+      .populate({
+        path: "surveyQuiz",
+        select: "title description categories type slides questions order",
+        populate: {
+          path: "categories",
+          select: "name description", 
+        },
+      })
       .populate("surveyQuestions")
       .populate("surveyCurrentQuestion");
 
@@ -226,7 +240,15 @@ exports.joinSurveySession = async (req, res) => {
           email: player.email,
           isGuest: player.isGuest || false,
         })),
-        surveyQuiz: session.surveyQuiz,
+        surveyQuiz: {
+          title: session.surveyQuiz?.title, 
+          description: session.surveyQuiz?.description, 
+          categories: session.surveyQuiz?.categories, 
+          type: session.surveyQuiz?.type, 
+          slides: session.surveyQuiz?.slides, 
+          questions: session.surveyQuiz?.questions, 
+          order: session.surveyQuiz?.order, 
+        },
       },
       user: {
         _id: user._id,
@@ -375,7 +397,7 @@ exports.nextSurveyQuestion = async (req, res) => {
 
     const nextIndex = currentIndex + 1;
     const totalItems = quiz.order.length;
-    
+
     if (nextIndex >= quiz.order.length) {
       return res
         .status(400)
