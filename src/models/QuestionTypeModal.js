@@ -319,7 +319,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Question Text
+                Question Text <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -404,7 +404,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="block text-sm font-medium text-gray-700">
-                    Options
+                    Options <span className="text-red-500">*</span>
                   </label>
                   {!["true_false"].includes(selectedType) && (
                     <button

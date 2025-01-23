@@ -32,12 +32,12 @@ function parseQuestionData(question) {
           ...opt,
           color: opt.color || "#ffffff",
         }))
-      : question?.type === "true_false" 
-        ? [
-            { text: "True", isCorrect: false, color: "#ffffff" },
-            { text: "False", isCorrect: false, color: "#ffffff" },
-          ]
-        : [{ text: "", isCorrect: false, color: "#ffffff" }],
+      : question?.type === "true_false"
+      ? [
+          { text: "True", isCorrect: false, color: "#ffffff" },
+          { text: "False", isCorrect: false, color: "#ffffff" },
+        ]
+      : [{ text: "", isCorrect: false, color: "#ffffff" }],
     correctAnswer: question?.correctAnswer || "",
     points: question?.points ?? 1,
     timer: question?.timer ?? 30,
@@ -110,7 +110,10 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
   const handleAddOption = () => {
     setParsedQuestion((prev) => ({
       ...prev,
-      options: [...prev.options, { text: "", isCorrect: false, color: "#ffffff" }],
+      options: [
+        ...prev.options,
+        { text: "", isCorrect: false, color: "#ffffff" },
+      ],
     }));
   };
 
@@ -227,7 +230,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Question Text
+            Question Text <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -246,7 +249,9 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
             <input
               type="text"
               value={parsedQuestion.correctAnswer}
-              onChange={(e) => handleInputChange("correctAnswer", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("correctAnswer", e.target.value)
+              }
               className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300"
               placeholder="Enter the correct answer"
             />
@@ -254,7 +259,7 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
         ) : (
           <div className="space-y-4">
             <label className="block text-sm font-semibold text-gray-700">
-              Answer Options
+              Answer Options <span className="text-red-500">*</span>
             </label>
             {parsedQuestion.options.map((option, index) => (
               <div
@@ -286,15 +291,15 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
                   color={option.color}
                   onChange={(color) => handleOptionColorChange(index, color)}
                 />
-               {parsedQuestion.options.length > 2 && (
-  <button
-    type="button"
-    onClick={() => handleRemoveOption(index)}
-    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
-  >
-    <Trash2 className="w-5 h-5" data-testid="trash-2-icon" />
-  </button>
-)}
+                {parsedQuestion.options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveOption(index)}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded-full"
+                  >
+                    <Trash2 className="w-5 h-5" data-testid="trash-2-icon" />
+                  </button>
+                )}
               </div>
             ))}
             {parsedQuestion.type !== "true_false" && (
@@ -348,7 +353,10 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
           {imagePreview && (
             <div className="relative mt-4">
               <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                <div className="relative w-full" style={{ paddingBottom: "75%" }}>
+                <div
+                  className="relative w-full"
+                  style={{ paddingBottom: "75%" }}
+                >
                   <img
                     src={imagePreview}
                     alt="Question"

@@ -57,7 +57,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
   };
 
   const handleAddBulletPoint = () => {
-    setPoints([...points, '']);
+    setPoints([...points, ""]);
   };
 
   const handleRemoveBulletPoint = (index) => {
@@ -65,7 +65,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     updatedPoints.splice(index, 1);
     setPoints(updatedPoints);
     // Also update the content to keep it in sync
-    const newContent = updatedPoints.join('\n');
+    const newContent = updatedPoints.join("\n");
     setContent(newContent);
   };
 
@@ -74,11 +74,11 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
     if (file) {
       setIsUploading(true);
       setUploadError(null);
-  
+
       try {
         const formData = new FormData();
         formData.append("media", file);
-  
+
         const token = localStorage.getItem("token");
         const uploadResponse = await fetch(`${API_BASE_URL}/media/upload`, {
           method: "POST",
@@ -87,18 +87,18 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
             Authorization: `Bearer ${token}`,
           },
         });
-  
+
         if (!uploadResponse.ok) {
           throw new Error("Image upload failed");
         }
-  
+
         const uploadData = await uploadResponse.json();
         const mediaData = uploadData.media[0];
-  
+
         setImagePreview(
           `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
         );
-  
+
         if (slide) {
           slide.imageUrl = mediaData._id;
         }
@@ -110,14 +110,14 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       }
     }
   };
-  
+
   const handleImageRemove = () => {
     setImagePreview(null);
     if (slide) {
       slide.imageUrl = null;
     }
   };
-  
+
   const handleSave = async () => {
     try {
       const updatedData = {
@@ -125,10 +125,10 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
         type: slide.type,
         content: slide.type === "bullet_points" ? points.join("\n") : content,
         imageUrl: slide.imageUrl,
-        deleteImage: !imagePreview && slide.imageUrl ? true : undefined
+        deleteImage: !imagePreview && slide.imageUrl ? true : undefined,
       };
-  
-      console.log('Saving slide with data:', updatedData);
+
+      console.log("Saving slide with data:", updatedData);
       await onUpdate(updatedData);
       onClose();
     } catch (error) {
@@ -169,7 +169,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Slide Title
+            Slide Title <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -219,7 +219,10 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           {imagePreview && (
             <div className="relative mt-4">
               <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                <div className="relative w-full" style={{ paddingBottom: "75%" }}>
+                <div
+                  className="relative w-full"
+                  style={{ paddingBottom: "75%" }}
+                >
                   <img
                     src={imagePreview}
                     alt="Slide"
@@ -265,12 +268,12 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
                   />
                   {points.length > 1 && (
                     <button
-                onClick={() => handleRemoveBulletPoint(index)}
-                className="ml-2 p-2 text-red-600 hover:text-red-800"
-                aria-label="Remove bullet point"
-              >
-                <Trash2 size={20} data-icon="trash-2" />
-              </button>
+                      onClick={() => handleRemoveBulletPoint(index)}
+                      className="ml-2 p-2 text-red-600 hover:text-red-800"
+                      aria-label="Remove bullet point"
+                    >
+                      <Trash2 size={20} data-icon="trash-2" />
+                    </button>
                   )}
                 </div>
               ))}
@@ -284,7 +287,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
           </div>
         ) : (
           <div>
-            <label 
+            <label
               htmlFor="slide-content"
               className="block text-sm font-semibold text-gray-700 mb-2"
             >

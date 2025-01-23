@@ -246,7 +246,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
           <div className="space-y-6">
             <div>
               <label htmlFor="slide-title" className="block text-sm font-medium text-gray-700 mb-1">
-                Slide Title
+                Slide Title <span className="text-red-500">*</span>
               </label>
               <input
               id="slide-title"
