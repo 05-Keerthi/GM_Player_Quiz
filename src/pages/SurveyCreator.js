@@ -85,7 +85,6 @@ const SurveyCreator = () => {
   const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-
   // Hooks
   const { surveyId } = useParams();
   const navigate = useNavigate();
@@ -578,14 +577,14 @@ const SurveyCreator = () => {
 
           {/* Navigation Bar */}
           <nav className="bg-white border-b shadow-sm relative">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-4">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between py-3 gap-4">
                 {/* Title and Input Section */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto pr-12 sm:pr-0">
-                  <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text whitespace-nowrap">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full lg:w-auto pr-12 lg:pr-0">
+                  <span className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text whitespace-nowrap">
                     Survey Creator
                   </span>
-                  <div className="relative w-full sm:w-64">
+                  <div className="relative w-full md:w-64">
                     <input
                       type="text"
                       data-testid="survey-title-input"
@@ -601,7 +600,8 @@ const SurveyCreator = () => {
                 {/* Mobile Menu Button */}
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="sm:hidden absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 z-20"
+                  className="lg:hidden absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 z-20"
+                  aria-label="Toggle menu"
                 >
                   {isMenuOpen ? (
                     <X className="w-6 h-6" />
@@ -614,55 +614,62 @@ const SurveyCreator = () => {
                 <div
                   className={`${
                     isMenuOpen ? "flex" : "hidden"
-                  } sm:flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto
-        absolute sm:relative top-full left-0 right-0 bg-white sm:bg-transparent p-4 sm:p-0 z-10 border-b sm:border-0 shadow-md sm:shadow-none`}
+                  } lg:flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3
+        w-full lg:w-auto absolute lg:relative top-full left-0 right-0 
+        bg-white lg:bg-transparent px-4 pb-4 lg:p-0 z-10 
+        border-b lg:border-0 shadow-md lg:shadow-none`}
                 >
-                  <button
-                    onClick={() => navigate("/selectSurveyCategory")}
-                    className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-center"
-                  >
-                    Exit
-                  </button>
+                  {/* Action Buttons Container */}
+                  <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <button
+                      className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-center w-full md:w-auto"
+                      onClick={() => navigate("/selectSurveyCategory")}
+                    >
+                      Exit
+                    </button>
 
-                  <button
-                    data-testid="preview-button"
-                    onClick={handlePreviewClick}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
-                  >
-                    Preview
-                  </button>
+                    <button
+                      data-testid="preview-button"
+                      onClick={handlePreviewClick}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center w-full md:w-auto"
+                    >
+                      Preview
+                    </button>
 
-                  <button
-                    data-testid="save-survey-button"
-                    onClick={handleSaveSurvey}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Survey"
-                    )}
-                  </button>
+                    <button
+                      data-testid="save-survey-button"
+                      onClick={handleSaveSurvey}
+                      disabled={isSubmitting}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 
+                     flex items-center justify-center gap-2 w-full md:w-auto"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        "Save Survey"
+                      )}
+                    </button>
 
-                  <button
-                    data-testid="publish-survey-button"
-                    onClick={handlePublishSurvey}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Publishing...
-                      </>
-                    ) : (
-                      "Publish Survey"
-                    )}
-                  </button>
+                    <button
+                      data-testid="publish-survey-button"
+                      onClick={handlePublishSurvey}
+                      disabled={isSubmitting}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 
+                     flex items-center justify-center gap-2 w-full md:w-auto"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Publishing...</span>
+                        </>
+                      ) : (
+                        "Publish Survey"
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
