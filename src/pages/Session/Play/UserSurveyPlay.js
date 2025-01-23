@@ -14,7 +14,6 @@ const UserSurveyPlay = () => {
   const { isAuthenticated, loading: authLoading, user } = useAuthContext();
   const { checkGuestStatus } = useSurveySessionContext();
   const { submitSurveyAnswer } = useSurveyAnswerContext();
-  const [progress, setProgress] = useState("0/0");
   const [timerActive, setTimerActive] = useState(false);
   const [activeUser, setActiveUser] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
@@ -25,7 +24,9 @@ const UserSurveyPlay = () => {
   const [isSurveyEnded, setIsSurveyEnded] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(null);
   const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState(null);
-
+  const [progress, setProgress] = useState(null);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
@@ -139,52 +140,51 @@ const UserSurveyPlay = () => {
     if (!socket) return;
 
     socket.on("next-survey-question", (data) => {
-      console.log("Received next question data:", data);
       const { type, question, isLastQuestion, initialTime, progress } = data;
 
       if (!question) return;
 
-      const transformedItem =
-        type === "slide"
-          ? {
-              _id: question._id,
-              type: "slide",
-              title: question.surveyTitle || question.title,
-              content: question.surveyContent || question.content,
-              imageUrl: question.imageUrl,
-              surveyQuiz: question.surveyQuiz,
-            }
-          : {
-              _id: question._id,
-              title: question.title,
-              type: type || "single_select",
-              imageUrl: question.imageUrl,
-              description: question.description,
-              timer: initialTime || 30,
-              answerOptions: question.answerOptions?.map((option) => ({
-                _id: option._id,
-                optionText: option.optionText || option.text,
-                color: option.color,
-              })),
-            };
+      // Extract total questions from progress if available
+      if (progress) {
+        const [current, total] = progress.split('/').map(Number);
+        setTotalQuestions(total);
+        setProgress(progress);
+      } else {
+        // Fallback progress calculation
+        const calculatedProgress = `${(currentItem ? 2 : 1)}/0`;
+        setProgress(calculatedProgress);
+      }
 
-      // Save state to session storage
-      saveSessionState({
-        item: transformedItem,
-        isLastQuestion,
-        initialTime,
-        progress,
-      });
+      const transformedItem = type === "slide"
+        ? {
+            _id: question._id,
+            type: "slide",
+            title: question.surveyTitle || question.title,
+            content: question.surveyContent || question.content,
+            imageUrl: question.imageUrl,
+            surveyQuiz: question.surveyQuiz,
+          }
+        : {
+            _id: question._id,
+            title: question.title,
+            type: type || "single_select",
+            imageUrl: question.imageUrl,
+            description: question.description,
+            timer: initialTime || 30,
+            answerOptions: question.answerOptions?.map((option) => ({
+              _id: option._id,
+              optionText: option.optionText || option.text,
+              color: option.color,
+            })),
+          };
 
       setCurrentItem(transformedItem);
       setTimeLeft(initialTime || 30);
       setIsLastItem(isLastQuestion);
       setHasSubmitted(false);
       setQuestionStartTime(type !== "slide" ? Date.now() : null);
-      if (progress) {
-        setProgress(progress);
-      }
     });
+
 
     socket.on("timer-sync", (data) => {
       if (data && typeof data.timeLeft === "number") {
@@ -201,7 +201,7 @@ const UserSurveyPlay = () => {
     socket.on("survey-session-ended", () => {
       clearSessionState();
       setIsSurveyEnded(true);
-      setTimeout(() => navigate("/joinsurvey"), 2000);
+      setTimeout(() => navigate("/"), 2000);
     });
 
     return () => {
@@ -211,7 +211,12 @@ const UserSurveyPlay = () => {
       socket.off("survey-session-ended");
     };
   }, [socket, navigate]);
-
+  const renderProgress = () => {
+    if (!progress) return "Loading...";
+    
+    const [current, total] = progress.split('/').map(Number);
+    return total > 0 ? progress : `${current}/${totalQuestions || '...'}`;
+  };
   const handleSubmitAnswer = async (answer) => {
     if (
       !currentItem ||
@@ -339,7 +344,10 @@ const UserSurveyPlay = () => {
             </div>
           )}
 
-          <SurveyProgress progress={progress} className="mb-4" />
+          <SurveyProgress 
+            progress={renderProgress()} 
+            className="mb-4" 
+          />
           <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
