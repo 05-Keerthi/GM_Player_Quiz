@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Trash2, AlertCircle } from "lucide-react";
+import { X, Trash2, AlertCircle, Menu } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuestionTypeModal from "../models/QuestionTypeModal";
 import QuestionEditor from "../components/QuestionEditor";
@@ -55,6 +55,8 @@ const QuizCreator = () => {
   const [quizTitle, setQuizTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const [quiz, setQuiz] = useState({
     title: "",
     description: "",
@@ -198,12 +200,12 @@ const QuizCreator = () => {
         title: newSlide.title,
         content: newSlide.content,
         type: newSlide.type,
-        imageUrl: newSlide.imageUrl, // This will be the full URL from the response
+        imageUrl: newSlide.imageUrl,
         position: newSlide.position || 0,
         quiz: newSlide.quiz,
       };
 
-      // Update slides array
+      // Update slides array BEFORE updating orderedItems
       setSlides((prevSlides) => [...prevSlides, formattedSlide]);
 
       // Create new ordered item
@@ -214,10 +216,10 @@ const QuizCreator = () => {
       };
 
       // Update ordered items
-
       const updatedOrderedItems = [...orderedItems, newOrderedItem];
       setOrderedItems(updatedOrderedItems);
-      // Save the updated quiz state to backend
+
+      // Save the updated quiz state to backend with the new slides array
       await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
         {
@@ -226,7 +228,7 @@ const QuizCreator = () => {
             title: quiz.title,
             description: quiz.description,
             questions: questions,
-            slides: slides,
+            slides: [...slides, formattedSlide], // Include the new slide in the update
             order: updatedOrderedItems.map((item) => ({
               id: item.id,
               type: item.type,
@@ -234,6 +236,7 @@ const QuizCreator = () => {
           }),
         }
       );
+
       setCurrentSlide(formattedSlide);
       setIsAddSlideOpen(false);
       showAlert("Slide added successfully", "success");
@@ -850,67 +853,94 @@ const QuizCreator = () => {
           onClose={() => setAlert({ message: "", type: "error" })}
         />
 
-        {/* Top Navigation */}
-        <nav className="bg-white border-b shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
-                Quiz Creator
-              </span>
-              <div className="relative">
-                <input
-                  type="text"
-                  data-testid="quiz-title-input"
-                  placeholder="Enter quiz title..."
-                  value={quizTitle}
-                  className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
-                  onClick={() => setIsSettingsOpen(true)}
-                  readOnly
-                />
+        {/* Navigation Bar */}
+        <nav className="bg-white border-b shadow-sm relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-4">
+              {/* Title and Input Section */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto pr-12 sm:pr-0">
+                <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text whitespace-nowrap">
+                  Quiz Creator
+                </span>
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    data-testid="quiz-title-input"
+                    placeholder="Enter quiz title..."
+                    value={quizTitle}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
+                    onClick={() => setIsSettingsOpen(true)}
+                    readOnly
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                onClick={() => navigate("/selectQuizCategory")}
-              >
-                Exit
-              </button>
-              <button
-                data-testid="preview-quiz-btn"
-                onClick={handlePreviewClick}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2"
-              >
-                Preview
-              </button>
-              <button
-                data-testid="save-quiz-btn"
-                className={`px-4 py-2 bg-blue-600 text-white rounded-lg ${
-                  loading
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-blue-700"
-                }`}
-                onClick={handleSaveQuiz}
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save Quiz"}
-              </button>
 
+              {/* Mobile Menu Button */}
               <button
-                data-testid="publish-survey-button"
-                onClick={handlePublishQuiz}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="sm:hidden absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 z-20"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Publishing...
-                  </>
+                {isMenuOpen ? (
+                  <X className="w-6 h-6" />
                 ) : (
-                  "Publish Quiz"
+                  <Menu className="w-6 h-6" />
                 )}
               </button>
+
+              {/* Navigation Links */}
+              <div
+                className={`${
+                  isMenuOpen ? "flex" : "hidden"
+                } sm:flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto
+        absolute sm:relative top-full left-0 right-0 bg-white sm:bg-transparent p-4 sm:p-0 z-10 border-b sm:border-0 shadow-md sm:shadow-none`}
+              >
+                <button
+                  className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-center"
+                  onClick={() => navigate("/selectQuizCategory")}
+                >
+                  Exit
+                </button>
+
+                <button
+                  data-testid="preview-quiz-btn"
+                  onClick={handlePreviewClick}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
+                >
+                  Preview
+                </button>
+
+                <button
+                  data-testid="save-quiz-btn"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={handleSaveQuiz}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Quiz"
+                  )}
+                </button>
+
+                <button
+                  data-testid="publish-survey-button"
+                  onClick={handlePublishQuiz}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    "Publish Quiz"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </nav>

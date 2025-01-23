@@ -291,7 +291,7 @@ const SlideEditor = ({ slide, onUpdate, onClose }) => {
               htmlFor="slide-content"
               className="block text-sm font-semibold text-gray-700 mb-2"
             >
-              Content
+              Content <span className="text-red-500">*</span>
             </label>
             <textarea
               id="slide-content"

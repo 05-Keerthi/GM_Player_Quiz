@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Trash2, AlertCircle } from "lucide-react";
+import { X, Trash2, AlertCircle, Menu } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
@@ -83,6 +83,9 @@ const SurveyCreator = () => {
   const [questions, setQuestions] = useState([]);
   const [slides, setSlides] = useState([]);
   const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+
   // Hooks
   const { surveyId } = useParams();
   const navigate = useNavigate();
@@ -574,71 +577,93 @@ const SurveyCreator = () => {
           />
 
           {/* Navigation Bar */}
-          <nav className="bg-white border-b shadow-sm">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text">
-                  Survey Creator
-                </span>
-                <div className="relative">
-                  <input
-                    type="text"
-                    data-testid="survey-title-input"
-                    placeholder="Enter survey title..."
-                    value={surveyTitle}
-                    className="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
-                    onClick={() => setIsSettingsOpen(true)}
-                    readOnly
-                  />
+          <nav className="bg-white border-b shadow-sm relative">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-4">
+                {/* Title and Input Section */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto pr-12 sm:pr-0">
+                  <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 text-transparent bg-clip-text whitespace-nowrap">
+                    Survey Creator
+                  </span>
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      data-testid="survey-title-input"
+                      placeholder="Enter survey title..."
+                      value={surveyTitle}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none cursor-pointer"
+                      onClick={() => setIsSettingsOpen(true)}
+                      readOnly
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate("/selectSurveyCategory")}
-                  className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Exit
-                </button>
 
+                {/* Mobile Menu Button */}
                 <button
-                  data-testid="preview-button"
-                  onClick={handlePreviewClick}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="sm:hidden absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 z-20"
                 >
-                  Preview
-                </button>
-
-                <button
-                  data-testid="save-survey-button"
-                  onClick={handleSaveSurvey}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Saving...
-                    </>
+                  {isMenuOpen ? (
+                    <X className="w-6 h-6" />
                   ) : (
-                    "Save Survey"
+                    <Menu className="w-6 h-6" />
                   )}
                 </button>
 
-                <button
-                  data-testid="publish-survey-button"
-                  onClick={handlePublishSurvey}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                {/* Navigation Links */}
+                <div
+                  className={`${
+                    isMenuOpen ? "flex" : "hidden"
+                  } sm:flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto
+        absolute sm:relative top-full left-0 right-0 bg-white sm:bg-transparent p-4 sm:p-0 z-10 border-b sm:border-0 shadow-md sm:shadow-none`}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    "Publish Survey"
-                  )}
-                </button>
+                  <button
+                    onClick={() => navigate("/selectSurveyCategory")}
+                    className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-center"
+                  >
+                    Exit
+                  </button>
+
+                  <button
+                    data-testid="preview-button"
+                    onClick={handlePreviewClick}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
+                  >
+                    Preview
+                  </button>
+
+                  <button
+                    data-testid="save-survey-button"
+                    onClick={handleSaveSurvey}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Survey"
+                    )}
+                  </button>
+
+                  <button
+                    data-testid="publish-survey-button"
+                    onClick={handlePublishSurvey}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      "Publish Survey"
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </nav>
@@ -722,11 +747,32 @@ const SurveyCreator = () => {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
+
+                            {/* Title */}
                             <p className="text-sm text-gray-500 truncate">
                               {item.type === "question"
                                 ? item.data.title
                                 : item.data.surveyTitle}
                             </p>
+
+                            {/* Image Preview */}
+                            {item.data.imageUrl && (
+                              <div className="mt-2 h-20 flex items-center justify-center">
+                                <img
+                                  src={
+                                    item.type === "question"
+                                      ? item.data.imageUrl
+                                      : item.data.imageUrl
+                                  }
+                                  alt={
+                                    item.type === "question"
+                                      ? "Question image"
+                                      : "Slide image"
+                                  }
+                                  className="max-h-full max-w-full object-contain shadow-md rounded p-1"
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })

@@ -21,7 +21,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
     content: "",
     imageUrl: null,
     points: [""],
-    quizId: quizId, 
+    quizId: quizId,
     position: 0,
   });
   const [error, setError] = useState(null);
@@ -245,11 +245,14 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
         ) : (
           <div className="space-y-6">
             <div>
-              <label htmlFor="slide-title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="slide-title"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Slide Title <span className="text-red-500">*</span>
               </label>
               <input
-              id="slide-title"
+                id="slide-title"
                 type="text"
                 value={slide.title}
                 onChange={(e) => setSlide({ ...slide, title: e.target.value })}
@@ -280,35 +283,37 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
                 </label>
               </div>
 
-                {imagePreview && (
-                          <div className="relative mt-4">
-                            <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                              <div className="relative w-full" style={{ paddingBottom: "75%" }}>
-                                <img
-                                  src={imagePreview}
-                                  alt="Slide"
-                                  className="absolute inset-0 w-full h-full object-contain"
-                                />
-                                {isUploading && (
-                                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="absolute top-2 right-2 flex gap-2">
-                              <button
-                                onClick={handleImageRemove}
-                                className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                                title="Remove image"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-              
+              {imagePreview && (
+                <div className="relative mt-4">
+                  <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
+                    <div
+                      className="relative w-full"
+                      style={{ paddingBottom: "75%" }}
+                    >
+                      <img
+                        src={imagePreview}
+                        alt="Slide"
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                      {isUploading && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button
+                      onClick={handleImageRemove}
+                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {selectedType === "bullet_points" ? (
               <div className="space-y-3">
@@ -349,7 +354,7 @@ const SlideTypeModal = ({ isOpen, onClose, onAddSlide }) => {
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Content
+                  Content <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={slide.content}

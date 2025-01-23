@@ -69,70 +69,127 @@ const QuestionDetailsResult = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">{questionData?.title}</h1>
-            <p className="text-gray-600 mt-2">
-              <span className="font-medium">Dimension:</span>{" "}
-              {questionData?.dimension}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Description:</span>{" "}
-              {questionData?.description}
-            </p>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Details and Image Card */}
+        <div className="bg-white rounded-lg shadow-sm">
+          <div className="grid grid-cols-2 gap-8 p-8">
+            {/* Left Column - Details */}
+            <div>
+              <h1 className="text-2xl font-bold mb-8">{questionData?.title}</h1>
+
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-gray-700 font-semibold mb-2">
+                    Description
+                  </h2>
+                  <p className="text-gray-600">{questionData?.description}</p>
+                </div>
+
+                <div>
+                  <h2 className="text-gray-700 font-semibold mb-2">
+                    Dimension
+                  </h2>
+                  <p className="text-gray-600">{questionData?.dimension}</p>
+                </div>
+
+                <div>
+                  <h2 className="text-gray-700 font-semibold mb-2">Year</h2>
+                  <p className="text-gray-600">{questionData?.year}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Image */}
+            {questionData?.imageUrl && (
+              <div className="rounded-lg overflow-hidden shadow-lg border border-gray-100 ring-1 ring-black ring-opacity-5">
+                <img
+                  src={questionData.imageUrl}
+                  alt={questionData.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Back to Results
-          </button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="grid grid-cols-3 gap-0">
-            {questionData?.answerOptions?.map((option) => {
-              const answerData = groupedAnswers[option.optionText] || {
-                count: 0,
-                users: [],
-              };
-              return (
-                <div
-                  key={option.optionText}
-                  className="border-r last:border-r-0"
-                >
-                  <div className="p-4 bg-gray-50 border-b">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-semibold text-lg">
-                        {option.optionText}
-                      </h3>
-                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                        {answerData.count} responses
-                      </span>
-                    </div>
-                  </div>
-                  <div className="divide-y">
-                    {answerData.users.length > 0 ? (
-                      answerData.users.map((user, index) => (
-                        <div key={index} className="p-4">
-                          <div className="flex justify-between items-center">
-                            <div className="font-medium">{user.username}</div>
-                            <div className="text-gray-500 text-sm">
-                              {user.timeTaken}s
-                            </div>
+        {/* Responses Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          {/* Back Button */}
+          <div className="flex justify-end mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Back to Results
+            </button>
+          </div>
+
+          {/* Responses Table */}
+          <div className="max-w-6xl mx-auto">
+            <div className="border rounded-lg overflow-hidden">
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${
+                    questionData?.answerOptions?.length || 1
+                  }, minmax(200px, 1fr))`,
+                }}
+              >
+                {questionData?.answerOptions?.map((option) => {
+                  const answerData = groupedAnswers[option.optionText] || {
+                    count: 0,
+                    users: [],
+                  };
+                  return (
+                    <div
+                      key={option.optionText}
+                      className="border-r last:border-r-0"
+                    >
+                      <div className="p-4 bg-gray-50 border-b">
+                        <div className="group relative">
+                          <h3
+                            className="font-semibold text-lg text-center truncate"
+                            title={option.optionText}
+                          >
+                            {option.optionText}
+                          </h3>
+                          {/* Tooltip on hover */}
+                          <div className="hidden group-hover:block absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg -bottom-1 left-1/2 transform -translate-x-1/2 translate-y-full whitespace-normal max-w-xs">
+                            {option.optionText}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-gray-500 text-center">
-                        No responses
+                        <div className="text-sm text-gray-500 text-center mt-1">
+                          {answerData.users.length}{" "}
+                          {answerData.users.length === 1
+                            ? "response"
+                            : "responses"}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="divide-y">
+                        {answerData.users.length > 0 ? (
+                          answerData.users.map((user, index) => (
+                            <div key={index} className="p-4 hover:bg-gray-50">
+                              <div className="flex justify-between items-center gap-2">
+                                <div className="font-medium truncate">
+                                  {user.username}
+                                </div>
+                                <div className="text-gray-500 text-sm whitespace-nowrap">
+                                  {user.timeTaken}s
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-6 text-gray-500 text-center">
+                            No responses yet
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
