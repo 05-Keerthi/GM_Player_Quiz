@@ -167,15 +167,6 @@ exports.joinSurveySession = async (req, res) => {
       }
     }
 
-    // Check if already joined
-    const existingPlayer = session.surveyPlayers.find(
-      (player) => player._id.toString() === user._id.toString()
-    );
-
-    if (existingPlayer) {
-      return res.status(400).json({ message: "Already joined this session" });
-    }
-
     // Add user to session players
     session.surveyPlayers = session.surveyPlayers || [];
     session.surveyPlayers.push(user._id);

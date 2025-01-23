@@ -100,16 +100,6 @@ exports.joinSession = async (req, res) => {
         .json({ message: "Session is not open for joining" });
     }
 
-    // Check if the user has already joined the session
-    if (
-      session.players.some(
-        (player) => player._id.toString() === userId.toString()
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "User has already joined the session" });
-    }
 
     // Get user details
     const user = await User.findById(userId).select("username email");
