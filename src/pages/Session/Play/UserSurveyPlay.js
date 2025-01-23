@@ -15,7 +15,7 @@ const UserSurveyPlay = () => {
   const { checkGuestStatus } = useSurveySessionContext();
   const { submitSurveyAnswer } = useSurveyAnswerContext();
   const [progress, setProgress] = useState("0/0");
-
+  const [timerActive, setTimerActive] = useState(false);
   const [activeUser, setActiveUser] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
   const [socket, setSocket] = useState(null);
@@ -27,18 +27,70 @@ const UserSurveyPlay = () => {
   const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState(null);
 
   const sessionId = searchParams.get("sessionId");
+  const joinCode = searchParams.get("joinCode");
 
-  // Set active user
+  // Session state management functions
+  const saveSessionState = (data) => {
+    const sessionState = {
+      currentItem: data.item,
+      isLastItem: data.isLastQuestion,
+      timeLeft: data.initialTime,
+      progress: data.progress,
+      sessionId,
+      joinCode,
+      guestData: activeUser?.isGuest ? activeUser : null,
+      timestamp: Date.now(),
+    };
+    sessionStorage.setItem("surveySessionState", JSON.stringify(sessionState));
+  };
+
+  const getSessionState = () => {
+    try {
+      const state = JSON.parse(sessionStorage.getItem("surveySessionState"));
+      if (!state) return null;
+
+      // Check if session is not expired (24 hours)
+      const SESSION_EXPIRY = 24 * 60 * 60 * 1000;
+      if (Date.now() - state.timestamp > SESSION_EXPIRY) {
+        sessionStorage.removeItem("surveySessionState");
+        return null;
+      }
+
+      return state;
+    } catch {
+      return null;
+    }
+  };
+
+  const clearSessionState = () => {
+    sessionStorage.removeItem("surveySessionState");
+  };
+
+  // Initialize session and user state
   useEffect(() => {
-    const setupUser = () => {
-      if (isAuthenticated && user) {
-        console.log("Setting authenticated user:", { user });
-        setActiveUser(user);
+    const setupUser = async () => {
+      const savedState = getSessionState();
+
+      if (savedState) {
+        // Restore from saved state
+        if (savedState.guestData) {
+          setActiveUser(savedState.guestData);
+        } else if (isAuthenticated && user) {
+          setActiveUser(user);
+        }
+        setCurrentItem(savedState.currentItem);
+        setIsLastItem(savedState.isLastItem);
+        setTimeLeft(savedState.timeLeft);
+        setProgress(savedState.progress);
       } else {
-        const guestUser = checkGuestStatus();
-        console.log("Checking guest status:", { guestUser });
-        if (guestUser) {
-          setActiveUser(guestUser);
+        // Normal user setup
+        if (isAuthenticated && user) {
+          setActiveUser(user);
+        } else {
+          const guestUser = checkGuestStatus();
+          if (guestUser) {
+            setActiveUser(guestUser);
+          }
         }
       }
     };
@@ -46,129 +98,117 @@ const UserSurveyPlay = () => {
     setupUser();
   }, [isAuthenticated, user, checkGuestStatus]);
 
-  // Socket initialization
+  // Socket connection with reconnection logic
   useEffect(() => {
     if (!activeUser || !sessionId) return;
 
-    console.log("Initializing socket with user:", {
-      userId: activeUser._id || activeUser.id,
-      username: activeUser.username,
-      isGuest: activeUser.isGuest,
-      sessionId,
-    });
-
     const newSocket = io(`${process.env.REACT_APP_API_URL}`);
 
+    const connectData = {
+      sessionId,
+      userId: activeUser._id || activeUser.id,
+      username: activeUser.username,
+      isGuest: activeUser.isGuest || false,
+      isReconnection: true,
+    };
+
     newSocket.on("connect", () => {
-      console.log("Socket connected successfully");
-      newSocket.emit("join-survey-session", {
-        sessionId,
-        userId: activeUser._id || activeUser.id,
-        username: activeUser.username,
-        isGuest: activeUser.isGuest || false,
-      });
+      newSocket.emit("join-survey-session", connectData);
     });
 
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
+    // Handle reconnection
+    newSocket.on("reconnect", () => {
+      newSocket.emit("join-survey-session", connectData);
+    });
+
+    // Handle disconnection
+    newSocket.on("disconnect", () => {
+      setTimeLeft(0);
+      setTimerActive(false);
     });
 
     setSocket(newSocket);
 
     return () => {
-      console.log("Cleaning up socket connection");
       newSocket.disconnect();
     };
   }, [activeUser, sessionId]);
 
-  // Socket event handlers
+  // Socket event handlers with state persistence
   useEffect(() => {
     if (!socket) return;
 
-// In the handleNextQuestion socket event handler:
-const handleNextQuestion = (data) => {
-  console.log("Received next question data:", data);
-  const { type, question, isLastQuestion, initialTime, progress } = data;  // Add progress here
+    socket.on("next-survey-question", (data) => {
+      console.log("Received next question data:", data);
+      const { type, question, isLastQuestion, initialTime, progress } = data;
 
-  if (!question) {
-    console.log("No question data received");
-    return;
-  }
+      if (!question) return;
 
-  const transformedItem =
-    type === "slide"
-      ? {
-          _id: question._id,
-          type: "slide",
-          title: question.surveyTitle || question.title,
-          content: question.surveyContent || question.content,
-          imageUrl: question.imageUrl,
-          surveyQuiz: question.surveyQuiz,
-        }
-      : {
-          _id: question._id,
-          title: question.title,
-          type: type || "single_select",
-          imageUrl: question.imageUrl,
-          description: question.description,
-          timer: initialTime || 30,
-          answerOptions: (question.answerOptions || []).map((option) => ({
-            _id: option._id,
-            optionText: option.optionText || option.text,
-            color: option.color,
-          })),
-        };
+      const transformedItem =
+        type === "slide"
+          ? {
+              _id: question._id,
+              type: "slide",
+              title: question.surveyTitle || question.title,
+              content: question.surveyContent || question.content,
+              imageUrl: question.imageUrl,
+              surveyQuiz: question.surveyQuiz,
+            }
+          : {
+              _id: question._id,
+              title: question.title,
+              type: type || "single_select",
+              imageUrl: question.imageUrl,
+              description: question.description,
+              timer: initialTime || 30,
+              answerOptions: question.answerOptions?.map((option) => ({
+                _id: option._id,
+                optionText: option.optionText || option.text,
+                color: option.color,
+              })),
+            };
 
-  console.log("Setting transformed item:", transformedItem);
-  setCurrentItem(transformedItem);
-  setTimeLeft(initialTime || 30);
-  setIsLastItem(isLastQuestion);
-  setHasSubmitted(false);
-  setQuestionStartTime(type !== "slide" ? Date.now() : null);
-  
-  // Add this line to update progress
-  if (progress) {
-    setProgress(progress ||"1/1");
-  }
-};
+      // Save state to session storage
+      saveSessionState({
+        item: transformedItem,
+        isLastQuestion,
+        initialTime,
+        progress,
+      });
 
-    const handleTimerSync = (data) => {
+      setCurrentItem(transformedItem);
+      setTimeLeft(initialTime || 30);
+      setIsLastItem(isLastQuestion);
+      setHasSubmitted(false);
+      setQuestionStartTime(type !== "slide" ? Date.now() : null);
+      if (progress) {
+        setProgress(progress);
+      }
+    });
+
+    socket.on("timer-sync", (data) => {
       if (data && typeof data.timeLeft === "number") {
         setTimeLeft(data.timeLeft);
       }
-    };
+    });
 
-    const handleAnswerConfirmed = (data) => {
-      if (data.status === "success") {
-        setHasSubmitted(true);
-      }
-    };
-
-    const handleSurveyCompleted = () => {
+    socket.on("survey-completed", () => {
       console.log("Survey completed");
       setIsSurveyEnded(true);
-    };
+      clearSessionState();
+    });
 
-    const handleSessionEnded = () => {
-      console.log("Survey session ended");
+    socket.on("survey-session-ended", () => {
+      clearSessionState();
       setIsSurveyEnded(true);
       setTimeout(() => navigate("/joinsurvey"), 2000);
-    };
-
-    // Register event handlers
-    socket.on("next-survey-question", handleNextQuestion);
-    socket.on("timer-sync", handleTimerSync);
-    socket.on("answer-submission-confirmed", handleAnswerConfirmed);
-    socket.on("survey-completed", handleSurveyCompleted);
-    socket.on("survey-session-ended", handleSessionEnded);
+    });
 
     return () => {
-      // Cleanup event handlers
-      socket.off("next-survey-question", handleNextQuestion);
-      socket.off("timer-sync", handleTimerSync);
-      socket.off("answer-submission-confirmed", handleAnswerConfirmed);
-      socket.off("survey-completed", handleSurveyCompleted);
-      socket.off("survey-session-ended", handleSessionEnded);
+      socket.off("next-survey-question");
+      socket.off("timer-sync");
+      socket.off("survey-completed");
+      socket.off("survey-session-ended");
     };
   }, [socket, navigate]);
 
@@ -193,16 +233,17 @@ const handleNextQuestion = (data) => {
     }
 
     try {
-      console.log("Submitting/Updating answer:", { 
-        answer, 
+      console.log("Submitting/Updating answer:", {
+        answer,
         activeUser,
-        isUpdate: hasSubmitted 
+        isUpdate: hasSubmitted,
       });
-      
+
       const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
-      const answerText = answer.answer || 
-                        answer.text || 
-                        (Array.isArray(answer) ? answer.join(",") : answer);
+      const answerText =
+        answer.answer ||
+        answer.text ||
+        (Array.isArray(answer) ? answer.join(",") : answer);
 
       // Check if the new answer is different from the last submitted answer
       if (hasSubmitted && answerText === lastSubmittedAnswer) {
@@ -228,7 +269,7 @@ const handleNextQuestion = (data) => {
           answer: answerText,
           timeTaken,
           isGuest: activeUser.isGuest || false,
-          isUpdate: hasSubmitted
+          isUpdate: hasSubmitted,
         });
       }
 
@@ -241,7 +282,6 @@ const handleNextQuestion = (data) => {
       }
     }
   };
-
 
   if (authLoading) {
     return (
@@ -299,10 +339,7 @@ const handleNextQuestion = (data) => {
             </div>
           )}
 
-          <SurveyProgress 
-  progress={progress} 
-  className="mb-4" 
-/>
+          <SurveyProgress progress={progress} className="mb-4" />
           <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
@@ -313,7 +350,6 @@ const handleNextQuestion = (data) => {
             isSubmitted={hasSubmitted}
             socket={socket}
           />
-
         </div>
       </div>
     </div>

@@ -23,13 +23,60 @@ const UserPlay = () => {
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
 
   const sessionId = searchParams.get("sessionId");
+  const joinCode = searchParams.get("joinCode");
 
+  // Save session state to sessionStorage
+  const saveSessionState = (data) => {
+    const sessionState = {
+      currentItem: data.item,
+      isLastItem: data.isLastItem,
+      timeLeft: data.initialTime,
+      sessionId,
+      joinCode,
+      timestamp: Date.now(),
+    };
+    sessionStorage.setItem("quizSessionState", JSON.stringify(sessionState));
+  };
+
+  // Get session state from sessionStorage
+  const getSessionState = () => {
+    try {
+      const state = JSON.parse(sessionStorage.getItem("quizSessionState"));
+      if (!state) return null;
+
+      // Check if session is not expired (24 hours)
+      const SESSION_EXPIRY = 24 * 60 * 60 * 1000;
+      if (Date.now() - state.timestamp > SESSION_EXPIRY) {
+        sessionStorage.removeItem("quizSessionState");
+        return null;
+      }
+
+      return state;
+    } catch {
+      return null;
+    }
+  };
+
+  // Clear session state
+  const clearSessionState = () => {
+    sessionStorage.removeItem("quizSessionState");
+  };
+
+  // Initialize session from storage or URL parameters
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
-      navigate("/login");
+      const savedState = getSessionState();
+      if (savedState) {
+        setCurrentItem(savedState.currentItem);
+        setIsLastItem(savedState.isLastItem);
+        setTimeLeft(savedState.timeLeft);
+      } else {
+        navigate("/login");
+      }
     }
   }, [isAuthenticated, authLoading, navigate]);
 
+  // Socket connection with reconnection logic
   useEffect(() => {
     if (isAuthenticated && user && sessionId) {
       const newSocket = io(`${process.env.REACT_APP_API_URL}`);
@@ -39,8 +86,17 @@ const UserPlay = () => {
         sessionId,
         userId: user.id,
         username: user.username,
+        isReconnection: true, // Flag for reconnection
       };
-      newSocket.emit("join-session", userData);
+
+      newSocket.on("connect", () => {
+        newSocket.emit("join-session", userData);
+      });
+
+      // Handle reconnection
+      newSocket.on("reconnect", () => {
+        newSocket.emit("join-session", userData);
+      });
 
       return () => {
         newSocket.disconnect();
@@ -48,116 +104,124 @@ const UserPlay = () => {
     }
   }, [isAuthenticated, user, sessionId]);
 
+  // Handle socket events and state persistence
   useEffect(() => {
-    if (socket) {
-      socket.on("next-item", (data) => {
-        const { type, item, isLastItem: lastItem, initialTime } = data;
+    if (!socket) return;
 
-        const completeItem = {
-          ...item,
-          type: type === "slide" ? "classic" : item.type,
-        };
+    socket.on("next-item", (data) => {
+      const { type, item, isLastItem: lastItem, initialTime } = data;
 
-        setCurrentItem(completeItem);
-        setTimeLeft(initialTime || (type === "slide" ? 0 : item.timer || 30));
-        setIsLastItem(lastItem);
-        setTimerActive(type !== "slide");
-        setHasSubmitted(false);
-        setIsTimeUp(false);
-
-        if (type !== "slide") {
-          setQuestionStartTime(Date.now());
-        } else {
-          setQuestionStartTime(null);
-        }
-      });
-
-      socket.on("timer-sync", (data) => {
-        const { timeLeft: newTime } = data;
-        setTimeLeft(newTime);
-        setTimerActive(newTime > 0);
-        if (newTime <= 0) {
-          setIsTimeUp(true);
-        }
-      });
-
-      socket.on("quiz-completed", () => {
-        setShowFinalLeaderboard(true);
-      });
-
-      socket.on("session-ended", () => {
-        setTimerActive(false);
-        setIsTimeUp(true);
-        navigate("/join");
-      });
-
-      return () => {
-        socket.off("next-item");
-        socket.off("timer-sync");
-        socket.off("session-ended");
-        socket.off("quiz-completed");
+      const completeItem = {
+        ...item,
+        type: type === "slide" ? "classic" : item.type,
       };
-    }
+
+      // Save to session storage
+      saveSessionState({
+        item: completeItem,
+        isLastItem: lastItem,
+        initialTime: initialTime || (type === "slide" ? 0 : item.timer || 30),
+      });
+
+      setCurrentItem(completeItem);
+      setTimeLeft(initialTime || (type === "slide" ? 0 : item.timer || 30));
+      setIsLastItem(lastItem);
+      setTimerActive(type !== "slide");
+      setHasSubmitted(false);
+      setIsTimeUp(false);
+      setQuestionStartTime(type !== "slide" ? Date.now() : null);
+    });
+
+    socket.on("timer-sync", (data) => {
+      const { timeLeft: newTime } = data;
+      setTimeLeft(newTime);
+      setTimerActive(newTime > 0);
+      if (newTime <= 0) {
+        setIsTimeUp(true);
+      }
+    });
+
+    socket.on("quiz-completed", () => {
+      setShowFinalLeaderboard(true);
+      clearSessionState();
+    });
+
+    socket.on("session-ended", () => {
+      clearSessionState();
+      navigate("/join");
+    });
+
+    // Handle disconnect
+    socket.on("disconnect", () => {
+      setTimerActive(false);
+    });
+
+    return () => {
+      socket.off("next-item");
+      socket.off("timer-sync");
+      socket.off("quiz-completed");
+      socket.off("session-ended");
+      socket.off("disconnect");
+    };
   }, [socket, navigate]);
 
-  
-const handleSubmitAnswer = async (answer) => {
-  if (
-    !currentItem ||
-    currentItem.type === "classic" ||
-    timeLeft <= 0 ||
-    isTimeUp ||
-    hasSubmitted ||
-    !answer ||
-    !questionStartTime ||
-    !user
-  ) {
-    return;
-  }
-
-  try {
-    const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
-    let answerToSubmit;
-    
-    // Handle different question types
-    if (currentItem.type === "multiple_select") {
-      answerToSubmit = answer.answer;
-    } else if (currentItem.type === "open_ended") {
-      answerToSubmit = answer.answer;
-    } else if (currentItem.type === "poll") {
-      // For poll questions, send the selected option text
-      answerToSubmit = answer.text;
-    } else {
-      answerToSubmit = answer.text;
+  const handleSubmitAnswer = async (answer) => {
+    if (
+      !currentItem ||
+      currentItem.type === "classic" ||
+      timeLeft <= 0 ||
+      isTimeUp ||
+      hasSubmitted ||
+      !answer ||
+      !questionStartTime ||
+      !user
+    ) {
+      return;
     }
 
-    const answerData = {
-      answer: answerToSubmit,
-      userId: user._id,
-      timeTaken,
-    };
+    try {
+      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+      let answerToSubmit;
 
-    await submitAnswer(sessionId, currentItem._id, answerData);
-    setHasSubmitted(true);
+      // Handle different question types
+      if (currentItem.type === "multiple_select") {
+        answerToSubmit = answer.answer;
+      } else if (currentItem.type === "open_ended") {
+        answerToSubmit = answer.answer;
+      } else if (currentItem.type === "poll") {
+        // For poll questions, send the selected option text
+        answerToSubmit = answer.text;
+      } else {
+        answerToSubmit = answer.text;
+      }
 
-    if (socket) {
-      const answerDetails = {
-        questionId: currentItem._id,
-        userId: user.id,
+      const answerData = {
         answer: answerToSubmit,
+        userId: user._id,
         timeTaken,
-        type: currentItem.type,
       };
 
-      socket.emit("answer-submitted", {
-        sessionId,
-        answerDetails,
-      });
+      await submitAnswer(sessionId, currentItem._id, answerData);
+      setHasSubmitted(true);
+
+      if (socket) {
+        const answerDetails = {
+          questionId: currentItem._id,
+          userId: user.id,
+          answer: answerToSubmit,
+          timeTaken,
+          type: currentItem.type,
+        };
+
+        socket.emit("answer-submitted", {
+          sessionId,
+          answerDetails,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting answer:", error);
     }
-  } catch (error) {
-    console.error("Error submitting answer:", error);
-  }
-};
+  };
 
   if (authLoading) {
     return (
