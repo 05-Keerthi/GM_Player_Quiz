@@ -148,7 +148,7 @@ const UserPlay = () => {
 
     socket.on("session-ended", () => {
       clearSessionState();
-      navigate("/join");
+      navigate("/userreports/" + user.id);
     });
 
     // Handle disconnect
