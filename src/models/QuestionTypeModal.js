@@ -388,7 +388,7 @@ const QuestionTypeModal = ({ isOpen, onClose, onAddQuestion }) => {
             {selectedType === "open_ended" ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Correct Answer
+                  Correct Answer <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
