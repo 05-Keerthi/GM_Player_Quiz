@@ -116,12 +116,13 @@ module.exports = (io) => {
     // Survey Content Management
     socket.on(
       "next-survey-question",
-      ({ sessionId, type, item, isLastItem, initialTime }) => {
+      ({ sessionId, type, item, isLastItem, initialTime, progress }) => {
         io.to(sessionId).emit("next-survey-question", {
           type,
           question: item,
           isLastQuestion: isLastItem,
           initialTime: initialTime || 30,
+          progress,
         });
       }
     );
