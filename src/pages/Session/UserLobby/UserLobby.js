@@ -190,23 +190,6 @@ const UserLobby = () => {
                       ))}
                     </div>
                   </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600">Total Questions</p>
-                        <p className="text-xl font-semibold">
-                          {quizData.totalQuestions}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600">Status</p>
-                        <p className="text-xl font-semibold capitalize">
-                          {quizData.status}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
 
