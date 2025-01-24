@@ -389,6 +389,7 @@ exports.endSession = async (req, res) => {
         correctAnswers,
         incorrectAnswers,
         totalScore: leaderboardScore,
+        rank:rank,
         completedAt: session.endTime,
       });
 
