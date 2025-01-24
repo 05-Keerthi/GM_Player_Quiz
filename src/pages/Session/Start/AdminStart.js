@@ -6,7 +6,7 @@ import { useSessionContext } from "../../../context/sessionContext";
 import FinalLeaderboard from "../FinalLeaderboard";
 import AdminAnswerCounts from "../../../components/Session/AnswerCountDisplay";
 import ContentDisplay from "../../../components/Session/ContentDisplay";
-
+import SurveyProgress from "../../../components/Session/Progress"; 
 const AdminStart = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,7 +24,8 @@ const AdminStart = () => {
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
   const [optionCounts, setOptionCounts] = useState({});
   const [totalVotes, setTotalVotes] = useState(0);
-
+  const [progress, setProgress] = useState("0/0");
+  
   // URL parameters
   const quizId = searchParams.get("quizId");
   const sessionId = searchParams.get("sessionId");
@@ -72,27 +73,58 @@ const AdminStart = () => {
   }, [socket, currentItem]);
 
   // Helper functions
-  const handleNewItem = (item, isLastItem, socketInstance) => {
+  const handleNewItem = (item, isLastItem, socketInstance, response) => {
     setCurrentItem(item);
     const initialTime = item.type === "bullet_points" ? 0 : item.timer || 30;
     setTimeLeft(initialTime);
     setTimerActive(item.type !== "bullet_points");
     setIsLastItem(isLastItem || false);
-
+    setProgress(response.progress || "0/0");
+  
     if (item.type === "poll") {
       initializeOptionCounts(item.options);
     }
-
+  
     socketInstance.emit("next-item", {
       sessionId,
       type: item.type,
       item: item,
       isLastItem: isLastItem || false,
       initialTime: initialTime,
+      progress: response.progress
     });
-
+  
     if (item.type !== "bullet_points") {
       startTimer(socketInstance, sessionId, initialTime);
+    }
+  };
+  
+  const handleNext = async () => {
+    try {
+      if (!joinCode) {
+        console.error("Join code is missing");
+        return;
+      }
+  
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+  
+      setSubmittedAnswers([]);
+      const response = await nextQuestion(joinCode, sessionId);
+  
+      if (response.item) {
+        handleNewItem(response.item, response.isLastItem, socket, response);
+      } else {
+        handleQuizEnd();
+      }
+    } catch (error) {
+      if (error.response?.data?.message === "No more items left in the session") {
+        handleQuizEnd();
+      } else {
+        console.error("Error getting next item:", error);
+      }
     }
   };
 
@@ -199,36 +231,36 @@ const AdminStart = () => {
     setTimerInterval(interval);
   };
 
-  const handleNext = async () => {
-    try {
-      if (!joinCode) {
-        console.error("Join code is missing");
-        return;
-      }
+  // const handleNext = async () => {
+  //   try {
+  //     if (!joinCode) {
+  //       console.error("Join code is missing");
+  //       return;
+  //     }
 
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        setTimerInterval(null);
-      }
+  //     if (timerInterval) {
+  //       clearInterval(timerInterval);
+  //       setTimerInterval(null);
+  //     }
 
-      setSubmittedAnswers([]);
-      const response = await nextQuestion(joinCode, sessionId);
+  //     setSubmittedAnswers([]);
+  //     const response = await nextQuestion(joinCode, sessionId);
 
-      if (response.item) {
-        handleNewItem(response.item, response.isLastItem, socket);
-      } else {
-        handleQuizEnd();
-      }
-    } catch (error) {
-      if (
-        error.response?.data?.message === "No more items left in the session"
-      ) {
-        handleQuizEnd();
-      } else {
-        console.error("Error getting next item:", error);
-      }
-    }
-  };
+  //     if (response.item) {
+  //       handleNewItem(response.item, response.isLastItem, socket);
+  //     } else {
+  //       handleQuizEnd();
+  //     }
+  //   } catch (error) {
+  //     if (
+  //       error.response?.data?.message === "No more items left in the session"
+  //     ) {
+  //       handleQuizEnd();
+  //     } else {
+  //       console.error("Error getting next item:", error);
+  //     }
+  //   }
+  // };
 
   const handleQuizEnd = () => {
     setIsQuizEnded(true);

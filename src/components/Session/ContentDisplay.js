@@ -27,12 +27,13 @@ const ContentDisplay = ({
   socket,
   optionCounts: passedOptionCounts,
   totalVotes: passedTotalVotes,
+  isSubmitted = false
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [openEndedAnswer, setOpenEndedAnswer] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
-  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(isSubmitted);
   const [optionCounts, setOptionCounts] = useState({});
   const [totalVotes, setTotalVotes] = useState(0);
 
@@ -41,7 +42,7 @@ const ContentDisplay = ({
     setSelectedOptions([]);
     setOpenEndedAnswer("");
     setIsTimeUp(false);
-    setIsAnswerSubmitted(false);
+    setIsAnswerSubmitted(isSubmitted);
 
     if (item?.type === "poll") {
       if (isAdmin && passedOptionCounts && passedTotalVotes) {
@@ -57,7 +58,7 @@ const ContentDisplay = ({
         setTotalVotes(0);
       }
     }
-  }, [item, isAdmin, passedOptionCounts, passedTotalVotes]);
+  }, [item, isAdmin, passedOptionCounts, passedTotalVotes, isSubmitted]);
 
   useEffect(() => {
     if (timeLeft === 0) {
@@ -104,7 +105,7 @@ const ContentDisplay = ({
   const isMultipleSelect = item?.type === "multiple_select";
 
   const handleOpenEndedSubmit = () => {
-    if (!isAdmin && openEndedAnswer.trim() && !isTimeUp && !isAnswerSubmitted) {
+    if (!isAdmin && openEndedAnswer.trim() && !isTimeUp) {
       onSubmitAnswer?.({
         type: "open_ended",
         answer: openEndedAnswer.trim(),
@@ -115,7 +116,7 @@ const ContentDisplay = ({
   };
 
   const handleOptionSelect = (option) => {
-    if (isAdmin || timeLeft === 0 || isTimeUp || isAnswerSubmitted) return;
+    if (isAdmin || timeLeft === 0 || isTimeUp) return;
 
     if (isMultipleSelect) {
       setSelectedOptions((prev) => {
@@ -127,32 +128,31 @@ const ContentDisplay = ({
         }
       });
     } else {
+      // Allow selecting a different option even after submission
       setSelectedOption(option);
+
+      // Submit/update the answer
       onSubmitAnswer?.(option);
-      setIsAnswerSubmitted(true);
+
+      // Mark as submitted if it wasn't already
+      if (!isAnswerSubmitted) {
+        setIsAnswerSubmitted(true);
+      }
     }
   };
 
   const handleMultipleSelectSubmit = () => {
-    if (selectedOptions.length === 0 || isTimeUp || isAnswerSubmitted) return;
+    if (selectedOptions.length === 0 || isTimeUp) return;
 
-    console.log("Selected options:", selectedOptions);
-
-    // For multiple select, send both indices and text
-    const selectedIndices = selectedOptions.map((opt) =>
-      item.options.findIndex((itemOpt) => itemOpt._id === opt._id)
-    );
-
-    const selectedTexts = selectedOptions.map((opt) => opt.text);
-
-    console.log("Selected indices:", selectedIndices);
-    console.log("Selected texts:", selectedTexts);
-
+    // Submit/update multiple select answer
     onSubmitAnswer?.({
       type: "multiple_select",
-      answer: selectedIndices,
-      text: selectedTexts.join(", "),
+      answer: selectedOptions.map((opt) =>
+        item.options.findIndex((itemOpt) => itemOpt._id === opt._id)
+      ),
+      text: selectedOptions.map((opt) => opt.text).join(", "),
     });
+
     setIsAnswerSubmitted(true);
   };
 
@@ -188,7 +188,7 @@ const ContentDisplay = ({
             placeholder="Type your answer here..."
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={4}
-            disabled={isTimeUp || isAnswerSubmitted}
+            disabled={isTimeUp}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -200,18 +200,18 @@ const ContentDisplay = ({
             onClick={handleOpenEndedSubmit}
             className={`px-4 py-2 bg-blue-600 text-white rounded-lg 
               ${
-                isTimeUp || isAnswerSubmitted
+                isTimeUp
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-blue-700"
               }
             `}
-            disabled={isTimeUp || isAnswerSubmitted || !openEndedAnswer.trim()}
+            disabled={isTimeUp || !openEndedAnswer.trim()}
           >
-            Submit Answer
+            {isAnswerSubmitted ? "Update Answer" : "Submit Answer"}
           </button>
           {isAnswerSubmitted && (
             <p className="text-green-600 font-medium text-center">
-              Answer submitted successfully!
+              {openEndedAnswer.trim() ? "Answer updated successfully!" : "Answer submitted successfully!"}
             </p>
           )}
         </div>

@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
 import FinalLeaderboard from "../FinalLeaderboard";
-
+import  SurveyProgress from "../../../components/Session/Progress";
 const UserPlay = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -21,16 +21,17 @@ const UserPlay = () => {
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(null);
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
-
+ const [progress, setProgress] = useState(0);
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
-
+const [totalQuestions, setTotalQuestions] = useState(0);
   // Save session state to sessionStorage
   const saveSessionState = (data) => {
     const sessionState = {
       currentItem: data.item,
       isLastItem: data.isLastItem,
       timeLeft: data.initialTime,
+      progress: data.progress,
       sessionId,
       joinCode,
       timestamp: Date.now(),
@@ -70,6 +71,7 @@ const UserPlay = () => {
         setCurrentItem(savedState.currentItem);
         setIsLastItem(savedState.isLastItem);
         setTimeLeft(savedState.timeLeft);
+        setProgress(savedState.progress);
       } else {
         navigate("/login");
       }
@@ -107,22 +109,33 @@ const UserPlay = () => {
   // Handle socket events and state persistence
   useEffect(() => {
     if (!socket) return;
-
+  
     socket.on("next-item", (data) => {
-      const { type, item, isLastItem: lastItem, initialTime } = data;
-
+      const { type, item, isLastItem: lastItem, initialTime, progress } = data;
+  
+      // Handle progress tracking
+      if (progress) {
+        const [current, total] = progress.split('/').map(Number);
+        setTotalQuestions(total);
+        setProgress(progress);
+      } else {
+        // Fallback progress calculation if not provided
+        const calculatedProgress = `${(currentItem ? 2 : 1)}/0`;
+        setProgress(calculatedProgress);
+      }
+  
       const completeItem = {
         ...item,
         type: type === "slide" ? "classic" : item.type,
       };
-
+  
       // Save to session storage
       saveSessionState({
         item: completeItem,
         isLastItem: lastItem,
         initialTime: initialTime || (type === "slide" ? 0 : item.timer || 30),
       });
-
+  
       setCurrentItem(completeItem);
       setTimeLeft(initialTime || (type === "slide" ? 0 : item.timer || 30));
       setIsLastItem(lastItem);
@@ -131,7 +144,8 @@ const UserPlay = () => {
       setIsTimeUp(false);
       setQuestionStartTime(type !== "slide" ? Date.now() : null);
     });
-
+  
+    // Existing socket event listeners remain the same
     socket.on("timer-sync", (data) => {
       const { timeLeft: newTime } = data;
       setTimeLeft(newTime);
@@ -140,22 +154,21 @@ const UserPlay = () => {
         setIsTimeUp(true);
       }
     });
-
+  
     socket.on("quiz-completed", () => {
       setShowFinalLeaderboard(true);
       clearSessionState();
     });
-
+  
     socket.on("session-ended", () => {
       clearSessionState();
       navigate("/userreports/" + user.id);
     });
-
-    // Handle disconnect
+  
     socket.on("disconnect", () => {
       setTimerActive(false);
     });
-
+  
     return () => {
       socket.off("next-item");
       socket.off("timer-sync");
@@ -164,6 +177,14 @@ const UserPlay = () => {
       socket.off("disconnect");
     };
   }, [socket, navigate]);
+  
+  // Render progress function (similar to survey play)
+  const renderProgress = () => {
+    if (!progress) return "Loading...";
+    
+    const [current, total] = progress.split('/').map(Number);
+    return total > 0 ? progress : `${current}/${totalQuestions || '...'}`;
+  };
 
   const handleSubmitAnswer = async (answer) => {
     if (
@@ -254,6 +275,10 @@ const UserPlay = () => {
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-4xl px-6">
+        <SurveyProgress 
+            progress={renderProgress()} 
+            className="mb-4" 
+          />
           <ContentDisplay
             item={currentItem}
             isAdmin={false}
