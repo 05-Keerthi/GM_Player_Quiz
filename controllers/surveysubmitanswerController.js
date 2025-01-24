@@ -242,6 +242,7 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
       imageUrl: fullImageUrl || surveyQuestion.imageUrl,
       answerOptions: surveyQuestion.answerOptions.map((opt) => ({
         optionText: opt.optionText,
+        color: opt.color,
       })),
     };
 
