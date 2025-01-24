@@ -17,7 +17,16 @@ exports.createSurveySession = async (req, res) => {
 
   try {
     // Generate a random join code
-    const surveyJoinCode = crypto.randomInt(100000, 999999).toString();
+    const generateRandomCode = (length = 6) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let code = '';
+      for (let i = 0; i < length; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+
+    const surveyJoinCode = generateRandomCode();
 
     // Create a survey session document without `surveyQrData` for now
     const surveySession = new SurveySession({

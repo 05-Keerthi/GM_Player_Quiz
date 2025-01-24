@@ -17,8 +17,18 @@ exports.createSession = async (req, res) => {
   const hostId = req.user._id;
 
   try {
-    // Generate a random join code
-    const joinCode = crypto.randomInt(100000, 999999).toString();
+    // Generate a random alphanumeric join code (6 characters: mix of letters and numbers)
+    const generateJoinCode = (length = 6) => {
+      const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let joinCode = "";
+      for (let i = 0; i < length; i++) {
+        const randomIndex = crypto.randomInt(0, characters.length);
+        joinCode += characters[randomIndex];
+      }
+      return joinCode;
+    };
+
+    const joinCode = generateJoinCode();
 
     // Create a session document without `qrData` for now
     const session = new Session({
