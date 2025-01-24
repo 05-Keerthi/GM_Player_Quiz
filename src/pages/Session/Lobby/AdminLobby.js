@@ -255,7 +255,7 @@ const AdminLobby = () => {
                       className="text-5xl font-bold tracking-wider text-gray-900"
                       data-testid="pin-value"
                     >
-                      {sessionData?.joinCode?.match(/.{1,3}/g)?.join(" ")}
+                      {sessionData?.joinCode}
                     </h1>
                   </div>
 

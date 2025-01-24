@@ -271,7 +271,7 @@ const SurveyLobby = () => {
                       className="text-5xl font-bold tracking-wider text-gray-900"
                       data-testid="pin-value"
                     >
-                      {sessionData?.surveyJoinCode?.match(/.{1,3}/g)?.join(" ")}
+                      {sessionData?.surveyJoinCode}
                     </h1>
                   </div>
 
