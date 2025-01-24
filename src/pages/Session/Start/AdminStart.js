@@ -42,7 +42,8 @@ const AdminStart = () => {
         if (joinCode && sessionId) {
           const response = await nextQuestion(joinCode, sessionId);
           if (response.item) {
-            handleNewItem(response.item, response.isLastItem, newSocket);
+            // Pass the full response to handleNewItem
+            handleNewItem(response.item, response.isLastItem, newSocket, response);
           }
         }
       } catch (error) {
@@ -99,34 +100,7 @@ const AdminStart = () => {
     }
   };
   
-  const handleNext = async () => {
-    try {
-      if (!joinCode) {
-        console.error("Join code is missing");
-        return;
-      }
   
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        setTimerInterval(null);
-      }
-  
-      setSubmittedAnswers([]);
-      const response = await nextQuestion(joinCode, sessionId);
-  
-      if (response.item) {
-        handleNewItem(response.item, response.isLastItem, socket, response);
-      } else {
-        handleQuizEnd();
-      }
-    } catch (error) {
-      if (error.response?.data?.message === "No more items left in the session") {
-        handleQuizEnd();
-      } else {
-        console.error("Error getting next item:", error);
-      }
-    }
-  };
 
   const initializeOptionCounts = (options) => {
     if (!options) return;
@@ -231,36 +205,37 @@ const AdminStart = () => {
     setTimerInterval(interval);
   };
 
-  // const handleNext = async () => {
-  //   try {
-  //     if (!joinCode) {
-  //       console.error("Join code is missing");
-  //       return;
-  //     }
-
-  //     if (timerInterval) {
-  //       clearInterval(timerInterval);
-  //       setTimerInterval(null);
-  //     }
-
-  //     setSubmittedAnswers([]);
-  //     const response = await nextQuestion(joinCode, sessionId);
-
-  //     if (response.item) {
-  //       handleNewItem(response.item, response.isLastItem, socket);
-  //     } else {
-  //       handleQuizEnd();
-  //     }
-  //   } catch (error) {
-  //     if (
-  //       error.response?.data?.message === "No more items left in the session"
-  //     ) {
-  //       handleQuizEnd();
-  //     } else {
-  //       console.error("Error getting next item:", error);
-  //     }
-  //   }
-  // };
+  const handleNext = async () => {
+    try {
+      if (!joinCode) {
+        console.error("Join code is missing");
+        return;
+      }
+  
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+  
+      setSubmittedAnswers([]);
+      const response = await nextQuestion(joinCode, sessionId);
+  
+      if (response.item) {
+        // Pass the full response to handleNewItem
+        handleNewItem(response.item, response.isLastItem, socket, response);
+      } else {
+        handleQuizEnd();
+      }
+    } catch (error) {
+      if (
+        error.response?.data?.message === "No more items left in the session"
+      ) {
+        handleQuizEnd();
+      } else {
+        console.error("Error getting next item:", error);
+      }
+    }
+  };
 
   const handleQuizEnd = () => {
     setIsQuizEnded(true);
@@ -333,6 +308,11 @@ const AdminStart = () => {
             </div>
           ) : (
             <div data-testid="content-container">
+             
+              <SurveyProgress 
+                progress={progress} 
+                className="mb-4" 
+              />
               <div className="mb-2" data-testid="answer-counts-container">
                 <AdminAnswerCounts
                   sessionId={sessionId}
@@ -341,6 +321,7 @@ const AdminStart = () => {
                 />
               </div>
               <div data-testid="content-display-container">
+              
                 <ContentDisplay
                   item={currentItem}
                   isAdmin={true}
