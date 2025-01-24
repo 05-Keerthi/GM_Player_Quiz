@@ -1,5 +1,7 @@
 const Report = require("../models/Report");
 const User = require("../models/User");
+const Surveysession = require("../models/surveysession");
+const Session = require("../models/session");
 
 // GET all reports for admin analytics view
 exports.getAllReports = async (req, res) => {
@@ -54,96 +56,230 @@ exports.getUserReports = async (req, res) => {
   }
 };
 
-// GET report for a specific quiz
-exports.getReportByQuiz = async (req, res) => {
-  const { quizId } = req.params;
-  try {
-    const reports = await Report.find({ quiz: quizId })
-      .populate("user")
-      .populate("quiz")
-      .populate("surveyQuiz") 
-      .sort({ completedAt: -1 });
+exports.getSessionsBySurveyQuiz = async (req, res) => {
+  const { surveyquizId } = req.params;
 
-    if (reports.length === 0) {
+  try {
+    const sessions = await Surveysession.find({ surveyQuiz: surveyquizId })
+      .populate("surveyHost", "username email")
+      .populate("surveyPlayers") 
+      .sort({ createdAt: -1 }); 
+
+    if (sessions.length === 0) {
       return res.status(200).json({
-        message: "No reports found for this quiz",
+        message: "No sessions found for this survey quiz",
         data: [],
       });
     }
 
     res.status(200).json({
-      message: "Reports fetched successfully for the quiz",
-      data: reports,
+      message: "Survey Quiz Sessions fetched successfully",
+      data: sessions,
     });
   } catch (error) {
-    console.error("Error fetching reports by quiz:", error);
-    res.status(500).json({ message: "Error fetching reports by quiz" });
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// GET a specific user's report for a quiz
-exports.getUserReportByQuiz = async (req, res) => {
-  const { quizId, userId } = req.params;
+exports.getSessionsByQuiz = async (req, res) => {
+  const { quizId } = req.params; 
+
   try {
-    const report = await Report.findOne({ quiz: quizId, user: userId })
-      .populate("quiz")
-      .populate("surveyQuiz") 
-      .populate("user");
+    const sessions = await Session.find({ quiz: quizId }) 
+      .populate("quiz", "title description") 
+      .populate("host")
+      .populate("players")
+      .sort({ createdAt: -1 }); 
 
-    if (!report) {
-      return res.status(404).json({
-        message: "Report not found",
-        data: null,
-      });
-    }
-
-    res.status(200).json({
-      message: "User report fetched successfully",
-      data: report,
-    });
-  } catch (error) {
-    console.error("Error fetching user report:", error);
-    res.status(500).json({ message: "Error fetching user report" });
-  }
-};
-
-// GET quiz performance statistics
-exports.getQuizStats = async (req, res) => {
-  const { quizId } = req.params;
-  try {
-    const reports = await Report.find({ quiz: quizId });
-
-    if (reports.length === 0) {
+    if (sessions.length === 0) {
       return res.status(200).json({
-        message: "No statistics available for this quiz",
-        data: {
-          totalAttempts: 0,
-          averageScore: 0,
-          passRate: 0,
-        },
+        message: "No sessions found for this quiz",
+        data: [],
       });
     }
 
-    const totalAttempts = reports.length;
-    const averageScore =
-      reports.reduce((acc, report) => acc + report.totalScore, 0) /
-      totalAttempts;
-    const passedAttempts = reports.filter(
-      (report) => report.totalScore >= 80
-    ).length;
-    const passRate = (passedAttempts / totalAttempts) * 100;
+    res.status(200).json({
+      message: "Quiz Sessions fetched successfully",
+      data: sessions,
+    });
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getSessionReport = async (req, res) => {
+  const { sessionId } = req.params; // Extract sessionId from the route parameters
+
+  try {
+    // Fetch the session details
+    const session = await Session.findById(sessionId)
+      .populate("host", "username email") 
+
+    if (!session) {
+      return res.status(404).json({
+        message: "Session not found",
+      });
+    }
+
+    // Fetch reports linked to this session (if applicable)
+    const reports = await Report.find({ sessionId })
+      .populate("user") // Fetch the user details for each report
+      .sort({ completedAt: -1 }); // Sort reports by completion time in descending order
 
     res.status(200).json({
-      message: "Quiz statistics fetched successfully",
+      message: "Session report fetched successfully",
       data: {
-        totalAttempts,
-        averageScore: averageScore.toFixed(2),
-        passRate: passRate.toFixed(2),
+        session,
+        reports
       },
     });
   } catch (error) {
-    console.error("Error fetching quiz statistics:", error);
-    res.status(500).json({ message: "Error fetching quiz statistics" });
+    console.error("Error fetching session report:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getSurveySessionReport = async (req, res) => {
+  const { surveysessionId } = req.params; 
+
+  try {
+    // Fetch the survey session details
+    const surveySession = await Surveysession.findById(surveysessionId)
+      .populate("surveyHost", "username email") 
+
+    if (!surveySession) {
+      return res.status(404).json({
+        message: "Survey session not found",
+      });
+    }
+
+    // Fetch survey reports linked to this session (if applicable)
+    const reports = await Report.find({ surveySessionId: surveysessionId })
+      .populate("user", "username email") 
+      .sort({ completedAt: -1 });
+
+    res.status(200).json({
+      message: "Survey session report fetched successfully",
+      data: {
+        surveySession,
+        reports,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching survey session report:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getReportByQuiz = async (req, res) => {
+  const { quizId } = req.params;
+
+  try {
+    // Fetch reports related to the quiz with necessary populated fields
+    const reports = await Report.find({ quiz: quizId })
+      .populate("user", "username email") // Populate user details
+      .populate({
+        path: "quiz",
+        select: "title description categories type", 
+        populate: {
+          path: "categories",
+          select: "name description", // Populate category details
+        },
+      })
+      .populate({
+        path: "sessionId", // Populate quiz session details
+        populate: [
+          {
+            path: "players",
+            select: "username email mobile", 
+          },
+          {
+            path: "questions",
+            select: "title type options", 
+          },
+        ],
+      })
+      .sort({ completedAt: -1 }); 
+
+  
+    const sessionCount = await Session.countDocuments({ quiz: quizId });
+
+    // Handle no reports found case
+    if (reports.length === 0) {
+      return res.status(200).json({
+        message: "No reports found for this quiz",
+        sessionCount,
+        data: [],
+      });
+    }
+
+    // Respond with the fetched reports and session count
+    res.status(200).json({
+      message: "Reports fetched successfully for the quiz",
+      sessionCount,
+      data: reports,
+    });
+  } catch (error) {
+    // Log and return an error response
+    console.error("Error fetching reports by quiz:", error);
+    res.status(500).json({
+      message: "Error fetching reports by quiz",
+      error: error.message,
+    });
+  }
+};
+
+
+exports.getReportBySurveyQuiz = async (req, res) => {
+  const { surveyquizId } = req.params;
+
+  try {
+    const reports = await Report.find({ surveyQuiz: surveyquizId })
+      .populate("user", "username email") 
+      .populate({
+        path: "surveyQuiz",
+        select: "title description categories type",
+        populate: {
+          path: "categories",
+          select: "name description", 
+        },
+      })
+      .populate({
+        path: "surveySessionId", 
+        populate: [
+          {
+            path: "surveyPlayers", 
+            select: "username email mobile", 
+          },
+          {
+            path: "surveyQuestions",
+            select: "title description dimension year answerOptions", 
+          },
+        ],
+      })
+      
+      .sort({ completedAt: -1 }); 
+
+    const sessionCount = await Surveysession.countDocuments({ surveyQuiz: surveyquizId });
+
+    if (reports.length === 0) {
+      return res.status(200).json({
+        message: "No reports found for this survey quiz",
+        sessionCount,
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      message: "Reports fetched successfully for the survey quiz",
+      sessionCount,
+      data: reports,
+    });
+  } catch (error) {
+    console.error("Error fetching reports by survey quiz:", error);
+    res.status(500).json({ message: "Error fetching reports by survey quiz" });
   }
 };
 
