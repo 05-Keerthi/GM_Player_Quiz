@@ -265,6 +265,8 @@ exports.nextQuestion = async (req, res) => {
       : -1;
 
     const nextIndex = currentIndex + 1;
+    const totalItems = quiz.order.length;
+
     if (nextIndex >= quiz.order.length) {
       return res
         .status(400)
@@ -304,6 +306,7 @@ exports.nextQuestion = async (req, res) => {
       type: quiz.order[nextIndex].type,
       item: itemToSend,
       isLastItem: nextIndex === quiz.order.length - 1,
+      progress: `${nextIndex + 1}/${totalItems}`
     });
 
     res.status(200).json({
@@ -311,6 +314,7 @@ exports.nextQuestion = async (req, res) => {
       type: quiz.order[nextIndex].type,
       item: itemToSend,
       isLastItem: nextIndex === quiz.order.length - 1,
+      progress: `${nextIndex + 1}/${totalItems}`
     });
   } catch (error) {
     console.error("Next question error:", error);

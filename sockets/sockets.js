@@ -26,11 +26,12 @@ module.exports = (io) => {
     });
 
     // Quiz Question Management
-    socket.on("next-item", ({ sessionId, type, item, isLastItem }) => {
+    socket.on("next-item", ({ sessionId, type, item, isLastItem, progress }) => {
       io.to(sessionId).emit("next-item", {
         type,
         item,
         isLastItem,
+        progress,
       });
     });
 
