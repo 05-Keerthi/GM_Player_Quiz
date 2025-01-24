@@ -177,19 +177,19 @@ exports.getReportByQuiz = async (req, res) => {
   const { quizId } = req.params;
 
   try {
-    // Fetch reports related to the quiz with necessary populated fields
+    
     const reports = await Report.find({ quiz: quizId })
-      .populate("user", "username email") // Populate user details
+      .populate("user", "username email") 
       .populate({
         path: "quiz",
         select: "title description categories type", 
         populate: {
           path: "categories",
-          select: "name description", // Populate category details
+          select: "name description", 
         },
       })
       .populate({
-        path: "sessionId", // Populate quiz session details
+        path: "sessionId", 
         populate: [
           {
             path: "players",
@@ -206,7 +206,6 @@ exports.getReportByQuiz = async (req, res) => {
   
     const sessionCount = await Session.countDocuments({ quiz: quizId });
 
-    // Handle no reports found case
     if (reports.length === 0) {
       return res.status(200).json({
         message: "No reports found for this quiz",
@@ -215,14 +214,12 @@ exports.getReportByQuiz = async (req, res) => {
       });
     }
 
-    // Respond with the fetched reports and session count
     res.status(200).json({
       message: "Reports fetched successfully for the quiz",
       sessionCount,
       data: reports,
     });
   } catch (error) {
-    // Log and return an error response
     console.error("Error fetching reports by quiz:", error);
     res.status(500).json({
       message: "Error fetching reports by quiz",
