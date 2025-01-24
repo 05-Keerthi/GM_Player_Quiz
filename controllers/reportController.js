@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Surveysession = require("../models/surveysession");
 const Session = require("../models/session");
 const SurveyAnswer = require("../models/surveyanswer");
+const Answer = require("../models/answer");
 
 // GET all reports for admin analytics view
 exports.getAllReports = async (req, res) => {
@@ -111,12 +112,14 @@ exports.getSessionsByQuiz = async (req, res) => {
 };
 
 exports.getSessionReport = async (req, res) => {
-  const { sessionId } = req.params; // Extract sessionId from the route parameters
+  const { sessionId } = req.params; 
 
   try {
-    // Fetch the session details
     const session = await Session.findById(sessionId)
-      .populate("host", "username email") 
+      .populate("host", "username email")
+      .populate("questions", "title type options correctAnswer points timer")
+      .populate("players", "username email mobile")
+
 
     if (!session) {
       return res.status(404).json({
@@ -124,16 +127,39 @@ exports.getSessionReport = async (req, res) => {
       });
     }
 
-    // Fetch reports linked to this session (if applicable)
     const reports = await Report.find({ sessionId })
-      .populate("user") // Fetch the user details for each report
-      .sort({ completedAt: -1 }); // Sort reports by completion time in descending order
+      .populate("user", "username email") 
+      .sort({ completedAt: -1 });
+
+    const questionIds = session.questions.map((question) => question._id);
+
+    const answers = await Answer.find({
+      session: sessionId,
+      question: { $in: questionIds },
+    })
+      .populate("question", "title type options correctAnswer points timer") 
+      .populate("user", "username email mobile"); 
+
+    const answersGroupedByQuestion = questionIds.map((questionId) => {
+      return {
+        questionId,
+        questionDetails: answers.find((a) => a.question._id.toString() === questionId.toString())?.question || null,
+        answers: answers
+          .filter((a) => a.question._id.toString() === questionId.toString())
+          .map((a) => ({
+            user: a.user,
+            answer: a.answer,
+            timeTaken: a.timeTaken,
+          })),
+      };
+    });
 
     res.status(200).json({
       message: "Session report fetched successfully",
       data: {
         session,
-        reports
+        reports,
+        answersGroupedByQuestion, 
       },
     });
   } catch (error) {
@@ -142,45 +168,10 @@ exports.getSessionReport = async (req, res) => {
   }
 };
 
-// exports.getSurveySessionReport = async (req, res) => {
-//   const { surveysessionId } = req.params; 
-
-//   try {
-//     // Fetch the survey session details
-//     const surveySession = await Surveysession.findById(surveysessionId)
-//       .populate("surveyHost", "username email")
-//       .populate("surveyPlayers", "username email mobile")
-//       .populate("surveyQuestions", "title description dimension year answerOptions") 
-
-//     if (!surveySession) {
-//       return res.status(404).json({
-//         message: "Survey session not found",
-//       });
-//     }
-
-//     // Fetch survey reports linked to this session (if applicable)
-//     const reports = await Report.find({ surveySessionId: surveysessionId })
-//       .populate("user", "username email") 
-//       .sort({ completedAt: -1 });
-
-//     res.status(200).json({
-//       message: "Survey session report fetched successfully",
-//       data: {
-//         surveySession,
-//         reports,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error fetching survey session report:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
 exports.getSurveySessionReport = async (req, res) => {
   const { surveysessionId } = req.params;
 
   try {
-    // Fetch the survey session details
     const surveySession = await Surveysession.findById(surveysessionId)
       .populate("surveyHost", "username email")
       .populate("surveyPlayers", "username email mobile")
@@ -192,22 +183,19 @@ exports.getSurveySessionReport = async (req, res) => {
       });
     }
 
-    // Fetch survey reports linked to this session
     const reports = await Report.find({ surveySessionId: surveysessionId })
       .populate("user", "username email")
       .sort({ completedAt: -1 });
 
-    // Fetch user-submitted answers for each question in the session
-    const questionIds = surveySession.surveyQuestions.map((question) => question._id);
+      const questionIds = surveySession.surveyQuestions.map((question) => question._id);
 
     const answers = await SurveyAnswer.find({
       surveySession: surveysessionId,
       surveyQuestion: { $in: questionIds },
     })
-      .populate("surveyQuestion", "title description dimension year answerOptions") // Populate question details
-      .populate("surveyPlayers", "username email mobile"); // Populate user details
+      .populate("surveyQuestion", "title description dimension year answerOptions") 
+      .populate("surveyPlayers", "username email mobile");
 
-    // Group answers by questions
     const answersGroupedByQuestion = questionIds.map((questionId) => {
       return {
         questionId,
