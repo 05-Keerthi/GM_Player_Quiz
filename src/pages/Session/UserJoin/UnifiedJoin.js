@@ -88,7 +88,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
     const params = new URLSearchParams(location.search);
     const codeFromUrl = params.get("code");
     if (codeFromUrl) {
-      setJoinCode(codeFromUrl.replace(/\D/g, "").slice(0, 6));
+      setJoinCode(codeFromUrl.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6));
     }
   }, [location]);
 
@@ -274,7 +274,7 @@ const UnifiedJoin = ({ type = "quiz" }) => {
                 type="text"
                 value={joinCode}
                 onChange={(e) =>
-                  setJoinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
                 }
                 placeholder="Game PIN"
                 className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-3xl tracking-wider"
