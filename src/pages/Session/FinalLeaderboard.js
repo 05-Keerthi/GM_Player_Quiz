@@ -139,13 +139,12 @@ const FinalLeaderboard = ({ sessionId, userId, isAdmin }) => {
               </div>
             ))}
 
-            <button
-              className="mt-6 bg-blue-500 text-white py-2 px-4 rounded"
-              onClick={() => setShowPopup(true)} // Open the popup
-            >
-              Send Results
-            </button>
-
+            <button 
+  className="mt-6 bg-blue-500 text-white py-2 px-4 rounded mx-auto block"
+  onClick={() => setShowPopup(true)}
+>
+  Send Results
+</button>
             {showPopup && (
               <div className="fixed inset-0 flex items-center justify-center bg-gray-600 bg-opacity-50">
                 <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm">
