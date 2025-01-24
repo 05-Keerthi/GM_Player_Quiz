@@ -185,7 +185,7 @@ export default function HomePage() {
             description: "View reports and your quiz performance",
             buttonText: "View Reports",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
-            path: `/userreports/${user?.id}`,
+            path: `/userreports`,
           },
         ];
       default:
@@ -336,7 +336,11 @@ export default function HomePage() {
                   </h2>
                   <p className="text-gray-500">{action.description}</p>
                   <button
-                    data-testid={action.path === "/join" ? "button-join-now" : "create-quiz-button"}
+                    data-testid={
+                      action.path === "/join"
+                        ? "button-join-now"
+                        : "create-quiz-button"
+                    }
                     onClick={() => handleAction(action)}
                     className={`mt-4 px-4 py-2 text-white rounded-lg transition-colors ${action.buttonColor}`}
                   >

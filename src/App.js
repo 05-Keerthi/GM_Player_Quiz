@@ -148,11 +148,11 @@ export default function App() {
           }
         />
         <Route
-          path="/userreports/:userId"
+          path="/userreports"
           element={
-            <ProtectedRoute>
+      
               <UserReport />
-            </ProtectedRoute>
+  
           }
         />
         <Route path="/Activity-log" element={<AdminDashboard />} />
