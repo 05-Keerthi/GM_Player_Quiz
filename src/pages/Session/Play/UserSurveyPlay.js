@@ -201,7 +201,7 @@ const UserSurveyPlay = () => {
     socket.on("survey-session-ended", () => {
       clearSessionState();
       setIsSurveyEnded(true);
-      setTimeout(() => navigate("/"), 2000);
+      navigate("/session/survey/" + sessionId);
     });
 
     return () => {

@@ -162,7 +162,7 @@ const [totalQuestions, setTotalQuestions] = useState(0);
   
     socket.on("session-ended", () => {
       clearSessionState();
-      navigate("/userreports/" + user.id);
+      navigate("/session/quiz/" + sessionId);
     });
   
     socket.on("disconnect", () => {
