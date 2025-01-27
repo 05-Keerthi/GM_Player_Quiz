@@ -1,4 +1,3 @@
-// DashboardCharts.js
 import React from "react";
 import {
   Cell,
@@ -21,27 +20,41 @@ const AttemptsChart = ({ quizzes, surveys }) => {
       attempts: item.attempts,
       type: item.QuizDetails ? "Quiz" : "Survey",
     }));
-
     return combinedData.sort((a, b) => b.attempts - a.attempts).slice(0, 5);
   };
 
   const data = prepareData();
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const { name, attempts, type } = payload[0].payload;
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded-md shadow-sm">
+          <p className="font-medium">{name}</p>
+          <p className="text-gray-600">Type: {type}</p>
+          <p className="text-gray-600">Attempts: {attempts}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="type" textAnchor="end" height={30} />
+          <XAxis
+            dataKey="type"
+            textAnchor="end"
+            height={60}
+            interval={0}
+            angle={-45}
+          />
           <YAxis />
           <Tooltip
+            content={<CustomTooltip />}
             cursor={{ fill: "transparent" }}
-            contentStyle={{
-              backgroundColor: "#fff",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              padding: "8px",
-            }}
           />
           <Legend />
           <Bar
