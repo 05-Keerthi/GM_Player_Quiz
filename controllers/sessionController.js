@@ -322,6 +322,7 @@ exports.nextQuestion = async (req, res) => {
   }
 };
 
+
 exports.endSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
@@ -330,7 +331,7 @@ exports.endSession = async (req, res) => {
     const session = await Session.findOne({ joinCode, _id: sessionId })
       .populate("players", "username email mobile")
       .populate("host", "username email mobile")
-      .populate("quiz", "title description");
+      .populate("quiz", "title description questions"); // Include quiz questions
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
@@ -341,7 +342,9 @@ exports.endSession = async (req, res) => {
     session.endTime = Date.now();
     await session.save();
 
-    const { title: quizTitle, description: quizDescription } = session.quiz;
+    const { title: quizTitle, description: quizDescription, questions } =
+      session.quiz;
+    const totalQuestions = questions.length; // Total questions in the quiz
 
     // Fetch all leaderboard scores for this session
     const leaderboardEntries = await Leaderboard.find({
@@ -350,7 +353,7 @@ exports.endSession = async (req, res) => {
 
     // Map user IDs to ranks
     const rankMap = leaderboardEntries.reduce((map, entry, index) => {
-      map[entry.player.toString()] = index + 1; 
+      map[entry.player.toString()] = index + 1;
       return map;
     }, {});
 
@@ -369,16 +372,36 @@ exports.endSession = async (req, res) => {
       const leaderboardScore = leaderboardEntry ? leaderboardEntry.score : 0;
       const rank = rankMap[userId.toString()] || null;
 
-      const totalQuestions = await Answer.countDocuments({
+      // Fetch answers submitted by the user
+      const userAnswers = await Answer.find({
         session: sessionId,
         user: userId,
       });
-      const correctAnswers = await Answer.countDocuments({
-        session: sessionId,
-        user: userId,
-        isCorrect: true,
-      });
-      const incorrectAnswers = totalQuestions - correctAnswers;
+
+      // Calculate correct and incorrect answers
+const correctAnswers = userAnswers.filter((ans) => ans.isCorrect).length;
+
+// Fetch unanswered questions (not submitted by the user)
+const unansweredQuestions = questions.filter(
+  (q) => !userAnswers.some((a) => a.question.toString() === q._id.toString())
+);
+
+// Include unanswered questions in incorrect answers
+const incorrectAnswers = totalQuestions - correctAnswers;
+
+// Persist unanswered questions in the database
+await Promise.all(
+  unansweredQuestions.map(async (question) => {
+    await Answer.create({
+      session: sessionId,
+      user: userId,
+      question: question._id,
+      isCorrect: false,
+      answer: null, // No answer provided
+    });
+  })
+);
+
 
       // Save report
       const report = await Report.create({
@@ -389,7 +412,7 @@ exports.endSession = async (req, res) => {
         correctAnswers,
         incorrectAnswers,
         totalScore: leaderboardScore,
-        rank:rank,
+        rank: rank,
         completedAt: session.endTime,
       });
 
@@ -435,3 +458,117 @@ exports.endSession = async (req, res) => {
     });
   }
 };
+
+// exports.endSession = async (req, res) => {
+//   const { joinCode, sessionId } = req.params;
+
+//   try {
+//     // Find the session
+//     const session = await Session.findOne({ joinCode, _id: sessionId })
+//       .populate("players", "username email mobile")
+//       .populate("host", "username email mobile")
+//       .populate("quiz", "title description");
+
+//     if (!session) {
+//       return res.status(404).json({ message: "Session not found" });
+//     }
+
+//     // Update session status
+//     session.status = "completed";
+//     session.endTime = Date.now();
+//     await session.save();
+
+//     const { title: quizTitle, description: quizDescription } = session.quiz;
+
+//     // Fetch all leaderboard scores for this session
+//     const leaderboardEntries = await Leaderboard.find({
+//       session: sessionId,
+//     }).sort({ score: -1 });
+
+//     // Map user IDs to ranks
+//     const rankMap = leaderboardEntries.reduce((map, entry, index) => {
+//       map[entry.player.toString()] = index + 1; 
+//       return map;
+//     }, {});
+
+//     const reports = [];
+//     const activityLogs = [];
+
+//     for (const player of session.players) {
+//       const userId = player._id;
+//       const username = player.username;
+//       const email = player.email;
+//       const mobile = player.mobile;
+
+//       const leaderboardEntry = leaderboardEntries.find(
+//         (entry) => entry.player.toString() === userId.toString()
+//       );
+//       const leaderboardScore = leaderboardEntry ? leaderboardEntry.score : 0;
+//       const rank = rankMap[userId.toString()] || null;
+
+//       const totalQuestions = await Answer.countDocuments({
+//         session: sessionId,
+//         user: userId,
+//       });
+//       const correctAnswers = await Answer.countDocuments({
+//         session: sessionId,
+//         user: userId,
+//         isCorrect: true,
+//       });
+//       const incorrectAnswers = totalQuestions - correctAnswers;
+
+//       // Save report
+//       const report = await Report.create({
+//         quiz: session.quiz,
+//         user: userId,
+//         sessionId,
+//         totalQuestions,
+//         correctAnswers,
+//         incorrectAnswers,
+//         totalScore: leaderboardScore,
+//         rank:rank,
+//         completedAt: session.endTime,
+//       });
+
+//       reports.push(report);
+
+//       // Save activity log with rank
+//       const activityLog = await ActivityLog.create({
+//         user: userId,
+//         activityType: "quiz_play",
+//         details: {
+//           sessionId,
+//           username,
+//           email,
+//           mobile,
+//           quizTitle,
+//           quizDescription,
+//           rank,
+//           correctAnswers,
+//           incorrectAnswers,
+//           totalScore: leaderboardScore,
+//         },
+//       });
+
+//       activityLogs.push(activityLog);
+//     }
+
+//     // Emit socket event
+//     const io = req.app.get("socketio");
+//     io.emit("session-ended", { session });
+
+//     // Respond with success
+//     res.status(200).json({
+//       message: "Session ended successfully and reports generated",
+//       session,
+//       reports,
+//       activityLogs,
+//     });
+//   } catch (error) {
+//     console.error("End session error:", error);
+//     res.status(500).json({
+//       message: "Error ending the session and generating reports",
+//       error,
+//     });
+//   }
+// };
