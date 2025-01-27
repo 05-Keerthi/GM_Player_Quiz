@@ -49,7 +49,7 @@ const ActivityTimeline = ({ quizzes, surveys }) => {
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={data} style={{ cursor: "pointer" }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />

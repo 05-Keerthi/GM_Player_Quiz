@@ -31,6 +31,7 @@ const DistributionChart = ({ quizCount, surveyCount }) => {
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"
+            style={{ cursor: "pointer" }}
           >
             {data.map((entry, index) => (
               <Cell

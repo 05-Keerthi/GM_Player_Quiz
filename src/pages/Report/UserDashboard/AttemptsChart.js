@@ -32,11 +32,25 @@ const AttemptsChart = ({ quizzes, surveys }) => {
       <ResponsiveContainer>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+          <XAxis dataKey="type" textAnchor="end" height={30} />
           <YAxis />
-          <Tooltip />
+          <Tooltip
+            cursor={{ fill: "transparent" }}
+            contentStyle={{
+              backgroundColor: "#fff",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              padding: "8px",
+            }}
+          />
           <Legend />
-          <Bar dataKey="attempts" fill="#8884d8" name="Total Attempts">
+          <Bar
+            dataKey="attempts"
+            fill="#8884d8"
+            name="Total Attempts"
+            barSize={60}
+            style={{ cursor: "pointer" }}
+          >
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
