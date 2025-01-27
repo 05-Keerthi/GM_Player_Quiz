@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Navbar from "../../../components/NavbarComp";
+import { ArrowBigLeft } from "lucide-react";
 
 const DetailedReportDashboard = () => {
   const [data, setData] = useState([]);
@@ -268,32 +270,41 @@ const DetailedReportDashboard = () => {
     );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          ← Back to Dashboard
-        </button>
-        <h1 className="text-2xl font-bold">
-          {type === "quiz"
-            ? "Quiz Performance Dashboard"
-            : "Survey Response Dashboard"}
-        </h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {getMetrics().map((metric, index) => (
-          <div key={index} className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">{metric.label}</p>
-            <h3 className="text-2xl font-bold">{metric.value}</h3>
+    <>
+      <>
+        <Navbar />
+      </>
+      <>
+        <div className="p-6 bg-gray-50 min-h-screen">
+          <div className="mb-6 flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold"
+            >
+              <ArrowBigLeft />
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+            <h1 className="text-2xl font-bold truncate max-w-[200px] sm:max-w-none">
+              {type === "quiz"
+                ? "Quiz Performance Dashboard"
+                : "Survey Response Dashboard"}
+            </h1>
           </div>
-        ))}
-      </div>
 
-      <div className="space-y-6">{renderDetails()}</div>
-    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {getMetrics().map((metric, index) => (
+              <div key={index} className="bg-white p-6 rounded-lg shadow">
+                <p className="text-sm text-gray-500">{metric.label}</p>
+                <h3 className="text-2xl font-bold">{metric.value}</h3>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-6">{renderDetails()}</div>
+        </div>
+      </>
+    </>
   );
 };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Navbar from "../../../components/NavbarComp";
+import { ArrowBigLeft } from "lucide-react";
 
 const SessionDashboard = () => {
   const [data, setData] = useState(null);
@@ -295,40 +297,49 @@ const SessionDashboard = () => {
   if (!metrics) return null;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold">
-          {type === "quiz"
-            ? "Quiz Session Analysis"
-            : "Survey Response Analysis"}
-        </h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        {metrics.map((metric, index) => (
-          <div key={index} className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">{metric.label}</p>
-            <h3 className="text-2xl font-bold">{metric.value}</h3>
+    <>
+      <>
+        <Navbar />
+      </>
+      <>
+        <div className="p-6 bg-gray-50 min-h-screen">
+          <div className="mb-6 flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold"
+            >
+              <ArrowBigLeft />
+              <span className="hidden sm:inline">Back to Performance</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+            <h1 className="text-2xl font-bold truncate max-w-[200px] sm:max-w-none">
+              {type === "quiz"
+                ? "Quiz Session Analysis"
+                : "Survey Response Analysis"}
+            </h1>
           </div>
-        ))}
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {data.answers.map((answer, index) => (
-          <div key={index}>
-            {type === "quiz"
-              ? renderQuizAnswer(answer)
-              : renderSurveyAnswer(answer)}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            {metrics.map((metric, index) => (
+              <div key={index} className="bg-white p-6 rounded-lg shadow">
+                <p className="text-sm text-gray-500">{metric.label}</p>
+                <h3 className="text-2xl font-bold">{metric.value}</h3>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {data.answers.map((answer, index) => (
+              <div key={index}>
+                {type === "quiz"
+                  ? renderQuizAnswer(answer)
+                  : renderSurveyAnswer(answer)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    </>
   );
 };
 
