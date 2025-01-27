@@ -143,7 +143,7 @@ export default function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route
-          path="/userreports/:type/:id"
+          path="/:type-reports/:type/:id"
           element={<DetailedReportDashboard />}
         />
         <Route

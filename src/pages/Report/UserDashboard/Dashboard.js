@@ -89,7 +89,7 @@ const Dashboard = () => {
   );
 
   const navigateToReport = (id, type) => {
-    navigate(`/userreports/${type}/${id}`);
+    navigate(`/${type}-reports/${type}/${id}`);
   };
 
   const exportToCSV = () => {
