@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import io from "socket.io-client";
 import { useAuthContext } from "../../../context/AuthContext";
 import FinalLeaderboard from "../FinalLeaderboard";
-import  SurveyProgress from "../../../components/Session/Progress";
+import SurveyProgress from "../../../components/Session/Progress";
 const UserPlay = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -21,10 +21,10 @@ const UserPlay = () => {
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(null);
   const [showFinalLeaderboard, setShowFinalLeaderboard] = useState(false);
- const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(0);
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
-const [totalQuestions, setTotalQuestions] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
   // Save session state to sessionStorage
   const saveSessionState = (data) => {
     const sessionState = {
@@ -109,33 +109,33 @@ const [totalQuestions, setTotalQuestions] = useState(0);
   // Handle socket events and state persistence
   useEffect(() => {
     if (!socket) return;
-  
+
     socket.on("next-item", (data) => {
       const { type, item, isLastItem: lastItem, initialTime, progress } = data;
-  
+
       // Handle progress tracking
       if (progress) {
-        const [current, total] = progress.split('/').map(Number);
+        const [current, total] = progress.split("/").map(Number);
         setTotalQuestions(total);
         setProgress(progress);
       } else {
         // Fallback progress calculation if not provided
-        const calculatedProgress = `${(currentItem ? 2 : 1)}/0`;
+        const calculatedProgress = `${currentItem ? 2 : 1}/0`;
         setProgress(calculatedProgress);
       }
-  
+
       const completeItem = {
         ...item,
         type: type === "slide" ? "classic" : item.type,
       };
-  
+
       // Save to session storage
       saveSessionState({
         item: completeItem,
         isLastItem: lastItem,
         initialTime: initialTime || (type === "slide" ? 0 : item.timer || 30),
       });
-  
+
       setCurrentItem(completeItem);
       setTimeLeft(initialTime || (type === "slide" ? 0 : item.timer || 30));
       setIsLastItem(lastItem);
@@ -144,7 +144,7 @@ const [totalQuestions, setTotalQuestions] = useState(0);
       setIsTimeUp(false);
       setQuestionStartTime(type !== "slide" ? Date.now() : null);
     });
-  
+
     // Existing socket event listeners remain the same
     socket.on("timer-sync", (data) => {
       const { timeLeft: newTime } = data;
@@ -154,21 +154,21 @@ const [totalQuestions, setTotalQuestions] = useState(0);
         setIsTimeUp(true);
       }
     });
-  
+
     socket.on("quiz-completed", () => {
       setShowFinalLeaderboard(true);
       clearSessionState();
     });
-  
+
     socket.on("session-ended", () => {
       clearSessionState();
       navigate("/session/quiz/" + sessionId);
     });
-  
+
     socket.on("disconnect", () => {
       setTimerActive(false);
     });
-  
+
     return () => {
       socket.off("next-item");
       socket.off("timer-sync");
@@ -177,13 +177,13 @@ const [totalQuestions, setTotalQuestions] = useState(0);
       socket.off("disconnect");
     };
   }, [socket, navigate]);
-  
+
   // Render progress function (similar to survey play)
   const renderProgress = () => {
     if (!progress) return "Loading...";
-    
-    const [current, total] = progress.split('/').map(Number);
-    return total > 0 ? progress : `${current}/${totalQuestions || '...'}`;
+
+    const [current, total] = progress.split("/").map(Number);
+    return total > 0 ? progress : `${current}/${totalQuestions || "..."}`;
   };
 
   const handleSubmitAnswer = async (answer) => {
@@ -206,7 +206,10 @@ const [totalQuestions, setTotalQuestions] = useState(0);
 
       // Handle different question types
       if (currentItem.type === "multiple_select") {
-        answerToSubmit = answer.answer;
+        // Convert indices to option texts for multiple select
+        answerToSubmit = answer.answer.map(
+          (index) => currentItem.options[index].text
+        );
       } else if (currentItem.type === "open_ended") {
         answerToSubmit = answer.answer;
       } else if (currentItem.type === "poll") {
@@ -275,10 +278,7 @@ const [totalQuestions, setTotalQuestions] = useState(0);
     <div className="min-h-screen bg-gray-100">
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-4xl px-6">
-        <SurveyProgress 
-            progress={renderProgress()} 
-            className="mb-4" 
-          />
+          <SurveyProgress progress={renderProgress()} className="mb-4" />
           <ContentDisplay
             item={currentItem}
             isAdmin={false}

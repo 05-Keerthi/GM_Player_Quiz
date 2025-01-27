@@ -134,16 +134,16 @@ const SessionDashboard = () => {
         );
 
       case "multiple_select":
-        const selectedIndices = new Set(answer.submittedAnswer || []);
+        const selectedAnswers = new Set(answer.submittedAnswer || []);
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
             <div className="grid grid-cols-2 gap-4">
-              {answer.options.map((option, index) => (
+              {answer.options.map((option) => (
                 <div
                   key={option._id}
                   className={`p-3 rounded-lg border ${
-                    selectedIndices.has(index)
+                    selectedAnswers.has(option.text)
                       ? answer.isCorrect
                         ? "border-green-500 bg-green-50"
                         : "border-red-500 bg-red-50"
