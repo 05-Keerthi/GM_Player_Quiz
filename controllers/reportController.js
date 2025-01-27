@@ -514,8 +514,6 @@ const getSurveyAttempts = async (req, res) => {
       return res.status(400).json({ message: "Invalid userId" });
     }
 
-    console.log("SurveyId:", surveyId, "UserId:", userId);
-
     // Perform aggregation
     const attempts = await Report.aggregate([
       {
@@ -561,12 +559,6 @@ const getSurveyAttempts = async (req, res) => {
         },
       },
       {
-        $unwind: {
-          path: "$categoryDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
         $lookup: {
           from: "users", // Replace with the actual collection name
           localField: "surveySessionDetails.surveyHost",
@@ -594,7 +586,7 @@ const getSurveyAttempts = async (req, res) => {
               quizCategories: "$categoryDetails.name",
             },
             sessionId: "$surveySessionDetails._id",
-            host: "$hostDetails.username", 
+            host: "$hostDetails.username",
             status: "$surveySessionDetails.surveyStatus",
             startTime: "$surveySessionDetails.startTime",
             endTime: "$surveySessionDetails.endTime",
@@ -603,10 +595,6 @@ const getSurveyAttempts = async (req, res) => {
         },
       },
     ]);
-    
-    
-
-    console.log("Aggregation Result:", attempts);
 
     if (!attempts || attempts.length === 0) {
       return res.status(404).json({ message: "No survey attempts found" });
