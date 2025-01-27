@@ -33,11 +33,11 @@ const { auth, isAdmin } = require("../middlewares/auth");
 router.get("/reports/participated", auth, getParticipatedQuizzesAndSurveys);
 
 // Get attempts for specific quiz
-router.get("reports/quiz/:quizId/attempts", auth, getQuizAttempts);
-router.get("reports/survey/:surveyId/attempts", auth, getSurveyAttempts);
+router.get("/reports/quiz/:quizId/attempts", auth, getQuizAttempts);
+router.get("/reports/survey/:surveyId/attempts", auth, getSurveyAttempts);
 
 // Get responses for specific session
-router.get("/session/:sessionId/responses", auth, getSessionResponses);
+router.get("/reports/session/:sessionId/responses", auth, getSessionResponses);
 router.get("/reports/surveySession/:surveySessionId/responses", auth, getSurveyResponses);
 
 router.get("/reports", auth, isAdmin, getAllReports);

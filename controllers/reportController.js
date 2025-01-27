@@ -554,8 +554,8 @@ const getSurveyAttempts = async (req, res) => {
       },
       {
         $lookup: {
-          from: "categories", // Assuming survey categories are stored in a `categories` collection
-          localField: "surveyQuizDetails.categoryId", // Adjust this field based on your schema
+          from: "categories",
+          localField: "surveyQuizDetails.categories",
           foreignField: "_id",
           as: "categoryDetails",
         },
@@ -567,30 +567,44 @@ const getSurveyAttempts = async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: "users", // Replace with the actual collection name
+          localField: "surveySessionDetails.surveyHost",
+          foreignField: "_id",
+          as: "hostDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$hostDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $project: {
           _id: 1,
+          correctAnswers: 1,
+          questionsAttempted: 1,
+          questionsSkipped: 1,
           surveySessionDetails: {
-            surveyId: "$surveyQuiz",
+            surveyQuiz: {
+              _id: "$surveyQuizDetails._id",
+              quizTitle: "$surveyQuizDetails.title",
+              quizDescription: "$surveyQuizDetails.description",
+              quizCategories: "$categoryDetails.name",
+            },
             sessionId: "$surveySessionDetails._id",
-            host: "$hostDetails.username",
+            host: "$hostDetails.username", 
             status: "$surveySessionDetails.surveyStatus",
             startTime: "$surveySessionDetails.startTime",
             endTime: "$surveySessionDetails.endTime",
             questions: "$surveyQuestions",
           },
-          surveyQuiz: {
-            _id: "$surveyQuizDetails._id",
-            quizTitle: "$surveyQuizDetails.title",
-            quizDescription: "$surveyQuizDetails.description",
-            quizCategories: "$categoryDetails.name",
-          },
-          correctAnswers: 1,
-          questionsAttempted: 1,
-          questionsSkipped: 1,
-          completedAt: 1,
         },
       },
     ]);
+    
+    
 
     console.log("Aggregation Result:", attempts);
 
@@ -681,9 +695,9 @@ const getSurveyResponses = async (req, res) => {
       { $unwind: "$questionDetails" },
       {
         $project: {
-          question: "$questionDetails.title",
-          questionType: "$questionDetails.type",
-          options: "$questionDetails.options",
+          question_title: "$questionDetails.title",
+          question_description: "$questionDetails.description",
+          options: "$questionDetails.answerOptions",
           submittedAnswer: "$surveyAnswer", // Correct field reference
           timeTaken: 1,
           createdAt: 1,
