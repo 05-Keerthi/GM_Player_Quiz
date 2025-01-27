@@ -7,6 +7,7 @@ import { Calendar, Search, Download, RefreshCw } from "lucide-react";
 import Navbar from "../../../components/NavbarComp";
 import DistributionChart from "./DistributionChart";
 import AttemptsChart from "./AttemptsChart";
+import { paginateData, PaginationControls } from "../../../utils/pagination";
 
 const Dashboard = () => {
   const [reports, setReports] = useState({ quizzes: [], surveys: [] });
@@ -17,6 +18,8 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const fetchReports = async () => {
     try {
@@ -127,6 +130,23 @@ const Dashboard = () => {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Get paginated data for current tab
+  const getPaginatedData = () => {
+    const data = activeTab === "quizzes" ? filteredQuizzes : filteredSurveys;
+    return paginateData(data, currentPage, ITEMS_PER_PAGE);
+  };
+
+  // Reset pagination when tab, search, or timeframe changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm, timeframe]);
+
+  const { currentItems, totalPages } = getPaginatedData();
 
   if (loading) {
     return (
@@ -308,7 +328,7 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredQuizzes.length === 0 ? (
+                      {currentItems.length === 0 ? (
                         <tr>
                           <td
                             colSpan="4"
@@ -318,7 +338,7 @@ const Dashboard = () => {
                           </td>
                         </tr>
                       ) : (
-                        filteredQuizzes.map((quiz) => (
+                        currentItems.map((quiz) => (
                           <tr
                             key={quiz.QuizId}
                             className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -342,6 +362,13 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+                {currentItems.length > 0 && (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                )}
               </div>
             )}
 
@@ -363,7 +390,7 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSurveys.length === 0 ? (
+                      {currentItems.length === 0 ? (
                         <tr>
                           <td
                             colSpan="3"
@@ -373,7 +400,7 @@ const Dashboard = () => {
                           </td>
                         </tr>
                       ) : (
-                        filteredSurveys.map((survey) => (
+                        currentItems.map((survey) => (
                           <tr
                             key={survey.SurveyId}
                             className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -396,6 +423,13 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+                {currentItems.length > 0 && (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                )}
               </div>
             )}
           </div>
