@@ -185,7 +185,7 @@ export default function HomePage() {
             description: "View reports and your quiz performance",
             buttonText: "View Reports",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
-            path: `/userreports`,
+            path: `/dashboard`,
           },
         ];
       default:

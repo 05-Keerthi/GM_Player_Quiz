@@ -12,7 +12,6 @@ import HomePage from "./pages/Home";
 import ProfilePage from "./pages/ProfilePage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import Reports from "./pages/Report/Report";
-import UserReport from "./pages/Report/UserReport";
 import AdminDashboard from "./pages/Activity/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -37,7 +36,9 @@ import UnifiedJoin from "./pages/Session/UserJoin/UnifiedJoin";
 import FinalLeaderboard from "./pages/Session/FinalLeaderboard";
 import SurveyResults from "./pages/Session/Start/SurveyResults";
 import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
-
+import DetailedReportDashboard from "./pages/Report/UserDashboard/DetailedReport";
+import SessionDashboard from "./pages/Report/UserDashboard/SessionDashboard";
+import Dashboard from "./pages/Report/UserDashboard/Dashboard";
 
 export default function App() {
   const { user, isAuthenticated, sessionExpired, resetSessionState } =
@@ -139,22 +140,17 @@ export default function App() {
         />
 
         {/* Report Routes */}
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <Reports />
-            </ProtectedRoute>
-          }
+          path="/userreports/:type/:id"
+          element={<DetailedReportDashboard />}
         />
         <Route
-          path="/userreports"
-          element={
-      
-              <UserReport />
-  
-          }
+          path="/session/:type/:sessionId"
+          element={<SessionDashboard />}
         />
+
         <Route path="/Activity-log" element={<AdminDashboard />} />
 
         {/* Legacy Redirect Routes */}
