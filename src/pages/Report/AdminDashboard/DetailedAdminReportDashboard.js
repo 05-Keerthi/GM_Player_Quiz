@@ -54,16 +54,8 @@ const PodiumStep = ({ rank, username, score, delay }) => {
 
       {/* Podium Step */}
       <div
-        className={`w-24 ${
-          heights[rank]
-        } rounded-t-lg transform origin-bottom opacity-0 
-                    animate-[scaleUp_0.5s_ease-out_forwards] ${
-                      rank === 1
-                        ? "bg-gradient-to-b from-yellow-400 to-yellow-600" // Gold
-                        : rank === 2
-                        ? "bg-gradient-to-b from-gray-300 to-gray-400" // Silver
-                        : "bg-gradient-to-b from-amber-600 to-amber-700" // Bronze
-                    }`}
+        className={`w-24 ${heights[rank]} bg-gradient-to-b from-blue-500 to-blue-600 rounded-t-lg 
+                    transform origin-bottom opacity-0 animate-[scaleUp_0.5s_ease-out_forwards]`}
         style={{ animationDelay: `${delay}s` }}
       />
     </div>
