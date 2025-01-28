@@ -43,6 +43,13 @@ const SessionDetails = () => {
     fetchData();
   }, [sessionId, type]);
 
+  const handleBackNavigation = () => {
+    const id = isQuiz
+      ? data.sessionDetails.quiz._id
+      : data.sessionDetails.surveyQuiz._id;
+    navigate(`/admin/${type}-reports/${type}/${id}`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -69,13 +76,11 @@ const SessionDetails = () => {
       <Navbar />
       <div className="p-8 mx-auto bg-gray-50 min-h-screen">
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleBackNavigation}
           className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold mb-4"
         >
           <ArrowBigLeft />
-          <span className="hidden sm:inline">
-            Back to Back to {`${type}-reports`}
-          </span>
+          <span className="hidden sm:inline">Back to {`${type}-reports`}</span>
           <span className="sm:hidden">Back</span>
         </button>
         <div className="mb-8">
