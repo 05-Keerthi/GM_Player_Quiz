@@ -182,8 +182,6 @@ const getSurveyAttempts = async (req, res) => {
       return res.status(400).json({ message: "Invalid userId" });
     }
 
-    console.log("SurveyId:", surveyId, "UserId:", userId);
-
     // Perform aggregation
     const attempts = await Report.aggregate([
       {
@@ -226,12 +224,6 @@ const getSurveyAttempts = async (req, res) => {
           localField: "surveyQuizDetails.categories",
           foreignField: "_id",
           as: "categoryDetails",
-        },
-      },
-      {
-        $unwind: {
-          path: "$categoryDetails",
-          preserveNullAndEmptyArrays: true,
         },
       },
       {
