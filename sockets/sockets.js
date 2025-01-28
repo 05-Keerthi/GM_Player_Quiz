@@ -3,7 +3,7 @@
 
 // module.exports = (io) => {
 //   io.on("connection", (socket) => {
-    
+
 //     // ==================== QUIZ SOCKET HANDLERS ====================
 
 //     // Quiz Session Management
@@ -196,108 +196,130 @@
 
 const Answer = require("../models/answer");
 const Question = require("../models/question");
-const Session = require("../models/session"); 
-const mongoose = require('mongoose');
-const surveySession = require("../models/surveysession")
+const Session = require("../models/session");
+const mongoose = require("mongoose");
+const surveySession = require("../models/surveysession");
 
 module.exports = (io) => {
   const userSockets = new Map();
 
+  const emitCurrentPlayers = async (sessionId, socket) => {
+    try {
+      const session = await Session.findById(sessionId).populate(
+        "players",
+        "username email"
+      );
+
+      if (session) {
+        socket.emit("current-players", session.players || []);
+      }
+    } catch (error) {
+      console.error("Error fetching current players:", error);
+    }
+  };
+
+  const emitCurrentSurveyPlayers = async (sessionId, socket) => {
+    try {
+      const session = await surveySession
+        .findById(sessionId)
+        .populate("surveyPlayers", "username email isGuest");
+
+      if (session) {
+        socket.emit("current-survey-players", session.surveyPlayers || []);
+      }
+    } catch (error) {
+      console.error("Error fetching current survey players:", error);
+    }
+  };
+
   io.on("connection", (socket) => {
-    
     // ==================== QUIZ SOCKET HANDLERS ====================
 
     // Quiz Session Management
+
+    socket.on("get-current-players", async ({ sessionId }) => {
+      await emitCurrentPlayers(sessionId, socket);
+    });
+
     socket.on("join-session", async ({ sessionId, userId, username }) => {
       try {
-        console.log("Join session request received:", { sessionId, userId, username });
-
-        // Validate required fields
-        if (!sessionId) {
-          throw new Error("sessionId is required");
-        }
-        if (!userId) {
-          throw new Error("userId is required");
-        }
-        if (!username) {
-          throw new Error("username is required");
-        }
-
-        // Validate ObjectId format
-        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
-          throw new Error("Invalid sessionId format");
-        }
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-          throw new Error("Invalid userId format");
-        }
-
-        // Join the socket room
-        socket.join(sessionId);
-        
-        // Store user data
-        const userData = {
-          userId: userId.toString(), // Ensure consistent string format
-          sessionId: sessionId.toString(),
-          username
-        };
-        
-        socket.userData = userData;
-        userSockets.set(socket.id, userData);
-        
-        console.log("Stored socket mapping:", {
-          socketId: socket.id,
-          userData
+        console.log("Join session request received:", {
+          sessionId,
+          userId,
+          username,
         });
 
-        // Update session players in database
+        if (!sessionId || !userId || !username) {
+          throw new Error("Missing required fields");
+        }
+
+        if (
+          !mongoose.Types.ObjectId.isValid(sessionId) ||
+          !mongoose.Types.ObjectId.isValid(userId)
+        ) {
+          throw new Error("Invalid ID format");
+        }
+
+        socket.join(sessionId);
+
+        const userData = {
+          userId: userId.toString(),
+          sessionId: sessionId.toString(),
+          username,
+        };
+
+        socket.userData = userData;
+        userSockets.set(socket.id, userData);
+
         const updatedSession = await Session.findByIdAndUpdate(
           sessionId,
           { $addToSet: { players: userId } },
           { new: true }
-        );
-        
+        ).populate("players", "username email");
+
         if (!updatedSession) {
           throw new Error("Session not found");
         }
 
-        console.log("Session updated after join:", {
-          sessionId,
-          players: updatedSession.players.map(p => p.toString())
-        });
+        // Emit updated player list to all clients in the session
+        io.to(sessionId).emit("current-players", updatedSession.players || []);
 
         io.to(sessionId).emit("user-joined", {
           message: "A new user has joined the session.",
           userId,
           username,
         });
-
       } catch (error) {
-        console.error("Error in join-session:", error.message);
-        socket.emit("error", { 
-          message: "Failed to join session: " + error.message,
-          details: {
-            sessionId,
-            userId,
-            username
-          }
-        });
+        console.error("Error in join-session:", error);
+        socket.emit("error", { message: error.message });
       }
     });
 
-    socket.on("create-session", ({ sessionId }) => {
-      socket.join(sessionId);
-      io.to(sessionId).emit("session-created", { sessionId });
+    socket.on("create-session", async ({ sessionId }) => {
+      try {
+        socket.join(sessionId);
+
+        // Fetch and emit initial player list
+        await emitCurrentPlayers(sessionId, socket);
+
+        io.to(sessionId).emit("session-created", { sessionId });
+      } catch (error) {
+        console.error("Error in create-session:", error);
+      }
     });
 
     // Quiz Question Management
-    socket.on("next-item", ({ sessionId, type, item, isLastItem, progress }) => {
-      io.to(sessionId).emit("next-item", {
-        type,
-        item,
-        isLastItem,
-        progress,
-      });
-    });
+    socket.on(
+      "next-item",
+      ({ sessionId, type, item, isLastItem, progress }) => {
+        io.to(sessionId).emit("next-item", {
+          type,
+          item,
+          isLastItem,
+          progress,
+        });
+      }
+    );
 
     // Quiz Timer
     socket.on("timer-sync", ({ sessionId, timeLeft }) => {
@@ -360,90 +382,88 @@ module.exports = (io) => {
 
     // ==================== SURVEY SOCKET HANDLERS ====================
 
-    // Survey Session Management
-    socket.on("create-survey-session", ({ sessionId }) => {
-      socket.join(sessionId);
-      io.to(sessionId).emit("survey-session-created", { sessionId });
+    socket.on("get-current-survey-players", async ({ sessionId }) => {
+      await emitCurrentSurveyPlayers(sessionId, socket);
     });
 
-    socket.on("join-survey-session", async ({ sessionId, userId, username, isGuest }) => {
+    
+    socket.on("create-survey-session", async ({ sessionId }) => {
       try {
-        console.log("Join survey session request received:", { sessionId, userId, username, isGuest });
-    
-        // Validate required fields
-        if (!sessionId) {
-          throw new Error("sessionId is required");
-        }
-        if (!userId) {
-          throw new Error("userId is required");
-        }
-        if (!username) {
-          throw new Error("username is required");
-        }
-    
-        // Validate ObjectId format
-        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
-          throw new Error("Invalid sessionId format");
-        }
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-          throw new Error("Invalid userId format");
-        }
-    
-        // Join the socket room
         socket.join(sessionId);
-        
-        // Store user data
-        const userData = {
-          userId: userId.toString(),
-          sessionId: sessionId.toString(),
-          username,
-          isGuest
-        };
-        
-        socket.userData = userData;
-        userSockets.set(socket.id, userData);
-        
-        console.log("Stored socket mapping for survey:", {
-          socketId: socket.id,
-          userData
-        });
-    
-        // Update session players in database
-        const updatedSession = await surveySession.findByIdAndUpdate(
-          sessionId,
-          { $addToSet: { surveyPlayers: userId } },
-          { new: true }
-        );
-        
-        if (!updatedSession) {
-          throw new Error("Survey session not found");
-        }
-    
-        console.log("Survey session updated after join:", {
-          sessionId,
-          players: updatedSession.surveyPlayers.map(p => p.toString())
-        });
-    
-        io.to(sessionId).emit("user-joined-survey", {
-          message: "A new user has joined the survey session.",
-          userId,
-          username,
-          isGuest
-        });
-    
+
+        // Fetch and emit initial survey player list
+        await emitCurrentSurveyPlayers(sessionId, socket);
+
+        io.to(sessionId).emit("survey-session-created", { sessionId });
       } catch (error) {
-        console.error("Error in join-survey-session:", error.message);
-        socket.emit("error", { 
-          message: "Failed to join survey session: " + error.message,
-          details: {
+        console.error("Error in create-survey-session:", error);
+      }
+    });
+
+    socket.on(
+      "join-survey-session",
+      async ({ sessionId, userId, username, isGuest }) => {
+        try {
+          console.log("Join survey session request received:", {
             sessionId,
             userId,
             username,
-            isGuest
+            isGuest,
+          });
+
+          if (!sessionId || !userId || !username) {
+            throw new Error("Missing required fields");
           }
-        });
+
+          if (
+            !mongoose.Types.ObjectId.isValid(sessionId) ||
+            !mongoose.Types.ObjectId.isValid(userId)
+          ) {
+            throw new Error("Invalid ID format");
+          }
+
+          socket.join(sessionId);
+
+          const userData = {
+            userId: userId.toString(),
+            sessionId: sessionId.toString(),
+            username,
+            isGuest,
+          };
+
+          socket.userData = userData;
+          userSockets.set(socket.id, userData);
+
+          const updatedSession = await surveySession
+            .findByIdAndUpdate(
+              sessionId,
+              { $addToSet: { surveyPlayers: userId } },
+              { new: true }
+            )
+            .populate("surveyPlayers", "username email isGuest");
+
+          if (!updatedSession) {
+            throw new Error("Survey session not found");
+          }
+
+          // Emit updated player list to all clients in the session
+          io.to(sessionId).emit(
+            "current-survey-players",
+            updatedSession.surveyPlayers || []
+          );
+
+          io.to(sessionId).emit("user-joined-survey", {
+            message: "A new user has joined the survey session.",
+            userId,
+            username,
+            isGuest,
+          });
+        } catch (error) {
+          console.error("Error in join-survey-session:", error);
+          socket.emit("error", { message: error.message });
+        }
       }
-    });
+    );
 
     // Survey Content Management
     socket.on(
@@ -515,63 +535,60 @@ module.exports = (io) => {
     });
 
     // Disconnection
+
     socket.on("disconnect", async () => {
       try {
-        console.log("Disconnect event triggered for socket:", socket.id);
-        
         const userData = userSockets.get(socket.id) || socket.userData;
-        console.log("User data from socket:", userData);
-        
+
         if (!userData || !userData.userId || !userData.sessionId) {
-          console.log("Invalid user data for socket:", socket.id);
           return;
         }
-    
+
         const { userId, sessionId } = userData;
-        console.log("Processing disconnect for user:", { userId, sessionId });
-    
-        // Validate ObjectIds before database operation
-        if (!mongoose.Types.ObjectId.isValid(sessionId) || !mongoose.Types.ObjectId.isValid(userId)) {
+
+        if (
+          !mongoose.Types.ObjectId.isValid(sessionId) ||
+          !mongoose.Types.ObjectId.isValid(userId)
+        ) {
           throw new Error("Invalid ID format in stored user data");
         }
-    
-        // Try to update quiz session first
+
+        // Update quiz session
         const updatedQuizSession = await Session.findOneAndUpdate(
           { _id: sessionId },
           { $pull: { players: userId } },
           { new: true }
-        );
-    
-        // If no quiz session found, try to update survey session
+        ).populate("players", "username email");
+
+        // If no quiz session, update survey session
         if (!updatedQuizSession) {
-          const updatedSurveySession = await surveySession.findOneAndUpdate(
-            { _id: sessionId },
-            { $pull: { surveyPlayers: userId } },
-            { new: true }
-          );
-          
-          console.log("Survey session updated after disconnect:", {
-            sessionId,
-            previousPlayers: updatedSurveySession ? updatedSurveySession.surveyPlayers.map(p => p.toString()) : []
-          });
+          const updatedSurveySession = await surveySession
+            .findOneAndUpdate(
+              { _id: sessionId },
+              { $pull: { surveyPlayers: userId } },
+              { new: true }
+            )
+            .populate("surveyPlayers", "username email isGuest");
+
+          if (updatedSurveySession) {
+            io.to(sessionId).emit(
+              "current-survey-players",
+              updatedSurveySession.surveyPlayers || []
+            );
+          }
         } else {
-          console.log("Quiz session updated after disconnect:", {
-            sessionId,
-            previousPlayers: updatedQuizSession.players.map(p => p.toString())
-          });
+          io.to(sessionId).emit(
+            "current-players",
+            updatedQuizSession.players || []
+          );
         }
-    
-        // Clean up socket mappings
+
         userSockets.delete(socket.id);
-        console.log("Removed socket mapping for:", socket.id);
-    
-        // Notify other users
+
         io.to(sessionId).emit("user-disconnected", {
-          message: "A user has disconnected from the session.",
           userId,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-    
       } catch (error) {
         console.error("Error in disconnect handler:", error);
       }
