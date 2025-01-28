@@ -1,22 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const { auth, isAdmin } = require('../middlewares/auth');
-// const reportController = require("../controllers/reportController");
-
-// router.get("/reports", auth, isAdmin, reportController.getAllReports);
-// router.get("/reports/user/:userId", auth, reportController.getUserReports);
-
-// router.get("/reports/:quizId/quiz-session", auth,  reportController.getSessionsByQuiz);
-// router.get("/reports/:surveyquizId/survey-session", auth,  reportController.getSessionsBySurveyQuiz);
-
-// router.get("/reports/session/:sessionId", auth,  reportController.getSessionReport);
-// router.get("/reports/survey-session/:surveysessionId", auth, reportController.getSurveySessionReport);
-
-// router.get("/reports/quiz/:quizId", auth, reportController.getReportByQuiz);
-// router.get("/reports/survey-quiz/:surveyquizId", auth, reportController.getReportBySurveyQuiz);
-// module.exports = router;
-
-
 const express = require("express");
 const router = express.Router();
 const {
@@ -25,7 +6,14 @@ const {
   getSurveyAttempts,
   getSessionResponses,
   getSurveyResponses,
-  getAllReports,
+  // Admin analytics
+  getOverallAnalytics,
+  getQuizAnalytics,
+  getQuizDetailedAnalytics,
+  getQuizSessionAnalytics,
+  getSurveyAnalytics,
+  getSurveyDetailedAnalytics,
+  getSurveySessionAnalytics,
 } = require("../controllers/reportController");
 const { auth, isAdmin } = require("../middlewares/auth");
 
@@ -38,8 +26,20 @@ router.get("/reports/survey/:surveyId/attempts", auth, getSurveyAttempts);
 
 // Get responses for specific session
 router.get("/reports/session/:sessionId/responses", auth, getSessionResponses);
-router.get("/reports/surveySession/:surveySessionId/responses", auth, getSurveyResponses);
+router.get(
+  "/reports/surveySession/:surveySessionId/responses",
+  auth,
+  getSurveyResponses
+);
 
-router.get("/reports", auth, isAdmin, getAllReports);
+
+// Admin analytics routes
+router.get("/admin/analytics/overall", auth, isAdmin, getOverallAnalytics);
+router.get("/admin/analytics/quizzes", auth, isAdmin, getQuizAnalytics);
+router.get("/admin/analytics/quizzes/:quizId", auth, isAdmin, getQuizDetailedAnalytics);
+router.get("/admin/analytics/quizzes/session/:sessionId", auth, isAdmin, getQuizSessionAnalytics);
+router.get("/admin/analytics/surveys", auth, isAdmin, getSurveyAnalytics);
+router.get("/admin/analytics/surveys/:surveyId", auth, isAdmin, getSurveyDetailedAnalytics);
+router.get("/admin/analytics/surveys/session/:sessionId", auth, isAdmin, getSurveySessionAnalytics);
 
 module.exports = router;

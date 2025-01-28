@@ -1,342 +1,10 @@
-// const Report = require("../models/Report");
-// const User = require("../models/User");
-// const Surveysession = require("../models/surveysession");
-// const Session = require("../models/session");
-// const SurveyAnswer = require("../models/surveyanswer");
-// const Answer = require("../models/answer");
-// const SurveyQuiz = require("../models/surveyQuiz");
-
-// // GET all reports for admin analytics view
-// exports.getAllReports = async (req, res) => {
-//   try {
-//     const reports = await Report.find()
-//       .populate("quiz")
-//       .populate("surveyQuiz") 
-//       .populate("user")
-//       .sort({ completedAt: -1 });
-
-//     if (reports.length === 0) {
-//       return res.status(200).json({
-//         message: "No reports available",
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "All reports fetched successfully",
-//       data: reports,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching reports:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// // GET all reports for a specific user
-// exports.getUserReports = async (req, res) => {
-//   const { userId } = req.params;
-//   try {
-//     const reports = await Report.find({ user: userId })
-//       .populate("quiz")
-//       .populate("surveyQuiz") 
-//       .populate("user")
-//       .sort({ completedAt: -1 });
-
-//     if (reports.length === 0) {
-//       return res.status(200).json({
-//         message: "No reports found for this user",
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "User reports fetched successfully",
-//       data: reports,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching user reports:", error);
-//     res.status(500).json({ message: "Error fetching user reports" });
-//   }
-// };
-
-// exports.getSessionsBySurveyQuiz = async (req, res) => {
-//   const { surveyquizId } = req.params;
-
-//   try {
-//     const sessions = await Surveysession.find({ surveyQuiz: surveyquizId })
-//       .populate("surveyHost", "username email")
-//       .populate("surveyPlayers") 
-//       .sort({ createdAt: -1 }); 
-
-//     if (sessions.length === 0) {
-//       return res.status(200).json({
-//         message: "No sessions found for this survey quiz",
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "Survey Quiz Sessions fetched successfully",
-//       data: sessions,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching sessions:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// exports.getSessionsByQuiz = async (req, res) => {
-//   const { quizId } = req.params; 
-
-//   try {
-//     const sessions = await Session.find({ quiz: quizId }) 
-//       .populate("quiz", "title description") 
-//       .populate("host")
-//       .populate("players")
-//       .sort({ createdAt: -1 }); 
-
-//     if (sessions.length === 0) {
-//       return res.status(200).json({
-//         message: "No sessions found for this quiz",
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "Quiz Sessions fetched successfully",
-//       data: sessions,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching sessions:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// exports.getSessionReport = async (req, res) => {
-//   const { sessionId } = req.params; 
-
-//   try {
-//     const session = await Session.findById(sessionId)
-//       .populate("host", "username email")
-//       .populate("questions", "title type options correctAnswer points timer")
-//       .populate("players", "username email mobile")
-
-
-//     if (!session) {
-//       return res.status(404).json({
-//         message: "Session not found",
-//       });
-//     }
-
-//     const reports = await Report.find({ sessionId })
-//       .populate("user", "username email") 
-//       .sort({ completedAt: -1 });
-
-//     const questionIds = session.questions.map((question) => question._id);
-
-//     const answers = await Answer.find({
-//       session: sessionId,
-//       question: { $in: questionIds },
-//     })
-//       .populate("question", "title type options correctAnswer points timer") 
-//       .populate("user", "username email mobile"); 
-
-//     const answersGroupedByQuestion = questionIds.map((questionId) => {
-//       return {
-//         questionId,
-//         questionDetails: answers.find((a) => a.question._id.toString() === questionId.toString())?.question || null,
-//         answers: answers
-//           .filter((a) => a.question._id.toString() === questionId.toString())
-//           .map((a) => ({
-//             user: a.user,
-//             answer: a.answer,
-//             timeTaken: a.timeTaken,
-//           })),
-//       };
-//     });
-
-//     res.status(200).json({
-//       message: "Session report fetched successfully",
-//       data: {
-//         session,
-//         reports,
-//         answersGroupedByQuestion, 
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error fetching session report:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// exports.getSurveySessionReport = async (req, res) => {
-//   const { surveysessionId } = req.params;
-
-//   try {
-//     const surveySession = await Surveysession.findById(surveysessionId)
-//       .populate("surveyHost", "username email")
-//       .populate("surveyPlayers", "username email mobile")
-//       .populate("surveyQuestions", "title description dimension year answerOptions");
-
-//     if (!surveySession) {
-//       return res.status(404).json({
-//         message: "Survey session not found",
-//       });
-//     }
-
-//     const reports = await Report.find({ surveySessionId: surveysessionId })
-//       .populate("user", "username email")
-//       .sort({ completedAt: -1 });
-
-//       const questionIds = surveySession.surveyQuestions.map((question) => question._id);
-
-//     const answers = await SurveyAnswer.find({
-//       surveySession: surveysessionId,
-//       surveyQuestion: { $in: questionIds },
-//     })
-//       .populate("surveyQuestion", "title description dimension year answerOptions") 
-//       .populate("surveyPlayers", "username email mobile");
-
-//     const answersGroupedByQuestion = questionIds.map((questionId) => {
-//       return {
-//         questionId,
-//         questionDetails: answers.find((a) => a.surveyQuestion._id.toString() === questionId.toString())?.surveyQuestion || null,
-//         answers: answers
-//           .filter((a) => a.surveyQuestion._id.toString() === questionId.toString())
-//           .map((a) => ({
-//             user: a.surveyPlayers,
-//             answer: a.surveyAnswer,
-//             timeTaken: a.timeTaken,
-//           })),
-//       };
-//     });
-
-//     res.status(200).json({
-//       message: "Survey session report fetched successfully",
-//       data: {
-//         surveySession,
-//         reports,
-//         answersGroupedByQuestion, 
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error fetching survey session report:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// exports.getReportByQuiz = async (req, res) => {
-//   const { quizId } = req.params;
-
-//   try {
-    
-//     const reports = await Report.find({ quiz: quizId })
-//       .populate("user", "username email") 
-//       .populate({
-//         path: "quiz",
-//         select: "title description categories type", 
-//         populate: {
-//           path: "categories",
-//           select: "name description", 
-//         },
-//       })
-//       .populate({
-//         path: "sessionId", 
-//         populate: [
-//           {
-//             path: "players",
-//             select: "username email mobile", 
-//           },
-//           {
-//             path: "questions",
-//             select: "title type options", 
-//           },
-//         ],
-//       })
-//       .sort({ completedAt: -1 }); 
-
-  
-//     const sessionCount = await Session.countDocuments({ quiz: quizId });
-
-//     if (reports.length === 0) {
-//       return res.status(200).json({
-//         message: "No reports found for this quiz",
-//         sessionCount,
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "Reports fetched successfully for the quiz",
-//       sessionCount,
-//       data: reports,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching reports by quiz:", error);
-//     res.status(500).json({
-//       message: "Error fetching reports by quiz",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-// exports.getReportBySurveyQuiz = async (req, res) => {
-//   const { surveyquizId } = req.params;
-
-//   try {
-//     const reports = await Report.find({ surveyQuiz: surveyquizId })
-//       .populate("user", "username email") 
-//       .populate({
-//         path: "surveyQuiz",
-//         select: "title description categories type",
-//         populate: {
-//           path: "categories",
-//           select: "name description", 
-//         },
-//       })
-//       .populate({
-//         path: "surveySessionId", 
-//         populate: [
-//           {
-//             path: "surveyPlayers", 
-//             select: "username email mobile", 
-//           },
-//           {
-//             path: "surveyQuestions",
-//             select: "title description dimension year answerOptions", 
-//           },
-//         ],
-//       })
-      
-//       .sort({ completedAt: -1 }); 
-
-//     const sessionCount = await Surveysession.countDocuments({ surveyQuiz: surveyquizId });
-
-//     if (reports.length === 0) {
-//       return res.status(200).json({
-//         message: "No reports found for this survey quiz",
-//         sessionCount,
-//         data: [],
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "Reports fetched successfully for the survey quiz",
-//       sessionCount,
-//       data: reports,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching reports by survey quiz:", error);
-//     res.status(500).json({ message: "Error fetching reports by survey quiz" });
-//   }
-// };
-
-// module.exports = exports;
-
 const Report = require("../models/Report");
 const Quiz = require("../models/quiz");
+const SurveyQuiz = require("../models/surveyQuiz");
 const Session = require("../models/session");
+const Leaderboard = require("../models/leaderBoard");
+const SurveySession = require("../models/surveysession");
+const User = require("../models/User");
 const Answer = require("../models/answer");
 const SurveyAnswer = require("../models/surveyanswer");
 const mongoose = require("mongoose");
@@ -594,7 +262,7 @@ const getSurveyAttempts = async (req, res) => {
               quizCategories: "$categoryDetails.name",
             },
             sessionId: "$surveySessionDetails._id",
-            host: "$hostDetails.username", 
+            host: "$hostDetails.username",
             status: "$surveySessionDetails.surveyStatus",
             startTime: "$surveySessionDetails.startTime",
             endTime: "$surveySessionDetails.endTime",
@@ -603,8 +271,6 @@ const getSurveyAttempts = async (req, res) => {
         },
       },
     ]);
-    
-    
 
     console.log("Aggregation Result:", attempts);
 
@@ -721,29 +387,695 @@ const getSurveyResponses = async (req, res) => {
   }
 };
 
-// GET all reports for admin analytics view
-const getAllReports = async (req, res) => {
+// Get overall analytics for admin dashboard
+const getOverallAnalytics = async (req, res) => {
   try {
-    const reports = await Report.find()
-      .populate("quiz")
-      .populate("surveyQuiz") 
-      .populate("user")
-      .sort({ completedAt: -1 });
+    const [
+      totalUsers,
+      totalQuizzes,
+      totalSurveys,
+      totalSessions,
+      totalReports,
+    ] = await Promise.all([
+      User.countDocuments({ isGuest: false }),
+      Quiz.countDocuments(),
+      SurveyQuiz.countDocuments(),
+      Session.countDocuments(),
+      Report.countDocuments(),
+    ]);
 
-    if (reports.length === 0) {
-      return res.status(200).json({
-        message: "No reports available",
-        data: [],
-      });
-    }
+    // Get active sessions count
+    const activeSessions = await Session.countDocuments({
+      status: "in_progress",
+    });
 
-    res.status(200).json({
-      message: "All reports fetched successfully",
-      data: reports,
+    // Get active survey sessions count
+    const activeSurveySessions = await SurveySession.countDocuments({
+      surveyStatus: "in_progress",
+    });
+
+    // Get user registration trend
+    const userTrend = await User.aggregate([
+      {
+        $match: { isGuest: false },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    res.json({
+      overview: {
+        totalUsers,
+        totalQuizzes,
+        totalSurveys,
+        totalSessions,
+        totalReports,
+        activeSessions,
+        activeSurveySessions,
+      },
+      userTrend,
     });
   } catch (error) {
-    console.error("Error fetching reports:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get detailed quiz analytics
+const getQuizAnalytics = async (req, res) => {
+  try {
+    const quizzes = await Report.aggregate([
+      {
+        $match: { quiz: { $exists: true } },
+      },
+      {
+        $group: {
+          _id: "$quiz",
+          totalAttempts: { $sum: 1 },
+          averageScore: { $avg: "$score" },
+          totalParticipants: { $addToSet: "$user" },
+          averageTimeTaken: { $avg: "$timeTaken" },
+        },
+      },
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "_id",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      { $unwind: "$quizDetails" },
+      {
+        $project: {
+          quizTitle: "$quizDetails.title",
+          totalAttempts: 1,
+          averageScore: { $round: ["$averageScore", 2] },
+          participantCount: { $size: "$totalParticipants" },
+          averageTimeTaken: { $round: ["$averageTimeTaken", 2] },
+          status: "$quizDetails.status",
+        },
+      },
+      { $sort: { totalAttempts: -1 } },
+    ]);
+
+    res.json(quizzes);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get detailed analytics for a specific quiz
+const getQuizDetailedAnalytics = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(quizId)) {
+      return res.status(400).json({ message: "Invalid quiz ID" });
+    }
+
+    // Get quiz details with specific fields
+    const quiz = await Quiz.findById(quizId)
+      .populate("categories", "name")
+      .select("title description")
+      .lean();
+
+    // Transform categories to array of names only
+    if (quiz) {
+      quiz.categories = quiz.categories.map((category) => category.name);
+    }
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Get overall quiz statistics
+    const overallStats = await Leaderboard.aggregate([
+      {
+        $lookup: {
+          from: "sessions",
+          localField: "session",
+          foreignField: "_id",
+          as: "sessionInfo",
+        },
+      },
+      {
+        $unwind: "$sessionInfo",
+      },
+      {
+        $match: {
+          "sessionInfo.quiz": new mongoose.Types.ObjectId(quizId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAttempts: { $sum: 1 },
+          uniqueParticipants: { $addToSet: "$player" },
+          averageScore: { $avg: "$score" },
+          highestScore: { $max: "$score" },
+          lowestScore: { $min: "$score" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalAttempts: 1,
+          participantCount: { $size: "$uniqueParticipants" },
+          averageScore: { $round: ["$averageScore", 2] },
+          highestScore: { $round: ["$highestScore", 2] },
+          lowestScore: { $round: ["$lowestScore", 2] },
+        },
+      },
+    ]);
+
+    // Get session details and statistics
+    const [sessionStats, sessionList] = await Promise.all([
+      Session.aggregate([
+        {
+          $match: {
+            quiz: new mongoose.Types.ObjectId(quizId),
+          },
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+            averagePlayerCount: { $avg: { $size: "$players" } },
+            totalSessions: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            status: "$_id",
+            count: 1,
+            averagePlayerCount: { $round: ["$averagePlayerCount", 2] },
+          },
+        },
+      ]),
+      Session.find({ quiz: quizId })
+        .select("joinCode status players startTime endTime createdAt")
+        .populate("host", "username email")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    // Get top performers from leaderboard
+    const topPerformers = await Leaderboard.aggregate([
+      {
+        $lookup: {
+          from: "sessions",
+          localField: "session",
+          foreignField: "_id",
+          as: "sessionInfo",
+        },
+      },
+      {
+        $unwind: "$sessionInfo",
+      },
+      {
+        $match: {
+          "sessionInfo.quiz": new mongoose.Types.ObjectId(quizId),
+        },
+      },
+      {
+        $sort: { score: -1 },
+      },
+      {
+        $limit: 3,
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "player",
+          foreignField: "_id",
+          as: "playerDetails",
+        },
+      },
+      {
+        $unwind: "$playerDetails",
+      },
+      {
+        $project: {
+          username: "$playerDetails.username",
+          score: 1,
+          rank: 1,
+          createdAt: 1,
+        },
+      },
+    ]);
+
+    // Transform session list to include player count
+    const transformedSessionList = sessionList.map((session) => ({
+      ...session,
+      playerCount: session.players.length,
+      players: undefined, // Remove players array from response
+    }));
+
+    res.json({
+      quizDetails: quiz,
+      overallStats: overallStats[0] || {},
+      sessionStats,
+      sessionList: transformedSessionList,
+      topPerformers,
+    });
+  } catch (error) {
+    console.error("Error fetching quiz analytics:", error);
+    res.status(500).json({ message: "Error fetching quiz analytics" });
+  }
+};
+
+// Get detailed analytics for a specific quiz session
+const getQuizSessionAnalytics = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      return res.status(400).json({ message: "Invalid session ID" });
+    }
+
+    // Get session details with quiz and host information
+    const session = await Session.findById(sessionId)
+      .populate("quiz", "title description")
+      .populate("host", "username email")
+      .select("joinCode status startTime endTime createdAt")
+      .lean();
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    // Get leaderboard data
+    const leaderboardData = await Leaderboard.aggregate([
+      {
+        $match: {
+          session: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "player",
+          foreignField: "_id",
+          as: "playerDetails",
+        },
+      },
+      {
+        $unwind: "$playerDetails",
+      },
+      {
+        $project: {
+          _id: 0,
+          player: {
+            username: "$playerDetails.username",
+            email: "$playerDetails.email",
+          },
+          score: 1,
+          rank: 1,
+        },
+      },
+      {
+        $sort: { rank: 1 },
+      },
+    ]);
+
+    // Get question-wise performance
+    const questionAnalytics = await Answer.aggregate([
+      {
+        $match: {
+          session: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $group: {
+          _id: "$question",
+          totalAttempts: { $sum: 1 },
+          correctAnswers: {
+            $sum: { $cond: ["$isCorrect", 1, 0] },
+          },
+          averageTimeTaken: { $avg: "$timeTaken" },
+        },
+      },
+      {
+        $lookup: {
+          from: "questions",
+          localField: "_id",
+          foreignField: "_id",
+          as: "questionDetails",
+        },
+      },
+      {
+        $unwind: "$questionDetails",
+      },
+      {
+        $project: {
+          questionTitle: "$questionDetails.title",
+          totalAttempts: 1,
+          correctAnswers: 1,
+          successRate: {
+            $round: [
+              {
+                $multiply: [
+                  { $divide: ["$correctAnswers", "$totalAttempts"] },
+                  100,
+                ],
+              },
+              2,
+            ],
+          },
+          averageTimeTaken: { $round: ["$averageTimeTaken", 2] },
+        },
+      },
+      {
+        $sort: { successRate: -1 },
+      },
+    ]);
+
+    // Calculate session statistics
+    const sessionStats = await Leaderboard.aggregate([
+      {
+        $match: {
+          session: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalParticipants: { $sum: 1 },
+          averageScore: { $avg: "$score" },
+          highestScore: { $max: "$score" },
+          lowestScore: { $min: "$score" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalParticipants: 1,
+          averageScore: { $round: ["$averageScore", 2] },
+          highestScore: { $round: ["$highestScore", 2] },
+          lowestScore: { $round: ["$lowestScore", 2] },
+        },
+      },
+    ]);
+
+    res.json({
+      sessionDetails: session,
+      sessionStats: sessionStats[0] || {},
+      leaderboard: leaderboardData,
+      questionAnalytics,
+    });
+  } catch (error) {
+    console.error("Error fetching quiz session analytics:", error);
+    res.status(500).json({ message: "Error fetching quiz session analytics" });
+  }
+};
+
+// Get detailed survey analytics
+const getSurveyAnalytics = async (req, res) => {
+  try {
+    const surveys = await Report.aggregate([
+      {
+        $match: { surveyQuiz: { $exists: true } },
+      },
+      {
+        $group: {
+          _id: "$surveyQuiz",
+          totalResponses: { $sum: 1 },
+          averageQuestionsAttempted: { $avg: "$questionsAttempted" },
+          totalParticipants: { $addToSet: "$user" },
+          averageTimeTaken: { $avg: "$timeTaken" },
+        },
+      },
+      {
+        $lookup: {
+          from: "surveyquizzes",
+          localField: "_id",
+          foreignField: "_id",
+          as: "surveyDetails",
+        },
+      },
+      { $unwind: "$surveyDetails" },
+      {
+        $project: {
+          surveyTitle: "$surveyDetails.title",
+          surveyType: "$surveyDetails.type",
+          totalResponses: 1,
+          participantCount: { $size: "$totalParticipants" },
+          averageQuestionsAttempted: {
+            $round: ["$averageQuestionsAttempted", 2],
+          },
+          averageTimeTaken: { $round: ["$averageTimeTaken", 2] },
+          status: "$surveyDetails.status",
+        },
+      },
+      { $sort: { totalResponses: -1 } },
+    ]);
+
+    res.json(surveys);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get detailed analytics for a specific survey
+const getSurveyDetailedAnalytics = async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(surveyId)) {
+      return res.status(400).json({ message: "Invalid survey ID" });
+    }
+
+    // Get survey details with specific fields
+    const survey = await SurveyQuiz.findById(surveyId)
+      .populate("categories", "name")
+      .select("title description type")
+      .lean();
+
+    if (survey) {
+      survey.categories = survey.categories.map((category) => category.name);
+    }
+
+    if (!survey) {
+      return res.status(404).json({ message: "Survey not found" });
+    }
+
+    // Get overall survey statistics
+    const overallStats = await Report.aggregate([
+      {
+        $match: {
+          surveyQuiz: new mongoose.Types.ObjectId(surveyId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalResponses: { $sum: 1 },
+          uniqueParticipants: { $addToSet: "$user" },
+          avgQuestionsAttempted: { $avg: "$questionsAttempted" },
+          avgQuestionsSkipped: { $avg: "$questionsSkipped" },
+          avgTimeTaken: { $avg: "$timeTaken" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalResponses: 1,
+          participantCount: { $size: "$uniqueParticipants" },
+          avgQuestionsAttempted: { $round: ["$avgQuestionsAttempted", 2] },
+          avgQuestionsSkipped: { $round: ["$avgQuestionsSkipped", 2] },
+          avgTimeTaken: { $round: ["$avgTimeTaken", 2] },
+        },
+      },
+    ]);
+
+    // Get session details and statistics
+    const [sessionStats, sessionList] = await Promise.all([
+      SurveySession.aggregate([
+        {
+          $match: {
+            surveyQuiz: new mongoose.Types.ObjectId(surveyId),
+          },
+        },
+        {
+          $group: {
+            _id: "$surveyStatus",
+            count: { $sum: 1 },
+            averagePlayerCount: { $avg: { $size: "$surveyPlayers" } },
+            totalSessions: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            status: "$_id",
+            count: 1,
+            averagePlayerCount: { $round: ["$averagePlayerCount", 2] },
+          },
+        },
+      ]),
+      SurveySession.find({ surveyQuiz: surveyId })
+        .select(
+          "surveyJoinCode surveyStatus surveyPlayers startTime endTime createdAt"
+        )
+        .populate("surveyHost", "username email")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    // Transform session list to include player count
+    const transformedSessionList = sessionList.map((session) => ({
+      ...session,
+      playerCount: session.surveyPlayers.length,
+      surveyPlayers: undefined,
+    }));
+
+    res.json({
+      surveyDetails: survey,
+      overallStats: overallStats[0] || {},
+      sessionStats,
+      sessionList: transformedSessionList,
+    });
+  } catch (error) {
+    console.error("Error fetching survey analytics:", error);
+    res.status(500).json({ message: "Error fetching survey analytics" });
+  }
+};
+
+// Get detailed analytics for a specific survey session
+const getSurveySessionAnalytics = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      return res.status(400).json({ message: "Invalid session ID" });
+    }
+
+    // Get session details with survey and host information
+    const session = await SurveySession.findById(sessionId)
+      .populate("surveyQuiz", "title description type")
+      .populate("surveyHost", "username email")
+      .select("surveyJoinCode surveyStatus startTime endTime createdAt")
+      .lean();
+
+    if (!session) {
+      return res.status(404).json({ message: "Survey session not found" });
+    }
+
+    // Get participant responses
+    const participantResponses = await Report.aggregate([
+      {
+        $match: {
+          surveySessionId: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: "$userDetails",
+      },
+      {
+        $project: {
+          participant: {
+            username: "$userDetails.username",
+            email: "$userDetails.email",
+          },
+          questionsAttempted: 1,
+          questionsSkipped: 1,
+          timeTaken: 1,
+          completedAt: 1,
+        },
+      },
+    ]);
+
+    // Get question-wise responses
+    const questionAnalytics = await SurveyAnswer.aggregate([
+      {
+        $match: {
+          surveySession: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $group: {
+          _id: "$surveyQuestion",
+          totalResponses: { $sum: 1 },
+          averageTimeTaken: { $avg: "$timeTaken" },
+          responses: { $push: "$surveyAnswer" },
+        },
+      },
+      {
+        $lookup: {
+          from: "surveyquestions",
+          localField: "_id",
+          foreignField: "_id",
+          as: "questionDetails",
+        },
+      },
+      {
+        $unwind: "$questionDetails",
+      },
+      {
+        $project: {
+          questionTitle: "$questionDetails.title",
+          description: "$questionDetails.description",
+          dimension: "$questionDetails.dimension",
+          totalResponses: 1,
+          averageTimeTaken: { $round: ["$averageTimeTaken", 2] },
+          responses: 1,
+        },
+      },
+    ]);
+
+    // Calculate session statistics
+    const sessionStats = await Report.aggregate([
+      {
+        $match: {
+          surveySessionId: new mongoose.Types.ObjectId(sessionId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalParticipants: { $sum: 1 },
+          avgQuestionsAttempted: { $avg: "$questionsAttempted" },
+          avgQuestionsSkipped: { $avg: "$questionsSkipped" },
+          avgTimeTaken: { $avg: "$timeTaken" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalParticipants: 1,
+          avgQuestionsAttempted: { $round: ["$avgQuestionsAttempted", 2] },
+          avgQuestionsSkipped: { $round: ["$avgQuestionsSkipped", 2] },
+          avgTimeTaken: { $round: ["$avgTimeTaken", 2] },
+        },
+      },
+    ]);
+
+    res.json({
+      sessionDetails: session,
+      sessionStats: sessionStats[0] || {},
+      participants: participantResponses,
+      questionAnalytics,
+    });
+  } catch (error) {
+    console.error("Error fetching survey session analytics:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching survey session analytics" });
   }
 };
 
@@ -753,8 +1085,12 @@ module.exports = {
   getSurveyAttempts,
   getSessionResponses,
   getSurveyResponses,
-  getAllReports
+  // Admin analytics
+  getOverallAnalytics,
+  getQuizAnalytics,
+  getQuizDetailedAnalytics,
+  getQuizSessionAnalytics,
+  getSurveyAnalytics,
+  getSurveyDetailedAnalytics,
+  getSurveySessionAnalytics,
 };
-
-
-
