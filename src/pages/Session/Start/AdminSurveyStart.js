@@ -285,7 +285,7 @@ const AdminSurveyStart = () => {
           socket.emit("survey-completed", { sessionId });
         }
         setIsSurveyEnded(true);
-        navigate(`/surveys/session/${sessionId}`);
+        navigate(`/results/${sessionId}?joinCode=${joinCode}`);
       }
     }
   };
