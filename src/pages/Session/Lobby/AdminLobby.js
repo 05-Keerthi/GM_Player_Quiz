@@ -18,8 +18,8 @@ const AdminLobby = () => {
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [error, setError] = useState(null);
 
-  const { startSession, loading } = useSessionContext();
-
+  const { startSession, loading, getSessionById } = useSessionContext();
+  const sessionId = searchParams.get("sessionId");
   const quizId = searchParams.get("quizId");
 
   // Initialize socket connection
@@ -36,21 +36,45 @@ const AdminLobby = () => {
     };
   }, []);
 
-  // Initialize session using passed data
+  // Fetch session data and initialize
   useEffect(() => {
-    if (socket && state?.sessionData) {
-      console.log("Initializing session with data:", state.sessionData);
-      setSessionData(state.sessionData);
-      setPlayers(state.sessionData.players || []);
+    const initializeSession = async () => {
+      try {
+        let currentSessionData;
 
-      socket.emit("create-session", {
-        sessionId: state.sessionData._id,
-        joinCode: state.sessionData.joinCode,
-      });
+        if (state?.sessionData) {
+          // Use data from navigation state if available
+          currentSessionData = state.sessionData;
+        } else if (sessionId) {
+          // Fetch session data if page was refreshed
+          const response = await getSessionById(sessionId);
+          currentSessionData = response.session;
+        }
 
-      setTimeout(() => setShowPin(true), 1000);
+        if (currentSessionData) {
+          setSessionData(currentSessionData);
+          // Set initial players from session data
+          setPlayers(currentSessionData.players || []);
+
+          if (socket) {
+            socket.emit("create-session", {
+              sessionId: currentSessionData._id,
+              joinCode: currentSessionData.joinCode,
+            });
+          }
+
+          setTimeout(() => setShowPin(true), 1000);
+        }
+      } catch (error) {
+        console.error("Failed to initialize session:", error);
+        setError("Failed to load session data. Please try refreshing.");
+      }
+    };
+
+    if (socket) {
+      initializeSession();
     }
-  }, [socket, state]);
+  }, [socket, state, sessionId, getSessionById]);
 
   // Listen for player updates
   useEffect(() => {
@@ -71,11 +95,24 @@ const AdminLobby = () => {
 
     socket.on("player-joined", handlePlayerJoined);
 
+    // Also listen for current players list
+    socket.on("current-players", (data) => {
+      console.log("Received current players:", data);
+      if (Array.isArray(data)) {
+        setPlayers(data);
+      }
+    });
+
+    // Request current players when socket connects
+    socket.emit("get-current-players", { sessionId: sessionData._id });
+
     return () => {
       socket.off("player-joined", handlePlayerJoined);
+      socket.off("current-players");
     };
   }, [socket, sessionData]);
 
+  // Rest of your existing code...
   const handleStartSession = async () => {
     try {
       setError(null);
@@ -94,7 +131,6 @@ const AdminLobby = () => {
         });
       }
 
-      // Navigate to start page
       navigate(
         `/start?quizId=${response.session.quiz._id}&sessionId=${sessionData._id}&joinCode=${sessionData.joinCode}&in_progress=true`
       );

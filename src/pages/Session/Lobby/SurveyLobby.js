@@ -1,3 +1,4 @@
+// SurveyLobby.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useSurveySessionContext } from "../../../context/surveySessionContext";
@@ -43,9 +44,9 @@ const SurveyLobby = () => {
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [error, setError] = useState(null);
 
-  const { startSurveySession, loading } = useSurveySessionContext();
-
-  const surveyId = searchParams.get("surveyId");
+  const { startSurveySession, loading, getSurveySessionById } =
+    useSurveySessionContext();
+  const sessionId = searchParams.get("sessionId");
 
   // Initialize socket connection
   useEffect(() => {
@@ -61,53 +62,87 @@ const SurveyLobby = () => {
     };
   }, []);
 
-  // Initialize session using passed data
+  // Fetch session data and initialize
   useEffect(() => {
-    if (socket && state?.sessionData) {
-      console.log("Initializing session with data:", state.sessionData);
-      setSessionData(state.sessionData);
+    const initializeSession = async () => {
+      try {
+        let currentSessionData;
 
-      // Initialize empty players array from session data
-      setSurveyPlayers(state.sessionData.surveyPlayers || []);
+        if (state?.sessionData) {
+          // Use data from navigation state if available
+          currentSessionData = state.sessionData;
+        } else if (sessionId) {
+          // Fetch session data if page was refreshed
+          const response = await getSurveySessionById(sessionId);
+          currentSessionData = response.session;
+        }
 
-      socket.emit("create-survey-session", {
-        sessionId: state.sessionData._id,
-        joinCode: state.sessionData.surveyJoinCode,
-      });
+        if (currentSessionData) {
+          setSessionData(currentSessionData);
+          // Set initial players from session data
+          setSurveyPlayers(currentSessionData.surveyPlayers || []);
 
-      setTimeout(() => setShowPin(true), 1000);
+          if (socket) {
+            socket.emit("create-survey-session", {
+              sessionId: currentSessionData._id,
+              joinCode: currentSessionData.surveyJoinCode,
+            });
+          }
+
+          setTimeout(() => setShowPin(true), 1000);
+        }
+      } catch (error) {
+        console.error("Failed to initialize session:", error);
+        setError("Failed to load session data. Please try refreshing.");
+      }
+    };
+
+    if (socket) {
+      initializeSession();
     }
-  }, [socket, state]);
+  }, [socket, state, sessionId, getSurveySessionById]);
 
-  //Listen for surveyPlayers updates
+  // Listen for player updates
   useEffect(() => {
     if (!socket || !sessionData) return;
 
-    const handleSurveyPlayersJoined = (data) => {
-      console.log("Survey player joined data:", data);
-      setSurveyPlayers((currentSurveyPlayers) => {
+    const handleSurveyPlayerJoined = (data) => {
+      console.log("Survey player joined:", data);
+      setSurveyPlayers((currentPlayers) => {
         const newPlayer = data.user || data;
-        if (!newPlayer || !newPlayer._id) return currentSurveyPlayers;
+        if (!newPlayer || !newPlayer._id) return currentPlayers;
 
-        if (!currentSurveyPlayers.some((p) => p._id === newPlayer._id)) {
+        if (!currentPlayers.some((p) => p._id === newPlayer._id)) {
           return [
-            ...currentSurveyPlayers,
+            ...currentPlayers,
             {
               _id: newPlayer._id,
               username: newPlayer.username,
               email: newPlayer.email,
-              isGuest: newPlayer.isGuest || false, // Track guest status
+              isGuest: newPlayer.isGuest || false,
             },
           ];
         }
-        return currentSurveyPlayers;
+        return currentPlayers;
       });
     };
 
-    socket.on("user-joined-survey", handleSurveyPlayersJoined);
+    socket.on("user-joined-survey", handleSurveyPlayerJoined);
+
+    // Listen for current players list
+    socket.on("current-survey-players", (data) => {
+      console.log("Received current survey players:", data);
+      if (Array.isArray(data)) {
+        setSurveyPlayers(data);
+      }
+    });
+
+    // Request current players when socket connects
+    socket.emit("get-current-survey-players", { sessionId: sessionData._id });
 
     return () => {
-      socket.off("user-joined-survey", handleSurveyPlayersJoined);
+      socket.off("user-joined-survey", handleSurveyPlayerJoined);
+      socket.off("current-survey-players");
     };
   }, [socket, sessionData]);
 
