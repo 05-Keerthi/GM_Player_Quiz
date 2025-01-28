@@ -50,7 +50,7 @@ const AdminSurveyStart = () => {
           setUserAnswers((prevAnswers) => {
             const newAnswers = new Map(prevAnswers);
             const previousAnswer = newAnswers.get(data.userId);
-            
+
             // If user had a previous answer, decrement that count
             if (previousAnswer) {
               const prevOptionIndex = currentItem.answerOptions.findIndex(
@@ -59,7 +59,10 @@ const AdminSurveyStart = () => {
               if (prevOptionIndex !== -1) {
                 setOptionCounts((prev) => ({
                   ...prev,
-                  [prevOptionIndex]: Math.max(0, (prev[prevOptionIndex] || 0) - 1)
+                  [prevOptionIndex]: Math.max(
+                    0,
+                    (prev[prevOptionIndex] || 0) - 1
+                  ),
                 }));
               }
             }
@@ -74,7 +77,7 @@ const AdminSurveyStart = () => {
             if (newOptionIndex !== -1) {
               setOptionCounts((prev) => ({
                 ...prev,
-                [newOptionIndex]: (prev[newOptionIndex] || 0) + 1
+                [newOptionIndex]: (prev[newOptionIndex] || 0) + 1,
               }));
             }
 
@@ -133,7 +136,7 @@ const AdminSurveyStart = () => {
             setCurrentItem(transformedItem);
             setIsLastItem(response.isLastItem || false);
             setProgress(response.progress || "0/0");
-           
+
             if (type !== "slide") {
               const initialTime = transformedItem.timer || 30;
               setTimeLeft(initialTime);
@@ -266,7 +269,7 @@ const AdminSurveyStart = () => {
             item: transformedItem,
             isLastItem: response.isLastItem || false,
             initialTime: type !== "slide" ? transformedItem.timer || 30 : null,
-            progress: response.progress // Add this line
+            progress: response.progress, // Add this line
           });
         }
       }
@@ -305,7 +308,7 @@ const AdminSurveyStart = () => {
         socket.emit("end-survey-session", { sessionId });
       }
 
-      navigate("/survey-list");
+      navigate(`/surveys/session/${sessionId}`);
     } catch (error) {
       console.error("Error ending survey:", error);
     }
@@ -344,11 +347,7 @@ const AdminSurveyStart = () => {
             </div>
           ) : (
             <>
-
-            <SurveyProgress 
-  progress={progress} 
-  className="mb-4" 
-/>
+              <SurveyProgress progress={progress} className="mb-4" />
               {/* Live Response Counter */}
               {currentItem?.answerOptions && (
                 <div className="mb-2 flex justify-end rounded-full">
@@ -390,7 +389,6 @@ const AdminSurveyStart = () => {
                 isSurveyEnded={isSurveyEnded}
                 submittedAnswers={submittedAnswers}
               />
- 
             </>
           )}
         </div>

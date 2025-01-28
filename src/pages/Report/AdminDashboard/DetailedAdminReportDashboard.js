@@ -184,7 +184,7 @@ const DetailedAdminReportDashboard = () => {
       <Navbar />
       <div className="p-8 mx-auto bg-gray-50 min-h-screen">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/admin-dashboard")}
           className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold mb-4"
         >
           <ArrowBigLeft />
