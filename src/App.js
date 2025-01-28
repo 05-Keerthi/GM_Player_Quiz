@@ -11,7 +11,6 @@ import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/Home";
 import ProfilePage from "./pages/ProfilePage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
-import Reports from "./pages/Report/Report";
 import AdminDashboard from "./pages/Activity/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -39,6 +38,9 @@ import QuestionDetailsResult from "./pages/Session/Start/QuestionDetailsResult";
 import DetailedReportDashboard from "./pages/Report/UserDashboard/DetailedReport";
 import SessionDashboard from "./pages/Report/UserDashboard/SessionDashboard";
 import Dashboard from "./pages/Report/UserDashboard/Dashboard";
+import ReportAdminDashboard from "./pages/Report/AdminDashboard/ReportAdminDashboard";
+import DetailedAdminReportDashboard from "./pages/Report/AdminDashboard/DetailedAdminReportDashboard";
+import SessionDetails from "./pages/Report/AdminDashboard/SessionDetails";
 
 export default function App() {
   const { user, isAuthenticated, sessionExpired, resetSessionState } =
@@ -140,12 +142,17 @@ export default function App() {
         />
 
         {/* Report Routes */}
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/admin-dashboard" element={<ReportAdminDashboard />} />
+        <Route
+          path="/admin/:type-reports/:type/:id"
+          element={<DetailedAdminReportDashboard />}
+        />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/:type-reports/:type/:id"
           element={<DetailedReportDashboard />}
         />
+        <Route path="/:type/session/:sessionId" element={<SessionDetails />} />
         <Route
           path="/session/:type/:sessionId"
           element={<SessionDashboard />}

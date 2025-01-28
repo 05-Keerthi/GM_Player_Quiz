@@ -153,11 +153,11 @@ export default function HomePage() {
           },
           {
             icon: <BarChart3 className="text-fuchsia-600" size={48} />,
-            title: "View Reports",
+            title: "Dashboard",
             description: "Manage and monitor all reports",
-            buttonText: "Go to Reports",
+            buttonText: "Go to Dashboard",
             buttonColor: "bg-fuchsia-500 hover:bg-fuchsia-600",
-            path: "/reports",
+            path: "/admin-dashboard",
           },
         ];
 
