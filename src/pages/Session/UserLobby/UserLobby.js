@@ -84,7 +84,7 @@ const UserLobby = () => {
       newSocket.emit("join-session", {
         sessionId,
         joinCode,
-        userId: user._id,
+        userId: user.id,
         username: user.username,
         isReconnection: true,
       });
