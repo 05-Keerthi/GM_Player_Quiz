@@ -1,23 +1,122 @@
+// DetailedAdminReportDashboard.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
 import Navbar from "../../../components/NavbarComp";
 import { paginateData, PaginationControls } from "../../../utils/pagination";
-import { ArrowBigLeft } from "lucide-react";
+import { ArrowBigLeft, Trophy } from "lucide-react";
 
+// TopPerformers Component
+const PodiumStep = ({ rank, username, score, delay }) => {
+  const heights = {
+    1: "h-48",
+    2: "h-32",
+    3: "h-24",
+  };
+
+  const medals = {
+    1: "bg-yellow-400",
+    2: "bg-gray-300",
+    3: "bg-amber-600",
+  };
+
+  return (
+    <div
+      className={`flex flex-col items-center justify-end ${
+        rank === 1 ? "order-2" : rank === 2 ? "order-1" : "order-3"
+      }`}
+    >
+      {/* User Avatar and Score */}
+      <div
+        className={`flex flex-col items-center mb-2 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] transition-all`}
+        style={{ animationDelay: `${delay + 0.3}s` }}
+      >
+        <div
+          className={`w-12 h-12 rounded-full ${medals[rank]} flex items-center justify-center mb-2`}
+        >
+          {rank === 1 ? (
+            <Trophy className="w-6 h-6 text-white" />
+          ) : (
+            <span className="text-white font-bold text-xl">{rank}</span>
+          )}
+        </div>
+        <span className="font-semibold text-sm">{username}</span>
+        <span className="text-gray-600 text-xs">{score} pts</span>
+      </div>
+
+      {/* Podium Step */}
+      <div
+        className={`w-24 ${
+          heights[rank]
+        } rounded-t-lg transform origin-bottom opacity-0 
+                    animate-[scaleUp_0.5s_ease-out_forwards] ${
+                      rank === 1
+                        ? "bg-gradient-to-b from-yellow-400 to-yellow-600" // Gold
+                        : rank === 2
+                        ? "bg-gradient-to-b from-gray-300 to-gray-400" // Silver
+                        : "bg-gradient-to-b from-amber-600 to-amber-700" // Bronze
+                    }`}
+        style={{ animationDelay: `${delay}s` }}
+      />
+    </div>
+  );
+};
+
+const TopPerformers = ({ performers }) => {
+  // Sort performers by score in descending order and take top 3
+  const topThree = [...performers]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-lg font-semibold mb-8">Top Performers</h2>
+      <div className="flex items-end justify-center gap-4 h-64">
+        {topThree.map((performer, index) => (
+          <PodiumStep
+            key={index}
+            rank={index + 1}
+            username={performer.username}
+            score={performer.score}
+            delay={index * 0.2}
+          />
+        ))}
+      </div>
+      <style>{`
+        @keyframes scaleUp {
+          from {
+            transform: scaleY(0);
+            opacity: 0;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// Main Dashboard Component
 const DetailedAdminReportDashboard = () => {
   const navigate = useNavigate();
   const { type, id } = useParams();
@@ -172,23 +271,9 @@ const DetailedAdminReportDashboard = () => {
             </div>
           </div>
 
-          {/* Top Performers Chart (Quiz only) */}
+          {/* Top Performers Podium (Quiz only) */}
           {isQuiz && data.topPerformers && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Top Performers</h2>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.topPerformers}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="username" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="score" fill="#8884d8" name="Score" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <TopPerformers performers={data.topPerformers} />
           )}
         </div>
 
