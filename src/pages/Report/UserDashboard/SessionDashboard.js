@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../../../components/NavbarComp";
-import { ArrowBigLeft } from "lucide-react";
+import { ArrowBigLeft, Check, X } from "lucide-react";
 
 const SessionDashboard = () => {
   const [data, setData] = useState(null);
@@ -93,12 +93,18 @@ const SessionDashboard = () => {
         {answer.isCorrect !== undefined && answer.questionType !== "poll" && (
           <span
             className={`px-3 py-1 rounded-full text-sm ${
-              answer.isCorrect
+              !answer.submittedAnswer
+                ? "bg-gray-100 text-gray-800"
+                : answer.isCorrect
                 ? "bg-green-100 text-green-800"
                 : "bg-red-100 text-red-800"
             }`}
           >
-            {answer.isCorrect ? "Correct" : "Incorrect"}
+            {!answer.submittedAnswer
+              ? "Skipped"
+              : answer.isCorrect
+              ? "Correct"
+              : "Incorrect"}
           </span>
         )}
         <span className="ml-4 text-sm text-gray-500">{answer.timeTaken}s</span>
@@ -113,6 +119,7 @@ const SessionDashboard = () => {
 
     switch (answer.questionType) {
       case "multiple_choice":
+      case "true_false":
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
@@ -120,15 +127,26 @@ const SessionDashboard = () => {
               {answer.options.map((option) => (
                 <div
                   key={option._id}
-                  className={`p-3 rounded-lg border ${
-                    option.text === answer.submittedAnswer
+                  className={`p-3 rounded-lg border flex items-center justify-between ${
+                    !answer.submittedAnswer
+                      ? "border-gray-200"
+                      : option.text === answer.submittedAnswer
                       ? answer.isCorrect
                         ? "border-green-500 bg-green-50"
                         : "border-red-500 bg-red-50"
+                      : option.isCorrect
+                      ? "border-green-500 bg-green-50"
                       : "border-gray-200"
                   }`}
                 >
-                  {option.text}
+                  <span className="text-sm">{option.text}</span>
+                  {option.isCorrect && (
+                    <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                  )}
+                  {option.text === answer.submittedAnswer &&
+                    !answer.isCorrect && (
+                      <X className="h-5 w-5 text-white rounded-full bg-red-800" />
+                    )}
                 </div>
               ))}
             </div>
@@ -144,32 +162,9 @@ const SessionDashboard = () => {
               {answer.options.map((option) => (
                 <div
                   key={option._id}
-                  className={`p-3 rounded-lg border ${
+                  className={`p-3 rounded-lg border flex items-center justify-between ${
                     selectedAnswers.has(option.text)
                       ? answer.isCorrect
-                        ? "border-green-500 bg-green-50"
-                        : "border-red-500 bg-red-50"
-                      : "border-gray-200"
-                  }`}
-                >
-                  {option.text}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case "true_false":
-        return (
-          <div className={baseCardStyle}>
-            {renderAnswerHeader(answer)}
-            <div className="grid grid-cols-2 gap-4">
-              {answer.options.map((option) => (
-                <div
-                  key={option._id}
-                  className={`p-3 rounded-lg border ${
-                    option.text === answer.submittedAnswer
-                      ? option.isCorrect
                         ? "border-green-500 bg-green-50"
                         : "border-red-500 bg-red-50"
                       : option.isCorrect
@@ -177,7 +172,13 @@ const SessionDashboard = () => {
                       : "border-gray-200"
                   }`}
                 >
-                  {option.text}
+                  <span className="text-sm">{option.text}</span>
+                  {option.isCorrect && (
+                    <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                  )}
+                  {selectedAnswers.has(option.text) && !answer.isCorrect && (
+                    <X className="h-5 w-5 text-white rounded-full bg-red-800" />
+                  )}
                 </div>
               ))}
             </div>
@@ -189,20 +190,54 @@ const SessionDashboard = () => {
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
             <div className="mt-4">
-              <div
-                className={`p-4 rounded-lg border ${
-                  answer.isCorrect
-                    ? "border-green-500 bg-green-50"
-                    : "border-red-500 bg-red-50"
-                }`}
-              >
-                <p
-                  className={`${
-                    answer.isCorrect ? "text-green-700" : "text-red-700"
+              {answer.submittedAnswer ? (
+                <div
+                  className={`p-4 rounded-lg border ${
+                    answer.isCorrect
+                      ? "border-green-500 bg-green-50"
+                      : "border-red-500 bg-red-50"
                   }`}
                 >
-                  {answer.submittedAnswer}
-                </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-600 text-sm mb-1">
+                        Submitted Answer:
+                      </p>
+                      <p
+                        className={`${
+                          answer.isCorrect ? "text-green-700" : "text-red-700"
+                        } text-sm`}
+                      >
+                        {answer.submittedAnswer}
+                      </p>
+                    </div>
+                    {answer.isCorrect ? (
+                      <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                    ) : (
+                      <X className="h-5 w-5 text-white rounded-full bg-red-800" />
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div
+                className={`${
+                  answer.submittedAnswer ? "mt-2" : ""
+                } p-4 rounded-lg border border-green-500 bg-green-50`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm mb-1">
+                      Correct Answer:
+                    </p>
+                    <p className="text-green-700 text-sm">
+                      {answer.correctOption
+                        ? answer.correctOption[0]
+                        : answer.correctAnswer}
+                    </p>
+                  </div>
+                  <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                </div>
               </div>
             </div>
           </div>
@@ -216,13 +251,16 @@ const SessionDashboard = () => {
               {answer.options.map((option) => (
                 <div
                   key={option._id}
-                  className={`p-3 rounded-lg border ${
+                  className={`p-3 rounded-lg border flex items-center justify-between ${
                     option.text === answer.submittedAnswer
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-green-500 bg-green-50"
                       : "border-gray-200"
                   }`}
                 >
-                  {option.text}
+                  <span className="text-sm">{option.text}</span>
+                  {option.text === answer.submittedAnswer && (
+                    <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                  )}
                 </div>
               ))}
             </div>
@@ -261,13 +299,16 @@ const SessionDashboard = () => {
             answer.options.map((option) => (
               <div
                 key={option._id}
-                className={`p-3 rounded-lg border ${
+                className={`p-3 rounded-lg border flex items-center justify-between ${
                   option.optionText === answer.submittedAnswer
                     ? "border-green-500 bg-green-50 text-green-700"
                     : "border-gray-200"
                 }`}
               >
-                {option.optionText}
+                <span className="text-sm">{option.optionText}</span>
+                {option.optionText === answer.submittedAnswer && (
+                  <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                )}
               </div>
             ))}
         </div>

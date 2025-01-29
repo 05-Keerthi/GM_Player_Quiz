@@ -2,17 +2,100 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../../components/NavbarComp";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { ArrowBigLeft } from "lucide-react";
+import { ArrowBigLeft, Trophy } from "lucide-react";
+import { paginateData, PaginationControls } from "../../../utils/pagination";
+
+// Podium Step Component
+const PodiumStep = ({ rank, username, score, delay }) => {
+  const heights = {
+    1: "h-48",
+    2: "h-32",
+    3: "h-24",
+  };
+
+  const medals = {
+    1: "bg-yellow-400",
+    2: "bg-gray-300",
+    3: "bg-amber-600",
+  };
+
+  return (
+    <div
+      className={`flex flex-col items-center justify-end ${
+        rank === 1 ? "order-2" : rank === 2 ? "order-1" : "order-3"
+      }`}
+    >
+      {/* User Avatar and Score */}
+      <div
+        className={`flex flex-col items-center mb-2 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] transition-all`}
+        style={{ animationDelay: `${delay + 0.3}s` }}
+      >
+        <div
+          className={`w-12 h-12 rounded-full ${medals[rank]} flex items-center justify-center mb-2`}
+        >
+          {rank === 1 ? (
+            <Trophy className="w-6 h-6 text-white" />
+          ) : (
+            <span className="text-white font-bold text-xl">{rank}</span>
+          )}
+        </div>
+        <span className="font-semibold text-sm">{username}</span>
+        <span className="text-gray-600 text-xs">{score} pts</span>
+      </div>
+
+      {/* Podium Step */}
+      <div
+        className={`w-24 ${heights[rank]} bg-gradient-to-b from-blue-500 to-blue-600 rounded-t-lg 
+                    transform origin-bottom opacity-0 animate-[scaleUp_0.5s_ease-out_forwards]`}
+        style={{ animationDelay: `${delay}s` }}
+      />
+    </div>
+  );
+};
+
+// Top Performers Component
+const TopPerformers = ({ leaderboard }) => {
+  const topThree = leaderboard.slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6 mb-8">
+      <h2 className="text-xl font-semibold mb-8">Top Performers</h2>
+      <div className="flex items-end justify-center gap-4 h-64">
+        {topThree.map((entry, index) => (
+          <PodiumStep
+            key={index}
+            rank={index + 1}
+            username={entry.player.username}
+            score={entry.score}
+            delay={index * 0.2}
+          />
+        ))}
+      </div>
+      <style>{`
+        @keyframes scaleUp {
+          from {
+            transform: scaleY(0);
+            opacity: 0;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const SessionDetails = () => {
   const navigate = useNavigate();
@@ -21,6 +104,11 @@ const SessionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const isQuiz = type === "quizzes";
+
+  // Pagination states
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const [questionsPage, setQuestionsPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,6 +151,19 @@ const SessionDetails = () => {
       <div className="text-red-500 p-4 text-center font-semibold">{error}</div>
     );
   }
+
+  // Paginate the leaderboard and questions data
+  const paginatedLeaderboard = paginateData(
+    data.leaderboard || [],
+    leaderboardPage,
+    itemsPerPage
+  );
+
+  const paginatedQuestions = paginateData(
+    data.questionAnalytics || [],
+    questionsPage,
+    itemsPerPage
+  );
 
   const StatCard = ({ title, value }) => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -139,78 +240,45 @@ const SessionDetails = () => {
           </div>
         )}
 
-        {/* Leaderboard for Quiz */}
+        {/* Top Performers Podium and Full Leaderboard */}
         {isQuiz && data.leaderboard && data.leaderboard.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="text-left p-4">Rank</th>
-                    <th className="text-left p-4">Player</th>
-                    <th className="text-left p-4">Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.leaderboard.map((entry) => (
-                    <tr key={entry.rank} className="border-t border-gray-100">
-                      <td className="p-4">{entry.rank}</td>
-                      <td className="p-4">{entry.player.username}</td>
-                      <td className="p-4">{entry.score}</td>
+          <>
+            <TopPerformers leaderboard={data.leaderboard} />
+            <div className="bg-white rounded-lg shadow p-6 mb-8">
+              <h2 className="text-xl font-semibold mb-4">Full Leaderboard</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="text-left p-4">Rank</th>
+                      <th className="text-left p-4">Player</th>
+                      <th className="text-left p-4">Score</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedLeaderboard.currentItems.map((entry) => (
+                      <tr key={entry.rank} className="border-t border-gray-100">
+                        <td className="p-4">{entry.rank}</td>
+                        <td className="p-4">{entry.player.username}</td>
+                        <td className="p-4">{entry.score}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.leaderboard.length > itemsPerPage && (
+                  <PaginationControls
+                    currentPage={leaderboardPage}
+                    totalPages={paginatedLeaderboard.totalPages}
+                    onPageChange={setLeaderboardPage}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Question Analytics */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Question Analytics</h2>
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data.questionAnalytics}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="questionTitle"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  interval={0}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {isQuiz ? (
-                  <>
-                    <Bar
-                      dataKey="successRate"
-                      fill="#8884d8"
-                      name="Success Rate (%)"
-                    />
-                    <Bar
-                      dataKey="averageTimeTaken"
-                      fill="#82ca9d"
-                      name="Avg Time (s)"
-                    />
-                  </>
-                ) : (
-                  <Bar
-                    dataKey="totalResponses"
-                    fill="#8884d8"
-                    name="Total Responses"
-                  />
-                )}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Detailed Question List */}
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">
               Detailed Question Analysis
@@ -236,7 +304,7 @@ const SessionDetails = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.questionAnalytics.map((question) => (
+                  {paginatedQuestions.currentItems.map((question) => (
                     <tr key={question._id} className="border-t border-gray-100">
                       <td className="p-4">{question.questionTitle}</td>
                       {isQuiz ? (
@@ -264,6 +332,13 @@ const SessionDetails = () => {
                   ))}
                 </tbody>
               </table>
+              {data.questionAnalytics.length > itemsPerPage && (
+                <PaginationControls
+                  currentPage={questionsPage}
+                  totalPages={paginatedQuestions.totalPages}
+                  onPageChange={setQuestionsPage}
+                />
+              )}
             </div>
           </div>
         </div>

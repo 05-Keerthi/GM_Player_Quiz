@@ -1,15 +1,18 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuizContext } from "../context/quizContext";
 import { useSurveyContext } from "../context/surveyContext";
 import { useSessionContext } from "../context/sessionContext";
 import { useSurveySessionContext } from "../context/surveySessionContext";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, RotateCcw } from "lucide-react";
 import Navbar from "../components/NavbarComp";
+import { cacheService } from "../utils/cacheService";
 
 const UnifiedDetails = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [activeSession, setActiveSession] = useState(null);
+  const [isCheckingCache, setIsCheckingCache] = useState(true);
 
   const contentType = searchParams.get("type");
   const contentId = searchParams.get(
@@ -40,6 +43,24 @@ const UnifiedDetails = () => {
       : quizLoading || sessionLoading;
   const error = contentType === "survey" ? surveyError : quizError;
 
+  // Check for active session on component mount
+  useEffect(() => {
+    const checkCachedSession = async () => {
+      try {
+        const storedSession = await cacheService.getSession(contentType);
+        if (storedSession) {
+          setActiveSession(storedSession);
+        }
+      } catch (error) {
+        console.error("Error checking cached session:", error);
+      } finally {
+        setIsCheckingCache(false);
+      }
+    };
+
+    checkCachedSession();
+  }, [contentType]);
+
   useEffect(() => {
     if (contentId) {
       if (contentType === "survey") {
@@ -56,15 +77,20 @@ const UnifiedDetails = () => {
     }
 
     try {
+      // Clear existing session for this content type
+      await cacheService.clearSession(contentType);
+
       let sessionData;
       if (contentType === "survey") {
         sessionData = await createSurveySession(contentId);
+        await cacheService.saveSession(sessionData, "survey");
         navigate(`/survey-lobby`, {
           state: { sessionData },
           search: `?type=survey&surveyId=${contentId}&sessionId=${sessionData._id}`,
         });
       } else {
         sessionData = await createSession(contentId);
+        await cacheService.saveSession(sessionData, "quiz");
         navigate(`/lobby`, {
           state: { sessionData },
           search: `?type=quiz&quizId=${contentId}&sessionId=${sessionData._id}`,
@@ -72,11 +98,47 @@ const UnifiedDetails = () => {
       }
     } catch (error) {
       console.error(`Failed to create ${contentType} session:`, error);
-      // Error handling is managed by the context
     }
   };
 
-  if (!content || loading) {
+  const handleResume = async () => {
+    if (!activeSession) return;
+
+    // Validate session is still in cache before resuming
+    const currentSession = await cacheService.getSession(contentType);
+    if (!currentSession) {
+      setActiveSession(null);
+      return;
+    }
+
+    const { _id: sessionId } = activeSession;
+    if (contentType === "survey") {
+      navigate(`/survey-lobby`, {
+        state: { sessionData: activeSession },
+        search: `?type=survey&surveyId=${contentId}&sessionId=${sessionId}`,
+      });
+    } else {
+      navigate(`/lobby`, {
+        state: { sessionData: activeSession },
+        search: `?type=quiz&quizId=${contentId}&sessionId=${sessionId}`,
+      });
+    }
+  };
+
+  // Add cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Optional: Clear expired sessions on component unmount
+      const cleanupExpiredSessions = async () => {
+        // This will automatically clear expired sessions
+        await cacheService.getSession("quiz");
+        await cacheService.getSession("survey");
+      };
+      cleanupExpiredSessions();
+    };
+  }, []);
+
+  if (!content || loading || isCheckingCache) {
     return (
       <div
         className="flex min-h-screen items-center justify-center"
@@ -161,29 +223,56 @@ const UnifiedDetails = () => {
           </div>
 
           <div className="flex flex-col items-center gap-4">
-            <button
-              data-testid="host-button"
-              onClick={handleStart}
-              disabled={loading || !content || content.status !== "active"}
-              className={`flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold transform transition w-full md:w-auto justify-center
-                ${
-                  loading || !content || content.status !== "active"
-                    ? "opacity-70 cursor-not-allowed"
-                    : "hover:bg-blue-700 active:scale-95"
-                }`}
-            >
-              {loading ? (
-                <>
-                  <PlayCircle className="w-6 h-6 animate-spin" />
-                  Creating Session...
-                </>
-              ) : (
-                <>
+            {activeSession ? (
+              <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                <button
+                  data-testid="resume-button"
+                  onClick={handleResume}
+                  className="flex items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-lg text-lg font-semibold hover:bg-green-700 active:scale-95 transform transition w-full md:w-auto justify-center"
+                >
+                  <RotateCcw className="w-6 h-6" />
+                  Resume {contentType === "survey" ? "Survey" : "Quiz"} Session
+                </button>
+                <button
+                  data-testid="new-session-button"
+                  onClick={handleStart}
+                  disabled={loading || !content || content.status !== "active"}
+                  className={`flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold transform transition w-full md:w-auto justify-center
+                    ${
+                      loading || !content || content.status !== "active"
+                        ? "opacity-70 cursor-not-allowed"
+                        : "hover:bg-blue-700 active:scale-95"
+                    }`}
+                >
                   <PlayCircle className="w-6 h-6" />
-                  Host Live
-                </>
-              )}
-            </button>
+                  Start New {contentType === "survey" ? "Survey" : "Quiz"}
+                </button>
+              </div>
+            ) : (
+              <button
+                data-testid="host-button"
+                onClick={handleStart}
+                disabled={loading || !content || content.status !== "active"}
+                className={`flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg text-lg font-semibold transform transition w-full md:w-auto justify-center
+                  ${
+                    loading || !content || content.status !== "active"
+                      ? "opacity-70 cursor-not-allowed"
+                      : "hover:bg-blue-700 active:scale-95"
+                  }`}
+              >
+                {loading ? (
+                  <>
+                    <PlayCircle className="w-6 h-6 animate-spin" />
+                    Creating Session...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-6 h-6" />
+                    Host Live {contentType === "survey" ? "Survey" : "Quiz"}
+                  </>
+                )}
+              </button>
+            )}
 
             {error && (
               <div

@@ -1,34 +1,75 @@
-// PerformanceMetrics.js
 import React from "react";
-import { Trophy, Clock, Target, TrendingUp } from "lucide-react";
+import { Trophy, Clock, Target } from "lucide-react";
 
-const MetricCard = ({ icon: Icon, title, value, trend, trendValue }) => (
+const MetricCard = ({ icon: Icon, title, value }) => (
   <div className="bg-white rounded-lg shadow p-6">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-50 rounded-lg">
-          <Icon className="w-6 h-6 text-blue-500" />
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-2xl font-bold">{value}</p>
-        </div>
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-blue-50 rounded-lg">
+        <Icon className="w-6 h-6 text-blue-500" />
       </div>
-      {trend && (
-        <div
-          className={`flex items-center gap-1 ${
-            trendValue >= 0 ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          <span className="text-sm font-medium">{Math.abs(trendValue)}%</span>
-        </div>
-      )}
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-2xl font-bold">{value}</p>
+      </div>
     </div>
   </div>
 );
 
-const PerformanceMetrics = ({ quizzes, surveys }) => {
+const formatTime = (totalSeconds) => {
+  // Constants for time conversions
+  const MONTH = 30 * 24 * 60 * 60; // Approximate month in seconds
+  const WEEK = 7 * 24 * 60 * 60;
+  const DAY = 24 * 60 * 60;
+  const HOUR = 60 * 60;
+  const MINUTE = 60;
+
+  let seconds = totalSeconds;
+  const parts = [];
+
+  // Calculate months
+  if (seconds >= MONTH) {
+    const months = Math.floor(seconds / MONTH);
+    parts.push(`${months}mo`);
+    seconds %= MONTH;
+  }
+
+  // Calculate weeks
+  if (seconds >= WEEK) {
+    const weeks = Math.floor(seconds / WEEK);
+    parts.push(`${weeks}w`);
+    seconds %= WEEK;
+  }
+
+  // Calculate days
+  if (seconds >= DAY) {
+    const days = Math.floor(seconds / DAY);
+    parts.push(`${days}d`);
+    seconds %= DAY;
+  }
+
+  // Calculate hours
+  if (seconds >= HOUR) {
+    const hours = Math.floor(seconds / HOUR);
+    parts.push(`${hours}h`);
+    seconds %= HOUR;
+  }
+
+  // Calculate minutes
+  if (seconds >= MINUTE) {
+    const minutes = Math.floor(seconds / MINUTE);
+    parts.push(`${minutes}m`);
+    seconds %= MINUTE;
+  }
+
+  // Remaining seconds
+  if (seconds > 0 || totalSeconds === 0) {
+    parts.push(`${Math.floor(seconds)}s`);
+  }
+
+  return parts.join(" ");
+};
+
+const PerformanceMetrics = ({ quizzes, surveys, totalTime }) => {
   const calculateMetrics = () => {
     const totalQuizzes = quizzes.length;
     const totalAttempts = quizzes.reduce((sum, quiz) => sum + quiz.attempts, 0);
@@ -36,7 +77,7 @@ const PerformanceMetrics = ({ quizzes, surveys }) => {
       ? (totalAttempts / totalQuizzes).toFixed(1)
       : 0;
 
-    // Calculate completion rate based on quizzes with at least one attempt
+    // Calculate completion rate based on quizzes with attempts
     const quizzesWithAttempts = quizzes.filter(
       (quiz) => quiz.attempts > 0
     ).length;
@@ -60,22 +101,16 @@ const PerformanceMetrics = ({ quizzes, surveys }) => {
         icon={Trophy}
         title="Completion Rate"
         value={`${metrics.completionRate}%`}
-        trend
-        trendValue={5.2}
       />
       <MetricCard
         icon={Target}
         title="Average Attempts"
         value={metrics.avgAttemptsPerQuiz}
-        trend
-        trendValue={-2.1}
       />
       <MetricCard
         icon={Clock}
         title="Active Time"
-        value="2.5h"
-        trend
-        trendValue={3.7}
+        value={formatTime(totalTime)}
       />
     </div>
   );

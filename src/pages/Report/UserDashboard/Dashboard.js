@@ -238,6 +238,7 @@ const Dashboard = () => {
           <PerformanceMetrics
             quizzes={filteredQuizzes}
             surveys={filteredSurveys}
+            totalTime={reports.totalTime}
           />
         </div>
 
