@@ -539,29 +539,40 @@ module.exports = (io) => {
     socket.on("disconnect", async () => {
       try {
         const userData = userSockets.get(socket.id) || socket.userData;
-
+    
         if (!userData || !userData.userId || !userData.sessionId) {
           return;
         }
-
+    
         const { userId, sessionId } = userData;
-
+    
         if (
           !mongoose.Types.ObjectId.isValid(sessionId) ||
           !mongoose.Types.ObjectId.isValid(userId)
         ) {
           throw new Error("Invalid ID format in stored user data");
         }
-
-        // Update quiz session
-        const updatedQuizSession = await Session.findOneAndUpdate(
-          { _id: sessionId },
-          { $pull: { players: userId } },
-          { new: true }
-        ).populate("players", "username email");
-
-        // If no quiz session, update survey session
-        if (!updatedQuizSession) {
+    
+        // Check quiz session
+        const quizSession = await Session.findById(sessionId);
+        if (quizSession && quizSession.status === 'waiting') {
+          const updatedQuizSession = await Session.findOneAndUpdate(
+            { _id: sessionId },
+            { $pull: { players: userId } },
+            { new: true }
+          ).populate("players", "username email");
+    
+          if (updatedQuizSession) {
+            io.to(sessionId).emit(
+              "current-players",
+              updatedQuizSession.players || []
+            );
+          }
+        }
+    
+        // Check survey session
+        const surveySessionDoc = await surveySession.findById(sessionId);
+        if (surveySessionDoc && surveySessionDoc.surveyStatus === 'waiting') {
           const updatedSurveySession = await surveySession
             .findOneAndUpdate(
               { _id: sessionId },
@@ -569,22 +580,17 @@ module.exports = (io) => {
               { new: true }
             )
             .populate("surveyPlayers", "username email isGuest");
-
+    
           if (updatedSurveySession) {
             io.to(sessionId).emit(
               "current-survey-players",
               updatedSurveySession.surveyPlayers || []
             );
           }
-        } else {
-          io.to(sessionId).emit(
-            "current-players",
-            updatedQuizSession.players || []
-          );
         }
-
+    
         userSockets.delete(socket.id);
-
+    
         io.to(sessionId).emit("user-disconnected", {
           userId,
           timestamp: new Date(),
