@@ -15,6 +15,64 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Get total time from all quiz sessions
+    const quizSessionsTotalTime = await Session.aggregate([
+      {
+        $match: {
+          players: userId,
+          startTime: { $exists: true },
+          endTime: { $exists: true },
+          status: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalTime: {
+            $sum: {
+              $trunc: {
+                $divide: [
+                  { $subtract: ["$endTime", "$startTime"] },
+                  1000, // Convert to seconds
+                ],
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    // Get total time from all survey sessions
+    const surveySessionsTotalTime = await SurveySession.aggregate([
+      {
+        $match: {
+          surveyPlayers: userId,
+          startTime: { $exists: true },
+          endTime: { $exists: true },
+          surveyStatus: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalTime: {
+            $sum: {
+              $trunc: {
+                $divide: [
+                  { $subtract: ["$endTime", "$startTime"] },
+                  1000, // Convert to seconds
+                ],
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    const totalTime =
+      (quizSessionsTotalTime[0]?.totalTime || 0) +
+      (surveySessionsTotalTime[0]?.totalTime || 0);
+
     // Aggregation for quizzes
     const quizzes = await Report.aggregate([
       { $match: { user: userId, quiz: { $exists: true } } },
@@ -23,6 +81,38 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
           _id: "$quiz",
           attempts: { $sum: 1 },
           lastAttempt: { $max: "$completedAt" },
+        },
+      },
+      {
+        $lookup: {
+          from: "sessions",
+          let: { quizId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$quiz", "$$quizId"] },
+                    { $in: [userId, "$players"] },
+                    { $eq: ["$status", "completed"] },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                timeTaken: {
+                  $trunc: {
+                    $divide: [
+                      { $subtract: ["$endTime", "$startTime"] },
+                      1000, // Convert to seconds
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+          as: "sessions",
         },
       },
       {
@@ -40,6 +130,9 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
           QuizId: "$_id",
           attempts: 1,
           lastAttempt: 1,
+          totalTimeTaken: {
+            $trunc: { $sum: "$sessions.timeTaken" },
+          },
           QuizDetails: {
             quizTitle: "$QuizDetails.title",
             quizDescription: "$QuizDetails.description",
@@ -60,6 +153,38 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
       },
       {
         $lookup: {
+          from: "surveysessions",
+          let: { surveyId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$surveyQuiz", "$$surveyId"] },
+                    { $in: [userId, "$surveyPlayers"] },
+                    { $eq: ["$surveyStatus", "completed"] },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                timeTaken: {
+                  $trunc: {
+                    $divide: [
+                      { $subtract: ["$endTime", "$startTime"] },
+                      1000, // Convert to seconds
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+          as: "sessions",
+        },
+      },
+      {
+        $lookup: {
           from: "surveyquizzes",
           localField: "_id",
           foreignField: "_id",
@@ -73,6 +198,9 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
           SurveyId: "$_id",
           attempts: 1,
           lastAttempt: 1,
+          totalTimeTaken: {
+            $trunc: { $sum: "$sessions.timeTaken" },
+          },
           SurveyDetails: {
             surveyTitle: "$SurveyDetails.title",
             surveyDescription: "$SurveyDetails.description",
@@ -81,7 +209,11 @@ const getParticipatedQuizzesAndSurveys = async (req, res) => {
       },
     ]);
 
-    res.json({ quizzes, surveys });
+    res.json({
+      totalTime,
+      quizzes,
+      surveys,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
