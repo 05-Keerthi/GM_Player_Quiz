@@ -26,7 +26,7 @@ const UserSurveyPlay = () => {
   const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState(null);
   const [progress, setProgress] = useState(null);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  
+
   const sessionId = searchParams.get("sessionId");
   const joinCode = searchParams.get("joinCode");
 
@@ -146,37 +146,38 @@ const UserSurveyPlay = () => {
 
       // Extract total questions from progress if available
       if (progress) {
-        const [current, total] = progress.split('/').map(Number);
+        const [current, total] = progress.split("/").map(Number);
         setTotalQuestions(total);
         setProgress(progress);
       } else {
         // Fallback progress calculation
-        const calculatedProgress = `${(currentItem ? 2 : 1)}/0`;
+        const calculatedProgress = `${currentItem ? 2 : 1}/0`;
         setProgress(calculatedProgress);
       }
 
-      const transformedItem = type === "slide"
-        ? {
-            _id: question._id,
-            type: "slide",
-            title: question.surveyTitle || question.title,
-            content: question.surveyContent || question.content,
-            imageUrl: question.imageUrl,
-            surveyQuiz: question.surveyQuiz,
-          }
-        : {
-            _id: question._id,
-            title: question.title,
-            type: type || "single_select",
-            imageUrl: question.imageUrl,
-            description: question.description,
-            timer: initialTime || 30,
-            answerOptions: question.answerOptions?.map((option) => ({
-              _id: option._id,
-              optionText: option.optionText || option.text,
-              color: option.color,
-            })),
-          };
+      const transformedItem =
+        type === "slide"
+          ? {
+              _id: question._id,
+              type: "slide",
+              title: question.surveyTitle || question.title,
+              content: question.surveyContent || question.content,
+              imageUrl: question.imageUrl,
+              surveyQuiz: question.surveyQuiz,
+            }
+          : {
+              _id: question._id,
+              title: question.title,
+              type: type || "single_select",
+              imageUrl: question.imageUrl,
+              description: question.description,
+              timer: initialTime || 30,
+              answerOptions: question.answerOptions?.map((option) => ({
+                _id: option._id,
+                optionText: option.optionText || option.text,
+                color: option.color,
+              })),
+            };
 
       setCurrentItem(transformedItem);
       setTimeLeft(initialTime || 30);
@@ -184,7 +185,6 @@ const UserSurveyPlay = () => {
       setHasSubmitted(false);
       setQuestionStartTime(type !== "slide" ? Date.now() : null);
     });
-
 
     socket.on("timer-sync", (data) => {
       if (data && typeof data.timeLeft === "number") {
@@ -201,7 +201,11 @@ const UserSurveyPlay = () => {
     socket.on("survey-session-ended", () => {
       clearSessionState();
       setIsSurveyEnded(true);
-      navigate("/session/survey/" + sessionId);
+      if (activeUser?.isGuest) {
+        navigate("/joinsurvey");
+      } else {
+        navigate(`/session/survey/${sessionId}`);
+      }
     });
 
     return () => {
@@ -211,11 +215,12 @@ const UserSurveyPlay = () => {
       socket.off("survey-session-ended");
     };
   }, [socket, navigate]);
+
   const renderProgress = () => {
     if (!progress) return "Loading...";
-    
-    const [current, total] = progress.split('/').map(Number);
-    return total > 0 ? progress : `${current}/${totalQuestions || '...'}`;
+
+    const [current, total] = progress.split("/").map(Number);
+    return total > 0 ? progress : `${current}/${totalQuestions || "..."}`;
   };
   const handleSubmitAnswer = async (answer) => {
     if (
@@ -344,10 +349,7 @@ const UserSurveyPlay = () => {
             </div>
           )}
 
-          <SurveyProgress 
-            progress={renderProgress()} 
-            className="mb-4" 
-          />
+          <SurveyProgress progress={renderProgress()} className="mb-4" />
           <SurveyContentDisplay
             item={currentItem}
             isAdmin={false}
