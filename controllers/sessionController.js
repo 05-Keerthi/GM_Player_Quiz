@@ -11,6 +11,29 @@ const Answer = require("../models/answer");
 const Leaderboard = require("../models/leaderBoard");
 const ActivityLog = require("../models/ActivityLog");
 
+
+
+const updateExpiredWaitingSessions = async (sessionId) => {
+  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
+  
+  try {
+    const session = await Session.findOne({
+      _id: sessionId,
+      status: "waiting",
+      createdAt: { $lt: eightHoursAgo }
+    });
+
+    if (session) {
+      session.status = "completed";
+      await session.save();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error updating expired session:", error);
+    return false;
+  }
+};
 // create a new session for quiz
 exports.createSession = async (req, res) => {
   const { quizId } = req.params;
@@ -50,6 +73,18 @@ exports.createSession = async (req, res) => {
     // Update the session with qrData
     savedSession.qrData = qrData;
     await savedSession.save();
+
+    setTimeout(async () => {
+      const wasUpdated = await updateExpiredWaitingSessions(savedSession._id);
+      if (wasUpdated) {
+        // Emit socket event for status change
+        const io = req.app.get("socketio");
+        io.emit("session-expired", {
+          sessionId: savedSession._id,
+          status: "completed"
+        });
+      }
+    }, 8 * 60 * 60 * 1000); // 8 hours
 
     // Populate the session with player details
     const populatedSession = await Session.findById(savedSession._id)

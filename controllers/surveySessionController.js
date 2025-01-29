@@ -11,6 +11,30 @@ const ActivityLog = require('../models/ActivityLog');
 const Report = require("../models/Report");
 const SurveyAnswer = require("../models/surveyanswer");
 
+
+
+const updateExpiredWaitingSessions = async (sessionId) => {
+  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
+  
+  try {
+    const session = await SurveySession.findOne({
+      _id: sessionId,
+      surveyStatus: "waiting",
+      createdAt: { $lt: eightHoursAgo }
+    });
+
+    if (session) {
+      session.surveyStatus = "completed";
+      await session.save();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error updating expired session:", error);
+    return false;
+  }
+};
+
 exports.createSurveySession = async (req, res) => {
   const { surveyQuizId } = req.params; 
   const surveyHostId = req.user._id; 
@@ -50,6 +74,20 @@ exports.createSurveySession = async (req, res) => {
     // Update the survey session with QR data
     savedSurveySession.surveyQrData = joinUrl;
     await savedSurveySession.save();
+
+     // Set up a timeout to check and update the session status after 8 hours
+     setTimeout(async () => {
+      const wasUpdated = await updateExpiredWaitingSessions(savedSurveySession._id);
+      if (wasUpdated) {
+        // Emit socket event for status change
+        const io = req.app.get("socketio");
+        io.emit("survey-session-expired", {
+          sessionId: savedSurveySession._id,
+          status: "completed"
+        });
+      }
+    }, 8 * 60 * 60 * 1000); // 8 hours
+
 
     // Populate the survey session with details
     const populatedSurveySession = await SurveySession.findById(
