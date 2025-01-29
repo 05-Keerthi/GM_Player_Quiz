@@ -502,7 +502,7 @@ exports.endSurveySession = async (req, res) => {
     })
       .populate("surveyPlayers", "username email _id mobile")
       .populate("surveyHost", "username email _id mobile")
-      .populate("surveyQuiz", "title")
+      .populate("surveyQuiz", "title description")
       .populate("surveyQuestions"); // Populate questions to calculate skipped/attempted
 
     if (!session) {
@@ -526,8 +526,28 @@ exports.endSurveySession = async (req, res) => {
         surveyPlayers: player._id,
       });
 
+      // Find skipped questions by comparing submitted answers with all questions
+      const skippedQuestions = session.surveyQuestions.filter(
+        (question) => !answers.some(
+          (answer) => answer.surveyQuestion.toString() === question._id.toString()
+        )
+      );
+
+      // Create entries for skipped questions
+      await Promise.all(
+        skippedQuestions.map(async (question) => {
+          await SurveyAnswer.create({
+            surveySession: session._id,
+            surveyPlayers: player._id,
+            surveyQuestion: question._id,
+            answer: null, // Indicate no answer was provided
+            skipped: true
+          });
+        })
+      );
+
       const questionsAttempted = answers.length;
-      const questionsSkipped = totalQuestions - questionsAttempted;
+      const questionsSkipped = skippedQuestions.length;
 
       // Create the report for the player
       const reportData = {
@@ -544,32 +564,46 @@ exports.endSurveySession = async (req, res) => {
       await report.save();
       reports.push(report);
 
-      // Create an activity log for the player
+      // Create an activity log for the player with detailed information
       const activityLog = await ActivityLog.create({
         user: player._id,
         activityType: "survey_play",
         details: {
+          sessionId,
           username: player.username,
           email: player.email,
           mobile: player.mobile,
-          sessionId,
+          surveyTitle: session.surveyQuiz.title,
+          surveyDescription: session.surveyQuiz.description,
+          questionsAttempted,
+          questionsSkipped,
+          totalQuestions,
+          completionTime: session.endTime
         },
       });
       activityLogs.push(activityLog);
     }
 
-    // Emit the session end event
+    // Emit the session end event with complete data
     const io = req.app.get("socketio");
-    io.emit("survey-session-ended", { session, reports });
+    io.emit("survey-session-ended", { 
+      session,
+      reports,
+      activityLogs 
+    });
 
-    // Respond with the session and reports
+    // Respond with the session, reports, and activity logs
     res.status(200).json({
       message: "Survey session ended successfully",
       session,
       reports,
+      activityLogs
     });
   } catch (error) {
     console.error("End survey session error:", error);
-    res.status(500).json({ message: "Error ending the survey session", error });
+    res.status(500).json({ 
+      message: "Error ending the survey session", 
+      error: error.message 
+    });
   }
 };
