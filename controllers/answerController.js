@@ -160,7 +160,7 @@ exports.submitAnswer = async (req, res) => {
     const leaderboardEntry = await Leaderboard.findOne({ session: sessionId, player: userId });
 
     if (leaderboardEntry) {
-      leaderboardEntry.score += pointsAwarded;
+      leaderboardEntry.score += parseFloat(pointsAwarded.toFixed(2));
       await leaderboardEntry.save();
     } else {
       await Leaderboard.create({
