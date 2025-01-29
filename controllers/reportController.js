@@ -484,9 +484,16 @@ const getSessionResponses = async (req, res) => {
       user: userId,
     }).select("score timeTaken correctAnswers incorrectAnswers");
 
+    // Get session details
+    const session = await Session.findById(sessionId)
+      .populate("quiz", "title description")
+      .populate("host", "username email")
+      .select("joinCode status startTime endTime createdAt");
+
     res.json({
+      sessionDetails: session,
       summary: sessionReport,
-      answers,
+      answers: answersWithImages,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -563,7 +570,14 @@ const getSurveyResponses = async (req, res) => {
       user: userId,
     }).select("questionsAttempted questionsSkipped timeTaken");
 
+    // Get session details
+    const session = await SurveySession.findById(surveySessionId)
+      .populate("surveyQuiz", "title type")
+      .populate("surveyHost", "username email")
+      .select("surveyJoinCode surveyStatus createdAt startTime endTime");
+
     res.json({
+      sessionDetails: session,
       summary: sessionReport || {},
       answers,
     });
