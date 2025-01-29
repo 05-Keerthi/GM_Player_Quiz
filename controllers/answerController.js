@@ -85,7 +85,7 @@ exports.submitAnswer = async (req, res) => {
         pointsAwarded = Math.floor(correctCount * pointsPerCorrectOption);
 
         // If all selected answers are correct, mark as correct
-        isCorrect = (correctCount === correctAnswers.length && incorrectCount === 0);
+        isCorrect = correctCount > 0;
       } else {
         isCorrect = question.options.some(opt => opt.text === answer && opt.isCorrect);
         pointsAwarded = isCorrect ? Math.floor(calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text))) : 0;
