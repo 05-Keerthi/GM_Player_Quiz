@@ -207,9 +207,10 @@ const UserPlay = () => {
       // Handle different question types
       if (currentItem.type === "multiple_select") {
         // Convert indices to option texts for multiple select
-        answerToSubmit = answer.answer.map(
-          (index) => currentItem.options[index].text
-        );
+        // answerToSubmit = answer.answer.map(
+        //   (index) => currentItem.options[index].text
+        // );
+        answerToSubmit = answer.answer;
       } else if (currentItem.type === "open_ended") {
         answerToSubmit = answer.answer;
       } else if (currentItem.type === "poll") {
