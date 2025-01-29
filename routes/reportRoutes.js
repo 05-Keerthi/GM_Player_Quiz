@@ -26,11 +26,7 @@ router.get("/reports/survey/:surveyId/attempts", auth, getSurveyAttempts);
 
 // Get responses for specific session
 router.get("/reports/session/:sessionId/responses", auth, getSessionResponses);
-router.get(
-  "/reports/surveySession/:surveySessionId/responses",
-  auth,
-  getSurveyResponses
-);
+router.get("/reports/surveySession/:surveySessionId/responses", auth, getSurveyResponses);
 
 
 // Admin analytics routes

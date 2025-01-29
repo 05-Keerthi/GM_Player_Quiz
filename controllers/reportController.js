@@ -8,6 +8,7 @@ const User = require("../models/User");
 const Answer = require("../models/answer");
 const SurveyAnswer = require("../models/surveyanswer");
 const mongoose = require("mongoose");
+const Media = require('../models/Media');
 
 // Get list of all quizzes participated
 const getParticipatedQuizzesAndSurveys = async (req, res) => {
@@ -228,7 +229,7 @@ const getSurveyAttempts = async (req, res) => {
       },
       {
         $lookup: {
-          from: "users", // Replace with the actual collection name
+          from: "users", 
           localField: "surveySessionDetails.surveyHost",
           foreignField: "_id",
           as: "hostDetails",
@@ -284,6 +285,9 @@ const getSessionResponses = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.user._id;
 
+    // Base URL for constructing the full image path
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+
     const answers = await Answer.aggregate([
       {
         $match: {
@@ -306,6 +310,7 @@ const getSessionResponses = async (req, res) => {
           questionType: "$questionDetails.type",
           options: "$questionDetails.options",
           explanation: "$questionDetails.explanation",
+          originalImageUrl: "$questionDetails.imageUrl", 
           submittedAnswer: "$answer",
           isCorrect: 1,
           timeTaken: 1,
@@ -314,6 +319,30 @@ const getSessionResponses = async (req, res) => {
       },
       { $sort: { createdAt: 1 } },
     ]);
+
+
+    // If you need to verify image existence or get additional image metadata
+    const answersWithImages = await Promise.all(
+      answers.map(async (answer) => {
+        if (answer.originalImageUrl) {
+          try {
+            const image = await Media.findById(answer.originalImageUrl);
+            if (image) {
+              const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
+              answer.imageUrl = `${baseUrl}${encodedImagePath}`;
+            } else {
+              answer.imageUrl = null;
+            }
+          } catch (error) {
+            console.error('Error processing image:', error);
+            answer.imageUrl = null;
+          }
+        } else {
+          answer.imageUrl = null;
+        }
+        return answer;
+      })
+    );
 
     const sessionReport = await Report.findOne({
       sessionId,
@@ -335,6 +364,10 @@ const getSurveyResponses = async (req, res) => {
     const { surveySessionId } = req.params;
     const userId = req.user._id;
 
+    
+    // Base URL for constructing the full image path
+    const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+
     const answers = await SurveyAnswer.aggregate([
       {
         $match: {
@@ -344,7 +377,7 @@ const getSurveyResponses = async (req, res) => {
       },
       {
         $lookup: {
-          from: "surveyquestions", // Ensure this matches the actual collection name
+          from: "surveyquestions", 
           localField: "surveyQuestion",
           foreignField: "_id",
           as: "questionDetails",
@@ -356,13 +389,37 @@ const getSurveyResponses = async (req, res) => {
           question_title: "$questionDetails.title",
           question_description: "$questionDetails.description",
           options: "$questionDetails.answerOptions",
-          submittedAnswer: "$surveyAnswer", // Correct field reference
+          submittedAnswer: "$surveyAnswer",
+          originalImageUrl: "$questionDetails.imageUrl", 
           timeTaken: 1,
           createdAt: 1,
         },
       },
-      { $sort: { createdAt: 1 } }, // Sort by creation time
+      { $sort: { createdAt: 1 } }, 
     ]);
+
+     // If you need to verify image existence or get additional image metadata
+     const answersWithImages = await Promise.all(
+      answers.map(async (answer) => {
+        if (answer.originalImageUrl) {
+          try {
+            const image = await Media.findById(answer.originalImageUrl);
+            if (image) {
+              const encodedImagePath = encodeURIComponent(image.path.split('\\').pop());
+              answer.imageUrl = `${baseUrl}${encodedImagePath}`;
+            } else {
+              answer.imageUrl = null;
+            }
+          } catch (error) {
+            console.error('Error processing image:', error);
+            answer.imageUrl = null;
+          }
+        } else {
+          answer.imageUrl = null;
+        }
+        return answer;
+      })
+    );
 
     const sessionReport = await Report.findOne({
       surveySessionId,
@@ -628,7 +685,7 @@ const getQuizDetailedAnalytics = async (req, res) => {
     const transformedSessionList = sessionList.map((session) => ({
       ...session,
       playerCount: session.players.length,
-      players: undefined, // Remove players array from response
+      players: undefined, 
     }));
 
     res.json({
