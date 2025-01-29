@@ -6,17 +6,17 @@ const Leaderboard = require('../models/leaderBoard');
 
 
 const calculateScore = (timeTaken, questionTimer, basePoints, answer, correctAnswers) => {
-  const timeBonus = Math.max(0, questionTimer - timeTaken);  
+  const timeBonus = Math.floor(Math.max(0, questionTimer - timeTaken)); 
   // If it's a multi-select question, calculate based on the number of correct answers selected
   if (Array.isArray(answer)) {
     const correctCount = answer.filter(ans => correctAnswers.includes(ans)).length;
     const incorrectCount = answer.filter(ans => !correctAnswers.includes(ans)).length;
-    const pointsPerCorrectOption = basePoints / correctAnswers.length;
+    const pointsPerCorrectOption = Math.floor(basePoints / correctAnswers.length);
     const scoreForMultiSelect = correctCount * pointsPerCorrectOption;
     const incorrectPenalty = 0; 
-    return scoreForMultiSelect + timeBonus - incorrectPenalty;
+    return Math.floor(scoreForMultiSelect + timeBonus - incorrectPenalty);
   }
-  return basePoints + timeBonus;
+  return Math.floor(basePoints + timeBonus);
 };
 
 exports.submitAnswer = async (req, res) => {
@@ -81,24 +81,24 @@ exports.submitAnswer = async (req, res) => {
         const incorrectCount = answer.filter(ans => !correctAnswers.includes(ans)).length;
         
         // Calculate points for correct answers
-        const pointsPerCorrectOption = question.points / correctAnswers.length;
-        pointsAwarded = correctCount * pointsPerCorrectOption;
+        const pointsPerCorrectOption = Math.floor(question.points / correctAnswers.length);
+        pointsAwarded = Math.floor(correctCount * pointsPerCorrectOption);
 
         // If all selected answers are correct, mark as correct
         isCorrect = (correctCount === correctAnswers.length && incorrectCount === 0);
       } else {
         isCorrect = question.options.some(opt => opt.text === answer && opt.isCorrect);
-        pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text)) : 0;
+        pointsAwarded = isCorrect ? Math.floor(calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text))) : 0;
       }
     } else if (answerType === 'boolean') {
       isCorrect = question.options.some(opt => opt.text === answer && opt.isCorrect);
-      pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text)) : 0;
+      pointsAwarded = isCorrect ? Math.floor(calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text))) : 0;
     } else if (answerType === 'text') {
       isCorrect = question.correctAnswer.some(correctAnswer => correctAnswer.toLowerCase() === answer.toLowerCase());
-      pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.correctAnswer) : 0;
+      pointsAwarded = isCorrect ? Math.floor(calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text))) : 0;
     } else if (answerType === 'option' && question.type === 'poll') {
       isCorrect = question.options.some(opt => opt.text === answer && opt.isCorrect);
-      pointsAwarded = isCorrect ? calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text)) : 0;
+      pointsAwarded = isCorrect ? Math.floor(calculateScore(timeTaken, question.timer, question.points, [answer], question.options.filter(opt => opt.isCorrect).map(opt => opt.text))) : 0;
     }
 
     // Save the answer
@@ -139,7 +139,7 @@ exports.submitAnswer = async (req, res) => {
     const options = question.options.map(opt => ({
       option: opt.text,
       counts: optionStats[opt.text],
-      percentage: totalResponses > 0 ? ((optionStats[opt.text] / totalResponses) * 100).toFixed(1) : 0
+      percentage: totalResponses > 0 ? Math.floor((optionStats[opt.text] / totalResponses) * 100) : 0
     }));
 
     // Emit socket event
@@ -160,13 +160,13 @@ exports.submitAnswer = async (req, res) => {
     const leaderboardEntry = await Leaderboard.findOne({ session: sessionId, player: userId });
 
     if (leaderboardEntry) {
-      leaderboardEntry.score += parseFloat(pointsAwarded.toFixed(2));
+      leaderboardEntry.score +=  Math.floor(pointsAwarded);
       await leaderboardEntry.save();
     } else {
       await Leaderboard.create({
         session: sessionId,
         player: userId,
-        score: pointsAwarded,
+        score: Math.floor(pointsAwarded),
       });
     }
 
