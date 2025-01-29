@@ -324,6 +324,14 @@ const SessionDashboard = () => {
     );
   }
 
+  const handleBackNavigation = () => {
+    const sessionId =
+      type === "quiz"
+        ? data.sessionDetails.quiz._id
+        : data.sessionDetails.surveyQuiz._id;
+    navigate(`/${type}-reports/${type}/${sessionId}`);
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen text-red-500">
@@ -346,7 +354,7 @@ const SessionDashboard = () => {
         <div className="p-6 bg-gray-50 min-h-screen">
           <div className="mb-6 flex items-center justify-between">
             <button
-              onClick={() => navigate(-1)}
+              onClick={handleBackNavigation}
               className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold"
             >
               <ArrowBigLeft />

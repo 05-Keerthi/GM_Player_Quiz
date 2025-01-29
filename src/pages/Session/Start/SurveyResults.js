@@ -109,7 +109,8 @@ const SurveyResults = () => {
         throw new Error("Failed to end quiz");
       }
 
-      navigate("/");
+    
+      navigate(`/surveys/session/${sessionId}`);
     } catch (error) {
       console.error("Error ending quiz:", error);
       setError(error.message);

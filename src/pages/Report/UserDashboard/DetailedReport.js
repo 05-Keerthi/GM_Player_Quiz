@@ -278,7 +278,7 @@ const DetailedReportDashboard = () => {
         <div className="p-6 bg-gray-50 min-h-screen">
           <div className="mb-6 flex items-center justify-between">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/dashboard")}
               className="text-blue-600 hover:text-blue-800 flex items-center text-xl font-semibold"
             >
               <ArrowBigLeft />
