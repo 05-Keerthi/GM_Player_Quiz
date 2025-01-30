@@ -97,12 +97,61 @@ const TopPerformers = ({ leaderboard }) => {
   );
 };
 
+const ResponseModal = ({ question, onClose }) => {
+  if (!question) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div
+        className="absolute inset-0 bg-black opacity-50"
+        onClick={onClose}
+      ></div>
+      <div className="bg-white rounded-lg shadow-lg z-10 p-6 max-w-3xl mx-auto">
+        <h2 className="text-xl font-semibold mb-4">{question.questionTitle}</h2>
+        <p className="text-gray-600 mb-4">{question.description}</p>
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="text-left p-4">Username</th>
+              <th className="text-left p-4">Email</th>
+              <th className="text-left p-4">Answer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {question.responses?.map((response, index) => (
+              <tr key={index} className="border-t border-gray-100">
+                <td className="p-4">{response.username}</td>
+                <td className="p-4">{response.email}</td>
+                <td className="p-4">{response.answer}</td>
+              </tr>
+            )) || (
+              <tr>
+                <td colSpan="3" className="p-4 text-center">
+                  No responses available
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <button
+          className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const SessionDetails = () => {
   const navigate = useNavigate();
   const { type, sessionId } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [showModal, setShowModal] = useState(false);
   const isQuiz = type === "quizzes";
 
   // Pagination states
@@ -164,6 +213,16 @@ const SessionDetails = () => {
     questionsPage,
     itemsPerPage
   );
+
+  const openModal = (question) => {
+    setSelectedQuestion(question);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setSelectedQuestion(null);
+    setShowModal(false);
+  };
 
   const StatCard = ({ title, value }) => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -298,9 +357,9 @@ const SessionDetails = () => {
                       <>
                         <th className="text-left p-4">Total Responses</th>
                         <th className="text-left p-4">Average Time</th>
-                        <th className="text-left p-4">Responses</th>
                       </>
                     )}
+                    <th className="text-left p-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -321,13 +380,16 @@ const SessionDetails = () => {
                               ? `${question.averageTimeTaken}s`
                               : "N/A"}
                           </td>
-                          <td className="p-4">
-                            {question.responses
-                              ? question.responses.join(", ")
-                              : "No responses"}
-                          </td>
                         </>
                       )}
+                      <td className="p-4">
+                        <button
+                          onClick={() => openModal(question)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          View Responses
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -343,6 +405,10 @@ const SessionDetails = () => {
           </div>
         </div>
       </div>
+
+      {showModal && (
+        <ResponseModal question={selectedQuestion} onClose={closeModal} />
+      )}
     </>
   );
 };

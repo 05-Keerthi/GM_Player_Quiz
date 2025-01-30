@@ -313,9 +313,6 @@ const ReportAdminDashboard = () => {
                             <th className="text-left p-4 font-medium text-gray-600">
                               Attempts
                             </th>
-                            <th className="text-left p-4 font-medium text-gray-600">
-                              Last Attempt
-                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -331,7 +328,6 @@ const ReportAdminDashboard = () => {
                             >
                               <td className="p-4">{quiz.quizTitle}</td>
                               <td className="p-4">{quiz.totalAttempts}</td>
-                              <td className="p-4">{quiz.lastAttempt}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -359,9 +355,6 @@ const ReportAdminDashboard = () => {
                             <th className="text-left p-4 font-medium text-gray-600">
                               Responses
                             </th>
-                            <th className="text-left p-4 font-medium text-gray-600">
-                              Last Attempt
-                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -377,7 +370,6 @@ const ReportAdminDashboard = () => {
                             >
                               <td className="p-4">{survey.surveyTitle}</td>
                               <td className="p-4">{survey.totalResponses}</td>
-                              <td className="p-4">{survey.lastAttempt}</td>
                             </tr>
                           ))}
                         </tbody>
