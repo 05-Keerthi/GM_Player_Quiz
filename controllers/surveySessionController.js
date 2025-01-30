@@ -14,7 +14,7 @@ const SurveyAnswer = require("../models/surveyanswer");
 
 
 const updateExpiredWaitingSessions = async (sessionId) => {
-  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
+  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); 
   
   try {
     const session = await SurveySession.findOne({
@@ -503,7 +503,7 @@ exports.endSurveySession = async (req, res) => {
       .populate("surveyPlayers", "username email _id mobile")
       .populate("surveyHost", "username email _id mobile")
       .populate("surveyQuiz", "title description")
-      .populate("surveyQuestions"); // Populate questions to calculate skipped/attempted
+      .populate("surveyQuestions"); 
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
