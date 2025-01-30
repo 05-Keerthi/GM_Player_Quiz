@@ -938,6 +938,7 @@ const getQuizSessionAnalytics = async (req, res) => {
           responses: {
             $push: {
               answer: "$answer", 
+              isCorrect: "$isCorrect",
               username: { $ifNull: ["$userDetails.username", "Anonymous"] },
               email: "$userDetails.email",
               mobile: "$userDetails.mobile",
