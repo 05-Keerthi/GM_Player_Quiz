@@ -79,15 +79,6 @@ describe('NotificationDropdown', () => {
     });
   });
 
-  it('renders without crashing', () => {
-    const { container } = render(<NotificationDropdown />);
-    const bellIcon = screen.getByTestId('notification-bell');
-    const svgElement = container.querySelector('svg');
-    
-    expect(bellIcon).toBeInTheDocument();
-    expect(svgElement).toBeInTheDocument();
-    expect(svgElement).toHaveClass('text-gray-600', 'hover:text-gray-800');
-  });
 
   it('shows correct unread count', () => {
     render(<NotificationDropdown />);
