@@ -11,11 +11,18 @@ jest.mock('../../middlewares/auth', () => ({
 
 // Mock the reportController functions
 jest.mock('../../controllers/reportController', () => ({
-  getAllReports: jest.fn((req, res) => res.status(200).json({ message: 'All reports retrieved successfully' })),
-  getUserReports: jest.fn((req, res) => res.status(200).json({ message: 'User reports retrieved successfully' })),
-  getReportByQuiz: jest.fn((req, res) => res.status(200).json({ message: 'Report by quiz retrieved successfully' })),
-  getUserReportByQuiz: jest.fn((req, res) => res.status(200).json({ message: 'User report by quiz retrieved successfully' })),
-  getQuizStats: jest.fn((req, res) => res.status(200).json({ message: 'Quiz stats retrieved successfully' })),
+  getParticipatedQuizzesAndSurveys: jest.fn((req, res) => res.status(200).json({ message: 'Participated quizzes and surveys retrieved successfully' })),
+  getQuizAttempts: jest.fn((req, res) => res.status(200).json({ message: 'Quiz attempts retrieved successfully' })),
+  getSurveyAttempts: jest.fn((req, res) => res.status(200).json({ message: 'Survey attempts retrieved successfully' })),
+  getSessionResponses: jest.fn((req, res) => res.status(200).json({ message: 'Session responses retrieved successfully' })),
+  getSurveyResponses: jest.fn((req, res) => res.status(200).json({ message: 'Survey responses retrieved successfully' })),
+  getOverallAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Overall analytics retrieved successfully' })),
+  getQuizAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Quiz analytics retrieved successfully' })),
+  getQuizDetailedAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Quiz detailed analytics retrieved successfully' })),
+  getQuizSessionAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Quiz session analytics retrieved successfully' })),
+  getSurveyAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Survey analytics retrieved successfully' })),
+  getSurveyDetailedAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Survey detailed analytics retrieved successfully' })),
+  getSurveySessionAnalytics: jest.fn((req, res) => res.status(200).json({ message: 'Survey session analytics retrieved successfully' })),
 }));
 
 // Import the mocks after defining them
@@ -23,6 +30,7 @@ const { auth, isAdmin } = require('../../middlewares/auth');
 
 // Set up Express app
 const app = express();
+app.use(express.json());
 app.use('/api', router);
 
 describe('Report Routes', () => {
@@ -30,63 +38,140 @@ describe('Report Routes', () => {
     jest.clearAllMocks(); // Clear mock call counts after each test
   });
 
-  // Test GET /api/reports
-  it('should call getAllReports when a valid GET request is made to /api/reports', async () => {
-    const res = await request(app).get('/api/reports');
+  // Test GET /api/reports/participated
+  it('should call getParticipatedQuizzesAndSurveys when GET request is made to /api/reports/participated', async () => {
+    const res = await request(app).get('/api/reports/participated');
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(reportController.getParticipatedQuizzesAndSurveys).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Participated quizzes and surveys retrieved successfully');
+  });
+
+  // Test GET /api/reports/quiz/:quizId/attempts
+  it('should call getQuizAttempts when GET request is made to /api/reports/quiz/:quizId/attempts', async () => {
+    const quizId = '123';
+    const res = await request(app).get(`/api/reports/quiz/${quizId}/attempts`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(reportController.getQuizAttempts).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Quiz attempts retrieved successfully');
+  });
+
+  // Test GET /api/reports/survey/:surveyId/attempts
+  it('should call getSurveyAttempts when GET request is made to /api/reports/survey/:surveyId/attempts', async () => {
+    const surveyId = '123';
+    const res = await request(app).get(`/api/reports/survey/${surveyId}/attempts`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(reportController.getSurveyAttempts).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Survey attempts retrieved successfully');
+  });
+
+  // Test GET /api/reports/session/:sessionId/responses
+  it('should call getSessionResponses when GET request is made to /api/reports/session/:sessionId/responses', async () => {
+    const sessionId = '123';
+    const res = await request(app).get(`/api/reports/session/${sessionId}/responses`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(reportController.getSessionResponses).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Session responses retrieved successfully');
+  });
+
+  // Test GET /api/reports/surveySession/:surveySessionId/responses
+  it('should call getSurveyResponses when GET request is made to /api/reports/surveySession/:surveySessionId/responses', async () => {
+    const surveySessionId = '123';
+    const res = await request(app).get(`/api/reports/surveySession/${surveySessionId}/responses`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(reportController.getSurveyResponses).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Survey responses retrieved successfully');
+  });
+
+  // Admin Analytics Routes Tests
+
+  // Test GET /api/admin/analytics/overall
+  it('should call getOverallAnalytics when GET request is made to /api/admin/analytics/overall', async () => {
+    const res = await request(app).get('/api/admin/analytics/overall');
 
     expect(auth).toHaveBeenCalledTimes(1);
     expect(isAdmin).toHaveBeenCalledTimes(1);
-    expect(reportController.getAllReports).toHaveBeenCalledTimes(1);
+    expect(reportController.getOverallAnalytics).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('All reports retrieved successfully');
+    expect(res.body.message).toBe('Overall analytics retrieved successfully');
   });
 
-  // Test GET /api/reports/user/:userId
-  it('should call getUserReports when a valid GET request is made to /api/reports/user/:userId', async () => {
-    const userId = '123';
-    const res = await request(app).get(`/api/reports/user/${userId}`);
-
-    expect(auth).toHaveBeenCalledTimes(1);
-    expect(isAdmin).toHaveBeenCalledTimes(0); // No isAdmin check for this route
-    expect(reportController.getUserReports).toHaveBeenCalledTimes(1);
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('User reports retrieved successfully');
-  });
-
-  // Test GET /api/reports/:quizId
-  it('should call getReportByQuiz when a valid GET request is made to /api/reports/:quizId', async () => {
-    const quizId = '456';
-    const res = await request(app).get(`/api/reports/${quizId}`);
+  // Test GET /api/admin/analytics/quizzes
+  it('should call getQuizAnalytics when GET request is made to /api/admin/analytics/quizzes', async () => {
+    const res = await request(app).get('/api/admin/analytics/quizzes');
 
     expect(auth).toHaveBeenCalledTimes(1);
     expect(isAdmin).toHaveBeenCalledTimes(1);
-    expect(reportController.getReportByQuiz).toHaveBeenCalledTimes(1);
+    expect(reportController.getQuizAnalytics).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('Report by quiz retrieved successfully');
+    expect(res.body.message).toBe('Quiz analytics retrieved successfully');
   });
 
-  // Test GET /api/reports/:quizId/user/:userId
-  it('should call getUserReportByQuiz when a valid GET request is made to /api/reports/:quizId/user/:userId', async () => {
-    const quizId = '456';
-    const userId = '123';
-    const res = await request(app).get(`/api/reports/${quizId}/user/${userId}`);
+  // Test GET /api/admin/analytics/quizzes/:quizId
+  it('should call getQuizDetailedAnalytics when GET request is made to /api/admin/analytics/quizzes/:quizId', async () => {
+    const quizId = '123';
+    const res = await request(app).get(`/api/admin/analytics/quizzes/${quizId}`);
 
     expect(auth).toHaveBeenCalledTimes(1);
-    expect(isAdmin).toHaveBeenCalledTimes(0); // No isAdmin check for this route
-    expect(reportController.getUserReportByQuiz).toHaveBeenCalledTimes(1);
+    expect(isAdmin).toHaveBeenCalledTimes(1);
+    expect(reportController.getQuizDetailedAnalytics).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('User report by quiz retrieved successfully');
+    expect(res.body.message).toBe('Quiz detailed analytics retrieved successfully');
   });
 
-  // Test GET /api/reports/:quizId/stats
-  it('should call getQuizStats when a valid GET request is made to /api/reports/:quizId/stats', async () => {
-    const quizId = '456';
-    const res = await request(app).get(`/api/reports/${quizId}/stats`);
+  // Test GET /api/admin/analytics/quizzes/session/:sessionId
+  it('should call getQuizSessionAnalytics when GET request is made to /api/admin/analytics/quizzes/session/:sessionId', async () => {
+    const sessionId = '123';
+    const res = await request(app).get(`/api/admin/analytics/quizzes/session/${sessionId}`);
 
     expect(auth).toHaveBeenCalledTimes(1);
-    expect(isAdmin).toHaveBeenCalledTimes(0); // No isAdmin check for this route
-    expect(reportController.getQuizStats).toHaveBeenCalledTimes(1);
+    expect(isAdmin).toHaveBeenCalledTimes(1);
+    expect(reportController.getQuizSessionAnalytics).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('Quiz stats retrieved successfully');
+    expect(res.body.message).toBe('Quiz session analytics retrieved successfully');
+  });
+
+  // Test GET /api/admin/analytics/surveys
+  it('should call getSurveyAnalytics when GET request is made to /api/admin/analytics/surveys', async () => {
+    const res = await request(app).get('/api/admin/analytics/surveys');
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(isAdmin).toHaveBeenCalledTimes(1);
+    expect(reportController.getSurveyAnalytics).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Survey analytics retrieved successfully');
+  });
+
+  // Test GET /api/admin/analytics/surveys/:surveyId
+  it('should call getSurveyDetailedAnalytics when GET request is made to /api/admin/analytics/surveys/:surveyId', async () => {
+    const surveyId = '123';
+    const res = await request(app).get(`/api/admin/analytics/surveys/${surveyId}`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(isAdmin).toHaveBeenCalledTimes(1);
+    expect(reportController.getSurveyDetailedAnalytics).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Survey detailed analytics retrieved successfully');
+  });
+
+  // Test GET /api/admin/analytics/surveys/session/:sessionId
+  it('should call getSurveySessionAnalytics when GET request is made to /api/admin/analytics/surveys/session/:sessionId', async () => {
+    const sessionId = '123';
+    const res = await request(app).get(`/api/admin/analytics/surveys/session/${sessionId}`);
+
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(isAdmin).toHaveBeenCalledTimes(1);
+    expect(reportController.getSurveySessionAnalytics).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Survey session analytics retrieved successfully');
   });
 });

@@ -872,7 +872,7 @@ const getQuizSessionAnalytics = async (req, res) => {
       return res.status(404).json({ message: "Session not found" });
     }
 
-    // Get leaderboard data
+    // Get leaderboard data with player response details (username, email, mobile)
     const leaderboardData = await Leaderboard.aggregate([
       {
         $match: {
@@ -906,12 +906,23 @@ const getQuizSessionAnalytics = async (req, res) => {
       },
     ]);
 
-    // Get question-wise performance
+    // Get question-wise performance with player responses
     const questionAnalytics = await Answer.aggregate([
       {
         $match: {
           session: new mongoose.Types.ObjectId(sessionId),
         },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true },
       },
       {
         $group: {
@@ -920,7 +931,18 @@ const getQuizSessionAnalytics = async (req, res) => {
           correctAnswers: {
             $sum: { $cond: ["$isCorrect", 1, 0] },
           },
+          incorrectAnswers: {
+            $sum: { $cond: ["$isCorrect", 0, 1] },
+          },
           averageTimeTaken: { $avg: "$timeTaken" },
+          responses: {
+            $push: {
+              answer: "$answer", 
+              username: { $ifNull: ["$userDetails.username", "Anonymous"] },
+              email: "$userDetails.email",
+              mobile: "$userDetails.mobile",
+            },
+          },
         },
       },
       {
@@ -939,6 +961,7 @@ const getQuizSessionAnalytics = async (req, res) => {
           questionTitle: "$questionDetails.title",
           totalAttempts: 1,
           correctAnswers: 1,
+          incorrectAnswers: 1,
           successRate: {
             $round: [
               {
@@ -951,6 +974,7 @@ const getQuizSessionAnalytics = async (req, res) => {
             ],
           },
           averageTimeTaken: { $round: ["$averageTimeTaken", 2] },
+          responses: 1, // Return the responses field
         },
       },
       {
@@ -1207,12 +1231,31 @@ const getSurveySessionAnalytics = async (req, res) => {
           surveySession: new mongoose.Types.ObjectId(sessionId),
         },
       },
+      // Lookup user details from the "users" collection
+      {
+        $lookup: {
+          from: "users",
+          localField: "surveyPlayers",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true },
+      },
       {
         $group: {
           _id: "$surveyQuestion",
           totalResponses: { $sum: 1 },
           averageTimeTaken: { $avg: "$timeTaken" },
-          responses: { $push: "$surveyAnswer" },
+          responses: {
+            $push: {
+              answer: "$surveyAnswer",
+              username: { $ifNull: ["$userDetails.username", "Anonymous"] },
+              email: "$userDetails.email",
+              mobile: "$userDetails.mobile",
+            },
+          },
         },
       },
       {
@@ -1273,9 +1316,7 @@ const getSurveySessionAnalytics = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching survey session analytics:", error);
-    res
-      .status(500)
-      .json({ message: "Error fetching survey session analytics" });
+    res.status(500).json({ message: "Error fetching survey session analytics" });
   }
 };
 
