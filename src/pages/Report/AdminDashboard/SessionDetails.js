@@ -218,13 +218,13 @@ const SessionDetails = () => {
   const [leaderboardPage, setLeaderboardPage] = useState(1);
   const [questionsPage, setQuestionsPage] = useState(1);
   const itemsPerPage = 10;
-
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `http://localhost:5000/api/admin/analytics/${type}/session/${sessionId}`,
+        `${BASE_URL}/admin/analytics/${type}/session/${sessionId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setData(response.data);

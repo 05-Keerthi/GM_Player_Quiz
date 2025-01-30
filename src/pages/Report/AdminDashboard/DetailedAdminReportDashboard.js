@@ -117,13 +117,13 @@ const DetailedAdminReportDashboard = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `http://localhost:5000/api/admin/analytics/${type}/${id}`,
+          `${BASE_URL}/admin/analytics/${type}/${id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setData(response.data);

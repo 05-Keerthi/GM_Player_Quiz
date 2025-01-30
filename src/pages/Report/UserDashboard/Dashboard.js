@@ -21,11 +21,15 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
+
+
   const fetchReports = async () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        "http://localhost:5000/api/reports/participated",
+       `${BASE_URL}/reports/participated`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

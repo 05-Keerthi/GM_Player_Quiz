@@ -10,12 +10,14 @@ const DetailedReportDashboard = () => {
   const { type, id } = useParams();
   const navigate = useNavigate();
 
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
+
   useEffect(() => {
     const fetchDetailedReport = async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          `http://localhost:5000/api/reports/${type}/${id}/attempts`,
+      `${BASE_URL}/reports/${type}/${id}/attempts`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

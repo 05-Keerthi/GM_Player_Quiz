@@ -10,14 +10,16 @@ const SessionDashboard = () => {
   const { type, sessionId } = useParams();
   const navigate = useNavigate();
 
+
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   useEffect(() => {
     const fetchSessionData = async () => {
       try {
         const token = localStorage.getItem("token");
         const endpoint =
           type === "quiz"
-            ? `http://localhost:5000/api/reports/session/${sessionId}/responses`
-            : `http://localhost:5000/api/reports/surveySession/${sessionId}/responses`;
+            ? `${BASE_URL}/reports/session/${sessionId}/responses`
+            : `${BASE_URL}/reports/surveySession/${sessionId}/responses`;
 
         const response = await fetch(endpoint, {
           headers: {

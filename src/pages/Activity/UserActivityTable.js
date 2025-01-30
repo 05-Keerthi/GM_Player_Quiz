@@ -6,12 +6,12 @@ const UserActivityTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const itemsPerPage = 5;
-
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   useEffect(() => {
     const fetchUserActivityLogs = async () => {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/activity-logs/`,
+          `${BASE_URL}/activity-logs/`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

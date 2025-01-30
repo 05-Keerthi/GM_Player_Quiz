@@ -296,88 +296,12 @@ const SmallChart = ({ counts }) => {
   );
 };
 
-// const CustomCalendar = () => {
-//   const [currentDate, setCurrentDate] = useState(new Date());
-//   const [selectedDates, setSelectedDates] = useState([14, 25, 28]);
-
-//   const daysInMonth = new Date(
-//     currentDate.getFullYear(),
-//     currentDate.getMonth() + 1,
-//     0
-//   ).getDate();
-
-//   const firstDayOfMonth = new Date(
-//     currentDate.getFullYear(),
-//     currentDate.getMonth(),
-//     1
-//   ).getDay();
-
-//   const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-//   const prevMonth = () => {
-//     setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
-//   };
-
-//   const nextMonth = () => {
-//     setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
-//   };
-
-//   return (
-//     <div className="bg-white p-6 rounded-[50px] shadow-sm">
-//       <div className="flex justify-center items-center mb-4">
-//         <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
-//           <ChevronLeft className="text-orange-500 text-xl" />
-//         </button>
-//         <h3 className="text-gray-500 text-sm capitalize mx-2">
-//           {currentDate.toLocaleString("default", { month: "long" })}
-//         </h3>
-//         <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
-//           <ChevronRight className="text-orange-500 text-xl" />
-//         </button>
-//       </div>
-
-//       <div className="grid grid-cols-7 gap-2">
-//         {days.map((day) => (
-//           <div key={day} className="text-xs text-gray-500 text-center">
-//             {day}
-//           </div>
-//         ))}
-
-//         {Array.from({ length: firstDayOfMonth }).map((_, index) => (
-//           <div key={`empty-${index}`} className="text-center py-2"></div>
-//         ))}
-
-//         {Array.from({ length: daysInMonth }).map((_, index) => {
-//           const day = index + 1;
-//           const isSelected = selectedDates.includes(day);
-//           return (
-//             <div
-//               key={day}
-//               className={`text-center py-1 text-sm rounded-full ${
-//                 isSelected ? "text-white" : "text-gray-700"
-//               } ${
-//                 isSelected && day === 14
-//                   ? "bg-purple-500"
-//                   : isSelected
-//                   ? "bg-orange-400"
-//                   : "hover:bg-gray-100"
-//               }`}
-//             >
-//               {day}
-//             </div>
-//           );
-//         })}
-//       </div>
-//     </div>
-//   );
-// };
-
 const AdminDashboard = () => {
   const [activityData, setActivityData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
-
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   // Filter activity logs based on selected filter
   const getFilteredData = (data) => {
     if (selectedFilter === "all") return data;
@@ -406,7 +330,7 @@ const AdminDashboard = () => {
     const fetchActivityLogs = async () => {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/activity-logs",
+          `${BASE_URL}/activity-logs`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

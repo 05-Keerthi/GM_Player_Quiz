@@ -27,7 +27,7 @@ const ReportAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("quizzes");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-
+  const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -38,13 +38,13 @@ const ReportAdminDashboard = () => {
         }
 
         const [overall, quizzes, surveys] = await Promise.all([
-          axios.get("http://localhost:5000/api/admin/analytics/overall", {
+          axios.get(`${BASE_URL}/admin/analytics/overall`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:5000/api/admin/analytics/quizzes", {
+          axios.get(`${BASE_URL}/admin/analytics/quizzes`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:5000/api/admin/analytics/surveys", {
+          axios.get(`${BASE_URL}/admin/analytics/surveys`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
