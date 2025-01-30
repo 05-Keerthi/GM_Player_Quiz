@@ -579,7 +579,7 @@ const getSurveyResponses = async (req, res) => {
     res.json({
       sessionDetails: session,
       summary: sessionReport || {},
-      answers,
+      answers:answersWithImages,
     });
   } catch (error) {
     console.error("Error fetching survey responses:", error);

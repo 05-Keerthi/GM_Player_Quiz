@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const Report = require('../../models/report');
+const Report = require('../../models/Report');
 
 let mongoServer;
 
@@ -28,7 +28,8 @@ describe('Report Model Unit Tests', () => {
       totalQuestions: 10,
       correctAnswers: 7,
       incorrectAnswers: 3,
-      totalScore: 70,
+      score: 70,
+      timeTaken: 120,
       questionsAttempted: 8,
       questionsSkipped: 2
     };
@@ -42,7 +43,8 @@ describe('Report Model Unit Tests', () => {
     expect(report.totalQuestions).toBe(reportData.totalQuestions);
     expect(report.correctAnswers).toBe(reportData.correctAnswers);
     expect(report.incorrectAnswers).toBe(reportData.incorrectAnswers);
-    expect(report.totalScore).toBe(reportData.totalScore);
+    expect(report.score).toBe(reportData.score);
+    expect(report.timeTaken).toBe(reportData.timeTaken);
     expect(report.questionsAttempted).toBe(reportData.questionsAttempted);
     expect(report.questionsSkipped).toBe(reportData.questionsSkipped);
     expect(report.completedAt).toBeDefined();
@@ -78,7 +80,8 @@ describe('Report Model Unit Tests', () => {
     expect(report._id).toBeDefined();
     expect(report.quiz).toBeUndefined();
     expect(report.surveyQuiz).toBeUndefined();
-    expect(report.totalScore).toBeUndefined();
+    expect(report.score).toBeUndefined();
+    expect(report.timeTaken).toBeUndefined();
   });
 
   test('should set completedAt automatically', async () => {
@@ -102,15 +105,15 @@ describe('Report Model Unit Tests', () => {
     const report = await Report.create(reportData);
     
     const updatedCorrectAnswers = 8;
-    const updatedTotalScore = 80;
+    const updatedScore = 80;
     
     report.correctAnswers = updatedCorrectAnswers;
-    report.totalScore = updatedTotalScore;
+    report.score = updatedScore;
     await report.save();
 
     const updatedReport = await Report.findById(report._id);
     expect(updatedReport.correctAnswers).toBe(updatedCorrectAnswers);
-    expect(updatedReport.totalScore).toBe(updatedTotalScore);
+    expect(updatedReport.score).toBe(updatedScore);
   });
 
   test('should validate referenced IDs', async () => {
@@ -153,7 +156,8 @@ describe('Report Model Unit Tests', () => {
       incorrectAnswers: 2,
       questionsAttempted: 8,
       questionsSkipped: 2,
-      totalScore: 60
+      score: 60,
+      timeTaken: 100
     };
 
     const report = await Report.create(reportData);
