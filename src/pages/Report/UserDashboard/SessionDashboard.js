@@ -117,12 +117,29 @@ const SessionDashboard = () => {
 
     const baseCardStyle = "bg-white p-6 rounded-lg shadow h-full";
 
+    const renderImageIfExists = () => {
+      if (answer.imageUrl) {
+        return (
+          <div className="relative w-full h-64 mb-4 overflow-hidden rounded-lg">
+            <img
+              src={answer.imageUrl}
+              alt={answer.question}
+              className="w-full h-full object-contain bg-gray-100"
+            />
+            <div className="absolute inset-0 border border-gray-200 rounded-lg pointer-events-none"></div>
+          </div>
+        );
+      }
+      return null;
+    };
+
     switch (answer.questionType) {
       case "multiple_choice":
       case "true_false":
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
+            {renderImageIfExists()}
             <div className="grid grid-cols-2 gap-4">
               {answer.options.map((option) => (
                 <div
@@ -158,6 +175,7 @@ const SessionDashboard = () => {
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
+            {renderImageIfExists()}
             <div className="grid grid-cols-2 gap-4">
               {answer.options.map((option) => (
                 <div
@@ -189,6 +207,7 @@ const SessionDashboard = () => {
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
+            {renderImageIfExists()}
             <div className="mt-4">
               {answer.submittedAnswer ? (
                 <div
@@ -247,6 +266,7 @@ const SessionDashboard = () => {
         return (
           <div className={baseCardStyle}>
             {renderAnswerHeader(answer)}
+            {renderImageIfExists()}
             <div className="grid grid-cols-2 gap-4">
               {answer.options.map((option) => (
                 <div
