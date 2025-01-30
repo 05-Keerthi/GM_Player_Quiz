@@ -141,19 +141,22 @@ exports.getAllAnswersForSession = async (req, res) => {
       }
 
       const option = answer.surveyAnswer;
+      if (option.trim() === "") return; 
+
       if (!groupedAnswersByQuestion[question._id][option]) {
         groupedAnswersByQuestion[question._id][option] = {
-          count: 0,
-          users: [],
-        };
-      }
+        count: 0,
+        users: [],
+       };
+    }
 
-      groupedAnswersByQuestion[question._id][option].count += 1;
-      groupedAnswersByQuestion[question._id][option].users.push({
-        username: answer.surveyPlayers.username,
-        email: answer.surveyPlayers.email,
-        timeTaken: answer.timeTaken,
-      });
+     groupedAnswersByQuestion[question._id][option].count += 1;
+     groupedAnswersByQuestion[question._id][option].users.push({
+      username: answer.surveyPlayers.username,
+      email: answer.surveyPlayers.email,
+      timeTaken: answer.timeTaken,
+    });
+
 
       // Add user and their answer to the userAnswers map
       const userId = answer.surveyPlayers._id.toString();
