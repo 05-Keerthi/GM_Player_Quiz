@@ -276,25 +276,45 @@ const SessionDashboard = () => {
     if (!answer) return null;
 
     const baseCardStyle = "bg-white p-6 rounded-lg shadow h-full";
-    const isAnswerSkipped =
-      !answer.submittedAnswer || answer.submittedAnswer === "null";
+
+    const getSubmittedAnswer = (submittedAnswer) => {
+      if (!submittedAnswer) return null;
+      if (typeof submittedAnswer === "string") return submittedAnswer;
+      if (
+        typeof submittedAnswer === "object" &&
+        submittedAnswer.answer !== undefined
+      ) {
+        return submittedAnswer.answer;
+      }
+      return null;
+    };
+
+    const isAnswerSkipped = () => {
+      const processedAnswer = getSubmittedAnswer(answer.submittedAnswer);
+      return (
+        !processedAnswer || processedAnswer === "" || processedAnswer === "null"
+      );
+    };
+
+    const currentAnswer = getSubmittedAnswer(answer.submittedAnswer);
+    const skipped = isAnswerSkipped();
 
     return (
       <div className={baseCardStyle}>
         <div className="flex justify-between items-start mb-4">
-          <div>
+          <div className="flex-1 mr-4">
             <h3 className="text-lg font-semibold">{answer.question_title}</h3>
             <p className="text-gray-600 mt-1">{answer.question_description}</p>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center flex-shrink-0">
             <span
               className={`px-3 py-1 rounded-full text-sm ${
-                isAnswerSkipped
+                skipped
                   ? "bg-gray-100 text-gray-800"
                   : "bg-green-100 text-green-800"
               }`}
             >
-              {isAnswerSkipped ? "Skipped" : "Submitted"}
+              {skipped ? "Skipped" : "Submitted"}
             </span>
             <span className="ml-4 text-sm text-gray-500">
               {answer.timeTaken || 0}s
@@ -302,24 +322,34 @@ const SessionDashboard = () => {
           </div>
         </div>
 
+        {answer.imageUrl && (
+          <div className="relative w-full h-64 mb-4 overflow-hidden rounded-lg">
+            <img
+              src={answer.imageUrl}
+              alt={answer.question_title}
+              className="w-full h-full object-contain bg-gray-100"
+            />
+            <div className="absolute inset-0 border border-gray-200 rounded-lg pointer-events-none"></div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           {answer.options &&
             answer.options.map((option) => (
               <div
                 key={option._id}
                 className={`p-3 rounded-lg border flex items-center justify-between ${
-                  isAnswerSkipped
+                  skipped
                     ? "border-gray-200"
-                    : option.optionText === answer.submittedAnswer
+                    : option.optionText === currentAnswer
                     ? "border-green-500 bg-green-50 text-green-700"
                     : "border-gray-200"
                 }`}
               >
                 <span className="text-sm">{option.optionText}</span>
-                {!isAnswerSkipped &&
-                  option.optionText === answer.submittedAnswer && (
-                    <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
-                  )}
+                {!skipped && option.optionText === currentAnswer && (
+                  <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                )}
               </div>
             ))}
         </div>

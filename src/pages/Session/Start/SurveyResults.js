@@ -7,11 +7,12 @@ const SurveyResults = () => {
   const [userAnswers, setUserAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hasInterestColumns, setHasInterestColumns] = useState(false);
+  const [surveyType, setSurveyType] = useState("");
+  const [totalParticipants, setTotalParticipants] = useState(0);
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const location = useLocation();
-  const joinCode = new URLSearchParams(location.search).get('joinCode');
+  const joinCode = new URLSearchParams(location.search).get("joinCode");
 
   useEffect(() => {
     const fetchSessionAnswers = async () => {
@@ -28,24 +29,17 @@ const SurveyResults = () => {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch session answers");
+          const data = await response.json();
+          throw new Error(data.message || "Failed to fetch session answers");
         }
 
         const data = await response.json();
 
-        if (data.questions && data.userAnswers) {
+        if (data.questions && data.userAnswers && data.surveyDetails) {
           setQuestions(data.questions);
           setUserAnswers(data.userAnswers);
-          
-          // Check if any question has interest-related answers
-          const hasInterestAnswers = data.userAnswers.some(userAnswer =>
-            userAnswer.answers.some(answer => {
-              const answerValue = answer.answer?.toLowerCase?.() || answer.value?.toLowerCase?.();
-              return answerValue === 'interested' || 
-                     answerValue === 'not interested';
-            })
-          );
-          setHasInterestColumns(hasInterestAnswers);
+          setSurveyType(data.surveyDetails.Type);
+          setTotalParticipants(data.userAnswers.length);
         } else {
           throw new Error("Invalid response format");
         }
@@ -63,32 +57,25 @@ const SurveyResults = () => {
   const getTotalResponses = (questionId) => {
     return userAnswers.reduce((total, userAnswer) => {
       const hasAnswered = userAnswer.answers.some(
-        answer => answer.questionId === questionId
+        (answer) => answer.questionId === questionId && answer.answer !== "null"
       );
       return hasAnswered ? total + 1 : total;
     }, 0);
   };
 
-  const getInterestCounts = (questionId) => {
-    return userAnswers.reduce((acc, userAnswer) => {
+  const getOptionCount = (questionId, optionText) => {
+    return userAnswers.reduce((count, userAnswer) => {
       const answer = userAnswer.answers.find(
-        answer => answer.questionId === questionId
+        (a) => a.questionId === questionId
       );
-      
-      if (answer) {
-        const answerValue = answer.answer?.toLowerCase?.() || answer.value?.toLowerCase?.();
-        if (answerValue === 'interested') {
-          acc.interested += 1;
-        } else if (answerValue === 'not interested') {
-          acc.notInterested += 1;
-        }
-      }
-      return acc;
-    }, { interested: 0, notInterested: 0 });
+      return answer && answer.answer === optionText ? count + 1 : count;
+    }, 0);
   };
 
   const handleRowClick = (questionId) => {
-    navigate(`/question-details/${sessionId}/${questionId}?joinCode=${joinCode}`);
+    navigate(
+      `/question-details/${sessionId}/${questionId}?joinCode=${joinCode}`
+    );
   };
 
   const handleEndQuiz = async () => {
@@ -109,12 +96,22 @@ const SurveyResults = () => {
         throw new Error("Failed to end quiz");
       }
 
-    
       navigate(`/surveys/session/${sessionId}`);
     } catch (error) {
       console.error("Error ending quiz:", error);
       setError(error.message);
     }
+  };
+
+  // Get all unique options across all questions
+  const getAllUniqueOptions = () => {
+    const uniqueOptions = new Set();
+    questions.forEach((question) => {
+      question.answerOptions.forEach((option) => {
+        uniqueOptions.add(option.optionText);
+      });
+    });
+    return Array.from(uniqueOptions);
   };
 
   if (loading) {
@@ -130,18 +127,22 @@ const SurveyResults = () => {
       <div className="min-h-screen bg-gray-100 p-6">
         <div className="max-w-6xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-600">Error: {error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              Retry
-            </button>
+            <p className="text-red-600">{error}</p>
+            {error === "No answers found for this session" && (
+              <button
+                onClick={handleEndQuiz}
+                className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                End Survey
+              </button>
+            )}
           </div>
         </div>
       </div>
     );
   }
+
+  const uniqueOptions = surveyType === "ArtPulse" ? getAllUniqueOptions() : [];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -157,7 +158,16 @@ const SurveyResults = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Session Summary</h2>
+          <div className="mb-6 flex justify-between items-center">
+            <h2 className="text-xl font-bold">Session Summary</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600">Total Participants:</span>
+              <span className="text-lg font-semibold bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
+                {totalParticipants}
+              </span>
+            </div>
+          </div>
+
           {questions.length === 0 ? (
             <p className="text-gray-500">No questions available.</p>
           ) : (
@@ -166,51 +176,49 @@ const SurveyResults = () => {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="text-left p-3 border border-gray-200">
-                      Question
+                      {surveyType === "ArtPulse" ? "Art Piece" : "Question"}
                     </th>
                     <th className="text-center p-3 border border-gray-200">
                       Total Responses
                     </th>
-                    {hasInterestColumns && (
-                      <>
-                        <th className="text-center p-3 border border-gray-200">
-                          Interested
+                    {surveyType === "ArtPulse" &&
+                      uniqueOptions.map((option) => (
+                        <th
+                          key={option}
+                          className="text-center p-3 border border-gray-200"
+                        >
+                          {option}
                         </th>
-                        <th className="text-center p-3 border border-gray-200">
-                          Not Interested
-                        </th>
-                      </>
-                    )}
+                      ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((question) => {
-                    const interestCounts = hasInterestColumns ? getInterestCounts(question._id) : null;
-                    return (
-                      <tr
-                        key={question._id}
-                        onClick={() => handleRowClick(question._id)}
-                        className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <td className="p-3 border border-gray-200">
-                          {question.title}
-                        </td>
-                        <td className="text-center p-3 border border-gray-200">
-                          {getTotalResponses(question._id)}
-                        </td>
-                        {hasInterestColumns && (
-                          <>
-                            <td className="text-center p-3 border border-gray-200">
-                              {interestCounts.interested}
-                            </td>
-                            <td className="text-center p-3 border border-gray-200">
-                              {interestCounts.notInterested}
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })}
+                  {questions.map((question) => (
+                    <tr
+                      key={question._id}
+                      onClick={() => handleRowClick(question._id)}
+                      className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <td className="p-3 border border-gray-200">
+                        {question.title}
+                      </td>
+                      <td className="text-center p-3 border border-gray-200">
+                        <span className="bg-gray-100 px-3 py-1 rounded-full">
+                          {getTotalResponses(question._id)} /{" "}
+                          {totalParticipants}
+                        </span>
+                      </td>
+                      {surveyType === "ArtPulse" &&
+                        uniqueOptions.map((option) => (
+                          <td
+                            key={option}
+                            className="text-center p-3 border border-gray-200"
+                          >
+                            {getOptionCount(question._id, option)}
+                          </td>
+                        ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -11,7 +11,7 @@ const SurveyContentDisplay = ({
   onEndSurvey,
   isSurveyEnded,
   submittedAnswers = [],
-  isSubmitted = false
+  isSubmitted = false,
 }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
@@ -38,18 +38,23 @@ const SurveyContentDisplay = ({
   const handleOptionSelect = (option) => {
     if (isAdmin || isTimeUp) return;
 
-    // Allow selecting a different option even after submission
-    setSelectedOption(option);
-
-    // Submit/update the answer
-    onSubmitAnswer?.({
-      type: "single_select",
-      answer: option.optionText,
-      questionId: item._id,
-    });
-
-    // Mark as submitted if it wasn't already
-    if (!isAnswerSubmitted) {
+    if (selectedOption?._id === option._id && isAnswerSubmitted) {
+      // If same option is clicked again, clear selection
+      setSelectedOption(null);
+      setIsAnswerSubmitted(false);
+      onSubmitAnswer?.({
+        type: "single_select",
+        answer: "",
+        questionId: item._id,
+      });
+    } else {
+      // Select new option
+      setSelectedOption(option);
+      onSubmitAnswer?.({
+        type: "single_select",
+        answer: option.optionText,
+        questionId: item._id,
+      });
       setIsAnswerSubmitted(true);
     }
   };
@@ -151,18 +156,19 @@ const SurveyContentDisplay = ({
           {item?.answerOptions?.map((option) => {
             const backgroundColor = option.color || "#ffffff";
             const textColor = getTextColor(backgroundColor);
+            const isSelected =
+              !isAdmin &&
+              selectedOption?._id === option._id &&
+              isAnswerSubmitted;
 
             return (
               <button
                 key={option._id}
                 onClick={() => handleOptionSelect(option)}
                 style={{ backgroundColor }}
-                className={`p-4 text-lg rounded-lg border border-gray-200 transition-all ${textColor}
-                  ${
-                    !isAdmin && selectedOption?._id === option._id
-                      ? "border-blue-500 ring-2 ring-blue-500"
-                      : "hover:opacity-90"
-                  }
+                className={`p-4 text-lg rounded-lg transition-all ${textColor}
+                  ${isSelected ? "border-2 border-blue-500" : "border-0"}
+                  ${!isAdmin && !isTimeUp ? "hover:opacity-90" : ""}
                   ${isTimeUp ? "opacity-60 cursor-not-allowed" : ""}
                 `}
                 disabled={isAdmin || isTimeUp}

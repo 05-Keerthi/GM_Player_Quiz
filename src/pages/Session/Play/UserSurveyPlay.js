@@ -222,12 +222,13 @@ const UserSurveyPlay = () => {
     const [current, total] = progress.split("/").map(Number);
     return total > 0 ? progress : `${current}/${totalQuestions || "..."}`;
   };
+
   const handleSubmitAnswer = async (answer) => {
     if (
       !currentItem ||
       currentItem.type === "slide" ||
       timeLeft <= 0 ||
-      !answer ||
+      answer === undefined || // Changed from !answer to allow empty strings
       !questionStartTime ||
       !activeUser
     ) {
@@ -243,23 +244,53 @@ const UserSurveyPlay = () => {
     }
 
     try {
+      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+      // Handle empty string case
+      let answerText = "";
+      if (answer) {
+        answerText =
+          answer.answer ||
+          answer.text ||
+          (Array.isArray(answer) ? answer.join(",") : answer);
+      }
+
+      // Check if the new answer is the same as the last submitted answer
+      if (hasSubmitted && answerText === lastSubmittedAnswer) {
+        console.log("Same answer clicked - removing response");
+
+        // Send null/empty answer to indicate removal
+        const response = await submitSurveyAnswer(sessionId, currentItem._id, {
+          answer: "",
+          timeTaken,
+          isGuest: activeUser.isGuest || false,
+          guestUserId: activeUser.isGuest ? activeUser._id : undefined,
+        });
+
+        if (socket) {
+          socket.emit("survey-submit-answer", {
+            sessionId,
+            questionId: currentItem._id,
+            userId: activeUser._id || activeUser.id,
+            answer: "",
+            timeTaken,
+            isGuest: activeUser.isGuest || false,
+            isUpdate: true,
+          });
+        }
+
+        // Reset submission state
+        setHasSubmitted(false);
+        setLastSubmittedAnswer(null);
+        console.log("Answer removal successful:", response);
+        return;
+      }
+
+      // Normal answer submission flow
       console.log("Submitting/Updating answer:", {
-        answer,
+        answer: answerText,
         activeUser,
         isUpdate: hasSubmitted,
       });
-
-      const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
-      const answerText =
-        answer.answer ||
-        answer.text ||
-        (Array.isArray(answer) ? answer.join(",") : answer);
-
-      // Check if the new answer is different from the last submitted answer
-      if (hasSubmitted && answerText === lastSubmittedAnswer) {
-        console.log("Same answer submitted, skipping update");
-        return;
-      }
 
       const response = await submitSurveyAnswer(sessionId, currentItem._id, {
         answer: answerText,
@@ -267,9 +298,6 @@ const UserSurveyPlay = () => {
         isGuest: activeUser.isGuest || false,
         guestUserId: activeUser.isGuest ? activeUser._id : undefined,
       });
-
-      setHasSubmitted(true);
-      setLastSubmittedAnswer(answerText);
 
       if (socket) {
         socket.emit("survey-submit-answer", {
@@ -283,6 +311,8 @@ const UserSurveyPlay = () => {
         });
       }
 
+      setHasSubmitted(true);
+      setLastSubmittedAnswer(answerText);
       console.log("Answer submission successful:", response);
     } catch (error) {
       console.error("Error submitting answer:", error);
