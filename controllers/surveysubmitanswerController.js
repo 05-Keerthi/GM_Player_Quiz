@@ -17,7 +17,9 @@ exports.submitSurveyAnswer = async (req, res) => {
     }
 
     if (session.surveyStatus !== "in_progress") {
-      return res.status(400).json({ message: "Survey session is not in progress" });
+      return res
+        .status(400)
+        .json({ message: "Survey session is not in progress" });
     }
 
     // Verify the question exists
@@ -84,7 +86,10 @@ exports.getAllAnswersForSession = async (req, res) => {
 
   try {
     // Verify the session exists
-    const session = await SurveySession.findById(sessionId);
+    const session = await SurveySession.findById(sessionId).populate({
+      path: "surveyQuiz",
+      select: "title description type category", // Add any other survey fields you need
+    });
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
@@ -103,20 +108,25 @@ exports.getAllAnswersForSession = async (req, res) => {
       .sort({ createdAt: 1 });
 
     if (answers.length === 0) {
-            return res.status(404).json({ message: "No answers found for this session" });
+      return res
+        .status(404)
+        .json({ message: "No answers found for this session" });
     }
 
-        const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
     const questionsMap = {};
     const userAnswers = {};
     const groupedAnswersByQuestion = {};
 
-        answers.forEach(answer => {
+    answers.forEach((answer) => {
       const question = answer.surveyQuestion.toObject();
 
       // Format the image URL if available
       if (question.imageUrl) {
-                const encodedImagePath = encodeURIComponent(question.imageUrl.path.split("\\").pop());
+        const encodedImagePath = encodeURIComponent(
+          question.imageUrl.path.split("\\").pop()
+        );
         question.imageUrl = `${baseUrl}${encodedImagePath}`;
       }
 
@@ -132,7 +142,10 @@ exports.getAllAnswersForSession = async (req, res) => {
 
       const option = answer.surveyAnswer;
       if (!groupedAnswersByQuestion[question._id][option]) {
-                groupedAnswersByQuestion[question._id][option] = { count: 0, users: [] };
+        groupedAnswersByQuestion[question._id][option] = {
+          count: 0,
+          users: [],
+        };
       }
 
       groupedAnswersByQuestion[question._id][option].count += 1;
@@ -165,9 +178,18 @@ exports.getAllAnswersForSession = async (req, res) => {
     // Construct the response object
     res.status(200).json({
       message: "Answers retrieved successfully",
+      surveyDetails: {
+        _id: session.surveyQuiz._id,
+        title: session.surveyQuiz.title,
+        description: session.surveyQuiz.description,
+        Type: session.surveyQuiz.type,
+        category: session.surveyQuiz.category,
+        createdAt: session.surveyQuiz.createdAt,
+        sessionStatus: session.surveyStatus,
+      },
       questions: Object.values(questionsMap),
       userAnswers: Object.values(userAnswers),
-      groupedAnswers: groupedAnswersByQuestion, // Grouped counts and users for each question
+      groupedAnswers: groupedAnswersByQuestion,
     });
   } catch (error) {
     console.error("Get all answers for session error:", error);
@@ -177,7 +199,6 @@ exports.getAllAnswersForSession = async (req, res) => {
     });
   }
 };
-
 
 exports.getAnswersForSpecificQuestion = async (req, res) => {
   const { sessionId, questionId } = req.params;
@@ -190,21 +211,27 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
     }
 
     // Find the survey question
-      const surveyQuestion = await SurveyQuestion.findById(questionId).populate("surveyQuiz", "title description");
+    const surveyQuestion = await SurveyQuestion.findById(questionId).populate(
+      "surveyQuiz",
+      "title description"
+    );
 
     if (!surveyQuestion) {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
     // Base URL for constructing the full image path
-      const baseUrl = process.env.HOST || `${req.protocol}://${req.get('host')}/uploads/`;
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
     let fullImageUrl = null;
 
     // If the question has an image URL, fetch the image details from Media model
     if (surveyQuestion.imageUrl) {
       const image = await Media.findById(surveyQuestion.imageUrl);
       if (image) {
-          const encodedImagePath = encodeURIComponent(image.path.split("\\").pop());
+        const encodedImagePath = encodeURIComponent(
+          image.path.split("\\").pop()
+        );
         fullImageUrl = `${baseUrl}${encodedImagePath}`;
       }
     }
@@ -218,7 +245,9 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
       .sort({ createdAt: 1 });
 
     if (answers.length === 0) {
-        return res.status(404).json({ message: "No answers found for this question in the session" });
+      return res
+        .status(404)
+        .json({ message: "No answers found for this question in the session" });
     }
 
     // Group answers by the option clicked and count how many users selected each option
@@ -259,6 +288,3 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
     });
   }
 };
-  
-  
-  
