@@ -276,6 +276,8 @@ const SessionDashboard = () => {
     if (!answer) return null;
 
     const baseCardStyle = "bg-white p-6 rounded-lg shadow h-full";
+    const isAnswerSkipped =
+      !answer.submittedAnswer || answer.submittedAnswer === "null";
 
     return (
       <div className={baseCardStyle}>
@@ -285,11 +287,17 @@ const SessionDashboard = () => {
             <p className="text-gray-600 mt-1">{answer.question_description}</p>
           </div>
           <div className="flex items-center">
-            <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-              Submitted
+            <span
+              className={`px-3 py-1 rounded-full text-sm ${
+                isAnswerSkipped
+                  ? "bg-gray-100 text-gray-800"
+                  : "bg-green-100 text-green-800"
+              }`}
+            >
+              {isAnswerSkipped ? "Skipped" : "Submitted"}
             </span>
             <span className="ml-4 text-sm text-gray-500">
-              {answer.timeTaken}s
+              {answer.timeTaken || 0}s
             </span>
           </div>
         </div>
@@ -300,15 +308,18 @@ const SessionDashboard = () => {
               <div
                 key={option._id}
                 className={`p-3 rounded-lg border flex items-center justify-between ${
-                  option.optionText === answer.submittedAnswer
+                  isAnswerSkipped
+                    ? "border-gray-200"
+                    : option.optionText === answer.submittedAnswer
                     ? "border-green-500 bg-green-50 text-green-700"
                     : "border-gray-200"
                 }`}
               >
                 <span className="text-sm">{option.optionText}</span>
-                {option.optionText === answer.submittedAnswer && (
-                  <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
-                )}
+                {!isAnswerSkipped &&
+                  option.optionText === answer.submittedAnswer && (
+                    <Check className="h-5 w-5 text-white rounded-full bg-green-800" />
+                  )}
               </div>
             ))}
         </div>
