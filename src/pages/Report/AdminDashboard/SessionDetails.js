@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../../components/NavbarComp";
-import { ArrowBigLeft, Trophy } from "lucide-react";
+import { ArrowBigLeft, Trophy, X } from "lucide-react";
 import { paginateData, PaginationControls } from "../../../utils/pagination";
 
 // Podium Step Component
@@ -98,7 +98,45 @@ const TopPerformers = ({ leaderboard }) => {
 };
 
 const ResponseModal = ({ question, onClose }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   if (!question) return null;
+
+  const getAnswerDisplay = (response) => {
+    // Check for both null and empty string
+    if (
+      !response.answer ||
+      response.answer === "" ||
+      response.answer.answer === "" ||
+      response.answer === "null"
+    ) {
+      return (
+        <span className="text-gray-500 bg-gray-100 italic px-3 py-1 rounded-2xl">
+          Skipped
+        </span>
+      );
+    }
+
+    return (
+      <div
+        className={`px-3 py-1 rounded-2xl  ${
+          response.isCorrect
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
+        {response.answer}
+      </div>
+    );
+  };
+
+  // Paginate the responses
+  const { currentItems, totalPages } = paginateData(
+    question.responses || [],
+    currentPage,
+    itemsPerPage
+  );
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -106,39 +144,62 @@ const ResponseModal = ({ question, onClose }) => {
         className="absolute inset-0 bg-black opacity-50"
         onClick={onClose}
       ></div>
-      <div className="bg-white rounded-lg shadow-lg z-10 p-6 max-w-3xl mx-auto">
-        <h2 className="text-xl font-semibold mb-4">{question.questionTitle}</h2>
-        <p className="text-gray-600 mb-4">{question.description}</p>
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="text-left p-4">Username</th>
-              <th className="text-left p-4">Email</th>
-              <th className="text-left p-4">Answer</th>
-            </tr>
-          </thead>
-          <tbody>
-            {question.responses?.map((response, index) => (
-              <tr key={index} className="border-t border-gray-100">
-                <td className="p-4">{response.username}</td>
-                <td className="p-4">{response.email}</td>
-                <td className="p-4">{response.answer}</td>
+      <div className="bg-white rounded-lg shadow-lg z-10 p-6 w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold mb-4">
+              {question.questionTitle}
+            </h2>
+            <p className="text-gray-600 mb-4">{question.description}</p>
+            <div>
+              <button
+                className="mt-6 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                onClick={onClose}
+              >
+                <X />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="text-left p-4">Username</th>
+                <th className="text-left p-4">Email</th>
+                <th className="text-left p-4">Mobile</th>
+                <th className="text-left p-4">Answer</th>
               </tr>
-            )) || (
-              <tr>
-                <td colSpan="3" className="p-4 text-center">
-                  No responses available
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <button
-          className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md"
-          onClick={onClose}
-        >
-          Close
-        </button>
+            </thead>
+            <tbody>
+              {currentItems.length > 0 ? (
+                currentItems.map((response, index) => (
+                  <tr key={index} className="border-t border-gray-100">
+                    <td className="p-4">{response.username}</td>
+                    <td className="p-4">{response.email}</td>
+                    <td className="p-4">{response.mobile}</td>
+                    <td className="p-4 text-center">
+                      {getAnswerDisplay(response)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-gray-500">
+                    No responses available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {question.responses?.length > itemsPerPage && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -351,6 +412,7 @@ const SessionDetails = () => {
                       <>
                         <th className="text-left p-4">Total Attempts</th>
                         <th className="text-left p-4">Correct Answers</th>
+                        <th className="text-left p-4">Incorrect Answers</th>
                         <th className="text-left p-4">Success Rate</th>
                       </>
                     ) : (
@@ -370,6 +432,7 @@ const SessionDetails = () => {
                         <>
                           <td className="p-4">{question.totalAttempts}</td>
                           <td className="p-4">{question.correctAnswers}</td>
+                          <td className="p-4">{question.incorrectAnswers}</td>
                           <td className="p-4">{question.successRate}%</td>
                         </>
                       ) : (
