@@ -97,7 +97,7 @@ const TopPerformers = ({ leaderboard }) => {
   );
 };
 
-const ResponseModal = ({ question, onClose }) => {
+const ResponseModal = ({ question, onClose, isQuiz }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -108,7 +108,6 @@ const ResponseModal = ({ question, onClose }) => {
     if (
       !response.answer ||
       response.answer === "" ||
-      response.answer.answer === "" ||
       response.answer === "null"
     ) {
       return (
@@ -118,14 +117,24 @@ const ResponseModal = ({ question, onClose }) => {
       );
     }
 
+    // For quiz responses - show correct/incorrect styling
+    if (isQuiz) {
+      return (
+        <div
+          className={`px-3 py-1 rounded-2xl ${
+            response.isCorrect
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {response.answer}
+        </div>
+      );
+    }
+
+    // For survey responses - show neutral styling
     return (
-      <div
-        className={`px-3 py-1 rounded-2xl  ${
-          response.isCorrect
-            ? "bg-green-100 text-green-800"
-            : "bg-red-100 text-red-800"
-        }`}
-      >
+      <div className="px-3 py-1 rounded-2xl bg-blue-100 text-blue-800">
         {response.answer}
       </div>
     );

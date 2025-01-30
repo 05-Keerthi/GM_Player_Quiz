@@ -39,16 +39,12 @@ const SurveyContentDisplay = ({
     if (isAdmin || isTimeUp) return;
 
     if (selectedOption?._id === option._id && isAnswerSubmitted) {
-      // If same option is clicked again, clear selection
+      // If same option is clicked again, only send empty answer
       setSelectedOption(null);
       setIsAnswerSubmitted(false);
-      onSubmitAnswer?.({
-        type: "single_select",
-        answer: "",
-        questionId: item._id,
-      });
+      onSubmitAnswer?.("");
     } else {
-      // Select new option
+      // Select new option - send full answer object
       setSelectedOption(option);
       onSubmitAnswer?.({
         type: "single_select",
