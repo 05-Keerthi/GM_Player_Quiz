@@ -1,21 +1,40 @@
 const mongoose = require('mongoose');
 const Report = require('../../models/Report');
-const User = require('../../models/User');
 const Quiz = require('../../models/quiz');
-const SurveyQuiz = require('../../models/SurveyQuiz');
+const SurveyQuiz = require('../../models/surveyQuiz');
+const Session = require('../../models/session');
+const Leaderboard = require('../../models/leaderBoard');
+const SurveySession = require('../../models/surveysession');
+const User = require('../../models/User');
+const Answer = require('../../models/answer');
+const SurveyAnswer = require('../../models/surveyanswer');
+const Media = require('../../models/Media');
 
 // Mock all dependencies
 jest.mock('../../models/Report');
-jest.mock('../../models/User');
 jest.mock('../../models/quiz');
-jest.mock('../../models/SurveyQuiz');
+jest.mock('../../models/surveyQuiz');
+jest.mock('../../models/session');
+jest.mock('../../models/leaderBoard');
+jest.mock('../../models/surveysession');
+jest.mock('../../models/User');
+jest.mock('../../models/answer');
+jest.mock('../../models/surveyanswer');
+jest.mock('../../models/Media');
 
 const {
-  getAllReports,
-  getUserReports,
-  getReportByQuiz,
-  getUserReportByQuiz,
-  getQuizStats
+  getParticipatedQuizzesAndSurveys,
+  getQuizAttempts,
+  getSurveyAttempts,
+  getSessionResponses,
+  getSurveyResponses,
+  getOverallAnalytics,
+  getQuizAnalytics,
+  getQuizDetailedAnalytics,
+  getQuizSessionAnalytics,
+  getSurveyAnalytics,
+  getSurveyDetailedAnalytics,
+  getSurveySessionAnalytics
 } = require('../../controllers/reportController');
 
 describe('Report Controller', () => {
@@ -29,7 +48,9 @@ describe('Report Controller', () => {
       user: {
         _id: 'user123',
         username: 'testuser'
-      }
+      },
+      protocol: 'http',
+      get: jest.fn().mockReturnValue('localhost:5000')
     };
     res = {
       status: jest.fn().mockReturnThis(),
@@ -48,242 +69,183 @@ describe('Report Controller', () => {
     console.error.mockRestore();
   });
 
-  describe('getAllReports', () => {
-    it('should get all reports successfully', async () => {
-      // Setup
-      const mockReports = [
-        {
-          _id: 'report123',
-          quiz: 'quiz123',
-          user: 'user123',
-          totalScore: 85
-        }
-      ];
+  describe('getParticipatedQuizzesAndSurveys', () => {
+    it('should get participated quizzes and surveys successfully', async () => {
+      // Mock aggregation results
+      Session.aggregate.mockResolvedValue([{ totalTime: 3600 }]);
+      SurveySession.aggregate.mockResolvedValue([{ totalTime: 1800 }]);
+      Report.aggregate
+        .mockResolvedValueOnce([{ // Quiz results
+          QuizId: 'quiz123',
+          attempts: 5,
+          totalTimeTaken: 300
+        }])
+        .mockResolvedValueOnce([{ // Survey results
+          SurveyId: 'survey123',
+          attempts: 3,
+          totalTimeTaken: 200
+        }]);
 
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue(mockReports)
-      });
+      await getParticipatedQuizzesAndSurveys(req, res);
 
-      // Execute
-      await getAllReports(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: 'All reports fetched successfully',
-        data: mockReports
+        totalTime: 5400, // 3600 + 1800
+        quizzes: expect.any(Array),
+        surveys: expect.any(Array)
       });
     });
 
-    it('should return empty array when no reports exist', async () => {
-      // Setup
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue([])
-      });
+    it('should handle errors', async () => {
+      Session.aggregate.mockRejectedValue(new Error('Database error'));
 
-      // Execute
-      await getAllReports(req, res);
+      await getParticipatedQuizzesAndSurveys(req, res);
 
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        message: 'No reports available',
-        data: []
+        message: expect.any(String)
       });
     });
   });
 
-  describe('getUserReports', () => {
-    it('should get user reports successfully', async () => {
-      // Setup
-      req.params.userId = 'user123';
-      const mockReports = [
-        {
-          _id: 'report123',
-          quiz: 'quiz123',
-          user: 'user123',
-          totalScore: 85
-        }
-      ];
-
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue(mockReports)
-      });
-
-      // Execute
-      await getUserReports(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'User reports fetched successfully',
-        data: mockReports
-      });
-    });
-
-    it('should return empty array when user has no reports', async () => {
-      // Setup
-      req.params.userId = 'user123';
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue([])
-      });
-
-      // Execute
-      await getUserReports(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'No reports found for this user',
-        data: []
-      });
-    });
-  });
-
-  describe('getReportByQuiz', () => {
-    it('should get quiz reports successfully', async () => {
-      // Setup
+  describe('getQuizAttempts', () => {
+    it('should get quiz attempts successfully', async () => {
       req.params.quizId = 'quiz123';
-      const mockReports = [
-        {
-          _id: 'report123',
-          quiz: 'quiz123',
-          user: 'user123',
-          totalScore: 85
+
+      Report.aggregate.mockResolvedValue([{
+        _id: 'attempt123',
+        sessionDetails: {
+          quiz: {
+            _id: 'quiz123',
+            quizTitle: 'Test Quiz'
+          }
         }
-      ];
+      }]);
 
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue(mockReports)
-      });
+      await getQuizAttempts(req, res);
 
-      // Execute
-      await getReportByQuiz(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'Reports fetched successfully for the quiz',
-        data: mockReports
-      });
     });
 
-    it('should return empty array when quiz has no reports', async () => {
-      // Setup
+    it('should handle errors', async () => {
       req.params.quizId = 'quiz123';
-      Report.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockResolvedValue([])
-      });
+      Report.aggregate.mockRejectedValue(new Error('Database error'));
 
-      // Execute
-      await getReportByQuiz(req, res);
+      await getQuizAttempts(req, res);
 
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'No reports found for this quiz',
-        data: []
-      });
+      expect(res.status).toHaveBeenCalledWith(500);
     });
   });
 
-  describe('getUserReportByQuiz', () => {
-    it('should get user quiz report successfully', async () => {
-      // Setup
-      req.params = { quizId: 'quiz123', userId: 'user123' };
-      const mockReport = {
-        _id: 'report123',
-        quiz: 'quiz123',
-        user: 'user123',
-        totalScore: 85
-      };
+  describe('getSessionResponses', () => {
+    it('should get session responses successfully', async () => {
+      req.params.sessionId = 'session123';
 
+      const mockAnswers = [{
+        question: 'Test Question',
+        originalImageUrl: 'media123'
+      }];
+
+      Answer.aggregate.mockResolvedValue(mockAnswers);
+      Media.findById.mockResolvedValue({ path: 'uploads\\test-image.jpg' });
       Report.findOne.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          score: 80,
+          timeTaken: 300
+        })
+      });
+      Session.findById.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockResolvedValue(mockReport)
+        select: jest.fn().mockResolvedValue({
+          joinCode: 'ABC123',
+          status: 'completed'
+        })
       });
 
-      // Execute
-      await getUserReportByQuiz(req, res);
-    });
+      await getSessionResponses(req, res);
 
-    it('should return 404 when report not found', async () => {
-      // Setup
-      req.params = { quizId: 'quiz123', userId: 'user123' };
-      Report.findOne.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockResolvedValue(null)
-      });
-
-      // Execute
-      await getUserReportByQuiz(req, res);
     });
   });
 
-  describe('getQuizStats', () => {
-    it('should get quiz statistics successfully', async () => {
-      // Setup
-      req.params.quizId = 'quiz123';
-      const mockReports = [
-        { totalScore: 85 },
-        { totalScore: 90 },
-        { totalScore: 75 }
-      ];
+  describe('getOverallAnalytics', () => {
+    it('should get overall analytics successfully', async () => {
+      User.countDocuments.mockResolvedValue(100);
+      Quiz.countDocuments.mockResolvedValue(50);
+      SurveyQuiz.countDocuments.mockResolvedValue(30);
+      Session.countDocuments
+        .mockResolvedValueOnce(200) // Total sessions
+        .mockResolvedValueOnce(10); // Active sessions
+      Report.countDocuments.mockResolvedValue(500);
+      SurveySession.countDocuments.mockResolvedValue(5);
+      User.aggregate.mockResolvedValue([{
+        _id: { year: 2024, month: 1 },
+        count: 20
+      }]);
 
-      Report.find.mockResolvedValue(mockReports);
+      await getOverallAnalytics(req, res);
 
-      // Execute
-      await getQuizStats(req, res);
-
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: 'Quiz statistics fetched successfully',
-        data: {
-          totalAttempts: 3,
-          averageScore: '83.33',
-          passRate: '66.67'
-        }
+        overview: expect.objectContaining({
+          totalUsers: 100,
+          totalQuizzes: 50,
+          totalSurveys: 30,
+          totalSessions: 200,
+          totalReports: 500,
+          activeSessions: 10,
+          activeSurveySessions: 5
+        }),
+        userTrend: expect.any(Array)
       });
     });
+  });
 
-    it('should return zero statistics when no reports exist', async () => {
-      // Setup
+  describe('getQuizDetailedAnalytics', () => {
+    it('should get detailed quiz analytics successfully', async () => {
       req.params.quizId = 'quiz123';
-      Report.find.mockResolvedValue([]);
 
-      // Execute
-      await getQuizStats(req, res);
+      Quiz.findById.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue({
+          title: 'Test Quiz',
+          categories: [{ name: 'Category 1' }]
+        })
+      });
 
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
+      Leaderboard.aggregate
+        .mockResolvedValueOnce([{ // Overall stats
+          totalAttempts: 50,
+          participantCount: 30
+        }])
+        .mockResolvedValueOnce([{ // Top performers
+          username: 'topuser',
+          score: 95
+        }]);
+
+      Session.aggregate.mockResolvedValue([{
+        status: 'completed',
+        count: 20
+      }]);
+
+      Session.find.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue([{
+          joinCode: 'ABC123',
+          players: ['player1', 'player2']
+        }])
+      });
+
+      await getQuizDetailedAnalytics(req, res);
+    });
+
+    it('should handle invalid quiz ID', async () => {
+      req.params.quizId = 'invalid';
+
+      await getQuizDetailedAnalytics(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        message: 'No statistics available for this quiz',
-        data: {
-          totalAttempts: 0,
-          averageScore: 0,
-          passRate: 0
-        }
+        message: 'Invalid quiz ID'
       });
     });
   });
