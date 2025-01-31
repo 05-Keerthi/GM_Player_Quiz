@@ -167,8 +167,10 @@ describe("HomePage", () => {
       "View Quizzes",
       "Create Survey",
       "View Surveys",
+      "Create ArtPulse",
+      "View ArtPulse",
       "View Activity Log",
-      "View Reports",
+      "Dashboard"
     ];
 
     expectedHeadings.forEach((heading) => {
