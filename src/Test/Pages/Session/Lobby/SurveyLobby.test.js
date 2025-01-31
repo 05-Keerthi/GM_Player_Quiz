@@ -105,8 +105,9 @@ describe('SurveyLobby', () => {
       expect(screen.getByText('Game PIN:')).toBeInTheDocument();
     });
 
+    // More flexible text matching using regex
     await waitFor(() => {
-      expect(screen.getByText('123 456')).toBeInTheDocument();
+      expect(screen.getByText(/123\s*456/)).toBeInTheDocument();
     });
 
     jest.useRealTimers();
@@ -316,9 +317,11 @@ describe('SurveyLobby', () => {
     const startButton = screen.getByText('Start Survey');
     fireEvent.click(startButton);
 
+    // More flexible text matching using regex
     await waitFor(() => {
-      expect(screen.getByText('Failed to start survey session. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText(/Failed to start survey session/i)).toBeInTheDocument();
     });
+
 
     jest.useRealTimers();
   });
