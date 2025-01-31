@@ -72,14 +72,19 @@ const QuizContent = ({ item, inPresentation = false }) => {
                     >
                       {option.isCorrect && "✓"}
                     </div>
-                    <span className="text-lg" data-testid={`option-text-${actualIdx}`}>
+                    <span
+                      className="text-lg"
+                      data-testid={`option-text-${actualIdx}`}
+                    >
                       {option.text || option.optionText}
                     </span>
                     {option.isCorrect && (
                       <span
                         className="text-sm font-medium ml-2"
                         data-testid="correct-answer-label"
-                        style={{ color: option.isCorrect ? "#22c55e" : "inherit" }}
+                        style={{
+                          color: option.isCorrect ? "#22c55e" : "inherit",
+                        }}
                       >
                         (Correct Answer)
                       </span>
@@ -195,6 +200,7 @@ const PreviewPage = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
     if (!token) {
       window.history.back();
       return;
@@ -418,7 +424,7 @@ const PreviewPage = () => {
                     }
                   `}
                 >
-               <ChevronLeft className="w-6 h-6" />
+                  <ChevronLeft className="w-6 h-6" />
                 </button>
               </div>
 

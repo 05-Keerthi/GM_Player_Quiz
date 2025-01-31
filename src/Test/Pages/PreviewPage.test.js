@@ -5,10 +5,17 @@ import userEvent from "@testing-library/user-event";
 import PreviewPage from "../../pages/Preview";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import { useQuizContext } from "../../context/quizContext";
+
+// Mock the QuizContext
+jest.mock("../../context/quizContext", () => ({
+  useQuizContext: jest.fn(),
+}));
 
 jest.mock("axios");
 jest.mock("react-router-dom", () => ({
   useParams: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock("lucide-react", () => ({
@@ -17,6 +24,16 @@ jest.mock("lucide-react", () => ({
   ChevronLeft: () => <div data-testid="chevron-left">Left</div>,
   ChevronRight: () => <div data-testid="chevron-right">Right</div>,
 }));
+
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  clear: jest.fn(),
+};
+Object.defineProperty(window, "localStorage", {
+  value: mockLocalStorage,
+});
 
 const mockQuizData = {
   slides: [
@@ -46,17 +63,33 @@ const mockQuizData = {
 
 describe("PreviewPage", () => {
   const user = userEvent.setup();
+  const mockNavigate = jest.fn();
+  const mockPublishQuiz = jest.fn();
 
   beforeEach(() => {
-    localStorage.setItem("token", "mock-token");
+    // Setup mock implementations
+    mockLocalStorage.getItem.mockImplementation((key) => {
+      if (key === "token") return "mock-token";
+      if (key === "user") return JSON.stringify({ id: "mock-user-id" });
+      return null;
+    });
+
     useParams.mockReturnValue({ quizId: "mock-quiz-id" });
     axios.get.mockResolvedValue({ data: mockQuizData });
     window.history.back = jest.fn();
+
+    // Mock QuizContext
+    useQuizContext.mockReturnValue({
+      publishQuiz: mockPublishQuiz,
+    });
+
+    // Mock useNavigate
+    require("react-router-dom").useNavigate.mockReturnValue(mockNavigate);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-    localStorage.clear();
+    mockLocalStorage.clear();
   });
 
   const renderAndWaitForLoad = async () => {
@@ -92,10 +125,18 @@ describe("PreviewPage", () => {
       });
     });
 
-    test("handles missing token", () => {
-      localStorage.clear();
+    test("handles missing token", async () => {
+      // Clear localStorage before rendering
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === "user") return JSON.stringify({ id: "mock-user-id" });
+        return null; // This ensures token is null
+      });
+
       render(<PreviewPage />);
-      expect(window.history.back).toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(window.history.back).toHaveBeenCalled();
+      });
     });
   });
 
@@ -275,6 +316,33 @@ describe("PreviewPage", () => {
 
       await renderAndWaitForLoad();
       expect(screen.queryByTestId("sidebar-item-0")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Publishing Quiz", () => {
+    // Add new test for publish functionality
+    test("handles quiz publishing", async () => {
+      mockPublishQuiz.mockResolvedValueOnce();
+      await renderAndWaitForLoad();
+
+      const publishButton = screen.getByRole("button", { name: /publish/i });
+      await user.click(publishButton);
+
+      expect(mockPublishQuiz).toHaveBeenCalledWith("mock-quiz-id");
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/quiz-details?type=quiz&quizId=mock-quiz-id&hostId=mock-user-id"
+      );
+    });
+
+    test("handles publish error", async () => {
+      mockPublishQuiz.mockRejectedValueOnce(new Error("Publish failed"));
+      await renderAndWaitForLoad();
+
+      const publishButton = screen.getByRole("button", { name: /publish/i });
+      await user.click(publishButton);
+
+      expect(mockPublishQuiz).toHaveBeenCalledWith("mock-quiz-id");
+      // You might want to add expectations for error toast here if you're using a toast library
     });
   });
 });
