@@ -21,10 +21,9 @@ const SurveyResults = () => {
     };
 
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
-
 
   useEffect(() => {
     const fetchSessionAnswers = async () => {
@@ -186,13 +185,11 @@ const SurveyResults = () => {
             <div className="overflow-x-auto">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col className="w-64" />{" "}
-                  {/* Fixed width for question column */}
-                  <col className="w-48" />{" "}
-                  {/* Fixed width for total responses */}
+                  <col className="w-64" />
+                  <col className="w-48" />
                   {surveyType === "ArtPulse" &&
                     uniqueOptions.map((option) => (
-                      <col key={option} className="w-32" /> // Fixed width for each option column
+                      <col key={option} className="w-32" />
                     ))}
                 </colgroup>
                 <thead>
