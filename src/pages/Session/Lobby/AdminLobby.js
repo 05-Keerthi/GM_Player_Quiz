@@ -238,6 +238,35 @@ const AdminLobby = () => {
     </div>
   );
 
+  const renderError = () => {
+    if (!error) return null;
+    return (
+      <div
+        className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg"
+        data-testid="error-message"
+      >
+        {error}
+      </div>
+    );
+  };
+
+  const renderPin = () => {
+    const formattedPin = sessionData?.joinCode || "";
+    return (
+      <div className="text-center px-8">
+        <p className="text-xl text-gray-600" data-testid="pin-label">
+          Game PIN:
+        </p>
+        <h1
+          className="text-5xl font-bold tracking-wider text-gray-900"
+          data-testid="pin-value"
+        >
+          {formattedPin}
+        </h1>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-purple-100">
       <div className="fixed top-0 w-full z-50">
@@ -280,20 +309,7 @@ const AdminLobby = () => {
                     </p>
                   </div>
 
-                  <div className="text-center px-8">
-                    <p
-                      className="text-xl text-gray-600"
-                      data-testid="pin-label"
-                    >
-                      Game PIN:
-                    </p>
-                    <h1
-                      className="text-5xl font-bold tracking-wider text-gray-900"
-                      data-testid="pin-value"
-                    >
-                      {sessionData?.joinCode}
-                    </h1>
-                  </div>
+                  {renderPin()}
 
                   <div className="w-32 h-32">
                     <img
@@ -306,6 +322,7 @@ const AdminLobby = () => {
               </div>
 
               {renderPlayers()}
+              {renderError()}
             </div>
           )}
         </div>

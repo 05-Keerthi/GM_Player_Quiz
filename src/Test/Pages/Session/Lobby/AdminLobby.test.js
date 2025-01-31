@@ -105,11 +105,12 @@ describe("AdminLobby", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Game PIN:")).toBeInTheDocument();
+      expect(screen.getByTestId("pin-label")).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      expect(screen.getByText("123 456")).toBeInTheDocument();
+      const pinElement = screen.getByTestId("pin-value");
+      expect(pinElement).toHaveTextContent("123456");
     });
 
     jest.useRealTimers();
@@ -289,6 +290,7 @@ describe("AdminLobby", () => {
       jest.advanceTimersByTime(1000);
     });
 
+    // Add a player so the start button becomes enabled
     const handlePlayerJoined = mockSocket.on.mock.calls.find(
       (call) => call[0] === "player-joined"
     )[1];
@@ -307,9 +309,10 @@ describe("AdminLobby", () => {
     fireEvent.click(startButton);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Failed to start session. Please try again.")
-      ).toBeInTheDocument();
+      const errorElement = screen.getByTestId("error-message");
+      expect(errorElement).toHaveTextContent(
+        "Failed to start session. Please try again."
+      );
     });
 
     jest.useRealTimers();
