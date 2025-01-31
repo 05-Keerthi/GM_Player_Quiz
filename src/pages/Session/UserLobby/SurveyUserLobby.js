@@ -175,6 +175,26 @@ const SurveyUserLobby = () => {
     );
   }
 
+  if (!activeUser) {
+    return (
+      <div className="min-h-screen bg-purple-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg p-6">
+          <p className="text-center text-red-600">
+            Connection error. Please reconnect to continue.
+          </p>
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Try reconnecting
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-purple-100 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg">
@@ -237,7 +257,10 @@ const SurveyUserLobby = () => {
           )}
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center">
+            <div
+              className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center"
+              role="alert"
+            >
               <p>{error}</p>
               <button
                 onClick={() => window.location.reload()}
