@@ -1,5 +1,3 @@
-// src/Test/pages/QuizCreator.test.js
-
 import React from "react";
 import {
   render,
@@ -169,24 +167,33 @@ describe("QuizCreator", () => {
   const mockNavigate = jest.fn();
   const mockUpdateQuiz = jest.fn();
   const user = userEvent.setup();
-  const API_URL = process.env.REACT_APP_API_URL
+  const API_URL = process.env.REACT_APP_API_URL;
 
   beforeEach(() => {
     jest.clearAllMocks();
     useNavigate.mockReturnValue(mockNavigate);
     useParams.mockReturnValue({ quizId: "quiz123" });
     useQuizContext.mockReturnValue({ updateQuiz: mockUpdateQuiz });
-    Storage.prototype.getItem = jest.fn(() => "mock-token");
+
+    // Fix: Mock localStorage with proper JSON string for user data
+    const mockUser = { id: "user123", name: "Test User" };
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === "user") {
+        return JSON.stringify(mockUser);
+      }
+      if (key === "token") {
+        return "mock-token";
+      }
+      return null;
+    });
+
     global.fetch = jest.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve(mockQuizData),
+        text: () => Promise.resolve(JSON.stringify(mockQuizData)),
       })
     );
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
   });
 
   test("renders quiz creator with initial data", async () => {
@@ -418,6 +425,142 @@ describe("QuizCreator", () => {
     expect(mockUpdateQuiz).toHaveBeenCalledWith("quiz123", {
       title: "Updated Quiz Title",
       description: "Updated Description",
+    });
+  });
+
+  test("handles error responses properly", async () => {
+    // Mock an error response
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        text: () => Promise.resolve("Bad Request"),
+      })
+    );
+
+    render(<QuizCreator />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-message")).toBeInTheDocument();
+    });
+  });
+
+  test("handles publishing quiz", async () => {
+    const mockPublishQuiz = jest.fn().mockResolvedValue({ success: true });
+    useQuizContext.mockReturnValue({
+      updateQuiz: mockUpdateQuiz,
+      publishQuiz: mockPublishQuiz,
+    });
+
+    render(<QuizCreator />);
+
+    const publishButton = screen.getByTestId("publish-survey-button");
+    await user.click(publishButton);
+
+    await waitFor(() => {
+      expect(mockPublishQuiz).toHaveBeenCalledWith("quiz123");
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("/quiz-details")
+      );
+    });
+  });
+
+  test("handles image upload in question/slide updates", async () => {
+    // Mock FormData
+    global.FormData = class FormData {
+      constructor() {
+        this.data = {};
+      }
+      append(key, value) {
+        this.data[key] = value;
+      }
+    };
+
+    // Mock fetch with different responses based on URL
+    global.fetch = jest.fn((url) => {
+      // Initial quiz data fetch
+      if (url.endsWith("/quiz123")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockQuizData),
+        });
+      }
+      // Image upload endpoint
+      else if (url.endsWith("/media/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ media: [{ _id: "image123" }] }),
+        });
+      }
+      // Question update endpoint
+      else if (url.includes("/api/questions/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              question: {
+                _id: "q1",
+                title: "Updated Question",
+                type: "multiple-choice",
+                imageUrl: "image123",
+                options: [],
+              },
+            }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch to ${url}`));
+    });
+
+    render(<QuizCreator />);
+
+    // Wait for content to load
+    await waitFor(() => {
+      expect(screen.getByTestId("content-item-0")).toBeInTheDocument();
+    });
+
+    // Click first question to open editor
+    const firstQuestion = screen.getByTestId("content-item-0");
+    await user.click(firstQuestion);
+
+    // Create a mock file
+    const file = new File(["dummy content"], "test.png", { type: "image/png" });
+
+    // Mock QuestionEditor's update with image
+    const questionEditor = screen.getByTestId("question-editor");
+    const updateButton = within(questionEditor).getByText("Update Question");
+
+    await user.click(updateButton);
+
+    // Verify the fetch calls were made in the correct order
+    await waitFor(() => {
+      const fetchCalls = global.fetch.mock.calls;
+
+      // First call should be initial quiz data load
+      expect(fetchCalls[0][0]).toContain("/quiz123");
+
+      // Second call should be question update
+      expect(fetchCalls[1][0]).toContain("/api/questions/");
+      expect(fetchCalls[1][1]).toMatchObject({
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer mock-token",
+        },
+      });
+
+      const requestBody = JSON.parse(fetchCalls[1][1].body);
+      expect(requestBody).toMatchObject({
+        title: "Updated Question",
+      });
+    });
+
+    // Verify the updated question appears in the UI
+    await waitFor(() => {
+      const updatedQuestion = screen.getByText("Updated Question");
+      expect(updatedQuestion).toBeInTheDocument();
     });
   });
 });
