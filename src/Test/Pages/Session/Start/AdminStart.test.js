@@ -216,6 +216,6 @@ describe("AdminStart Component", () => {
     expect(mockSocket.emit).toHaveBeenCalledWith("end-session", {
       sessionId: "456",
     });
-    expect(mockNavigate).toHaveBeenCalledWith("/quiz-list");
+    expect(mockNavigate).toHaveBeenCalledWith("/quizzes/session/456");
   });
 });

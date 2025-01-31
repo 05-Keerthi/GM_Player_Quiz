@@ -280,6 +280,6 @@ test("should handle answer submission correctly", async () => {
     expect(mockSocket.emit).toHaveBeenCalledWith("end-survey-session", {
       sessionId: "456",
     });
-    expect(mockNavigate).toHaveBeenCalledWith("/survey-list");
+    expect(mockNavigate).toHaveBeenCalledWith("/surveys/session/456");
   });
 });
