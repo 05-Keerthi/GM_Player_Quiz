@@ -1,3 +1,4 @@
+// SurveyPreviewPage.test.js
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -8,13 +9,14 @@ import { useParams } from "react-router-dom";
 jest.mock("axios");
 jest.mock("react-router-dom", () => ({
   useParams: jest.fn(),
+  useNavigate: () => jest.fn(),
 }));
 
-jest.mock("lucide-react", () => ({
-  X: () => <div data-testid="x-icon">X</div>,
-  Play: () => <div data-testid="play-icon">Play</div>,
-  ChevronLeft: () => <div data-testid="chevron-left">Left</div>,
-  ChevronRight: () => <div data-testid="chevron-right">Right</div>,
+// Mock survey context
+jest.mock("../../context/surveyContext", () => ({
+  useSurveyContext: () => ({
+    publishSurvey: jest.fn().mockResolvedValue(true),
+  }),
 }));
 
 const mockSurveyData = {
