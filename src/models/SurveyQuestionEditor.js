@@ -3,6 +3,35 @@ import { X, Trash2, Upload, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ColorPicker from "../components/ColorPicker";
 
+// Templates only for ArtPulse
+const ARTPULSE_TEMPLATES = [
+  {
+    name: "Interested / Not Interested",
+    options: [
+      { optionText: "Interested", color: "#98FB98" },
+      { optionText: "Not Interested", color: "#FFB6C1" },
+    ],
+  },
+  {
+    name: "Like / Buy",
+    options: [
+      { optionText: "Like", color: "#87CEEB" },
+      { optionText: "Buy", color: "#90EE90" },
+    ],
+  },
+  {
+    name: "Agree / Disagree",
+    options: [
+      { optionText: "Agree", color: "#98FB98" },
+      { optionText: "Disagree", color: "#87CEEB" },
+    ],
+  },
+  {
+    name: "Custom",
+    options: [{ optionText: "", color: "#FFFFFF" }],
+  },
+];
+
 const processQuestionData = (data = {}) => ({
   title: data.title || "",
   description: data.description || "",
@@ -10,18 +39,27 @@ const processQuestionData = (data = {}) => ({
   year: data.year || "",
   imageUrl: data.imageUrl || null,
   timer: data.timer || 30,
+  template: data.template || "",
   answerOptions:
     Array.isArray(data.answerOptions) && data.answerOptions.length > 0
       ? data.answerOptions
       : [{ optionText: "", color: "#FFFFFF" }],
 });
 
-const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
+const SurveyQuestionEditor = ({
+  question,
+  onUpdate,
+  onClose,
+  surveyType = "survey",
+}) => {
   const [formData, setFormData] = useState(processQuestionData(question));
   const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(question?.imageUrl || null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    question?.template || ""
+  );
 
   // Generate years array for the year picker
   const currentYear = new Date().getFullYear();
@@ -33,6 +71,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     if (question) {
       setFormData(processQuestionData(question));
       setImagePreview(question.imageUrl);
+      setSelectedTemplate(question.template || ""); // This needs the template from the processed data
     }
   }, [question]);
 
@@ -107,6 +146,29 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
     }
   };
 
+  const handleTemplateChange = (e) => {
+    const templateName = e.target.value;
+    setSelectedTemplate(templateName);
+
+    if (templateName && templateName !== "Custom") {
+      const template = ARTPULSE_TEMPLATES.find((t) => t.name === templateName);
+      if (template) {
+        setFormData((prev) => ({
+          ...prev,
+          answerOptions: [...template.options],
+          template: templateName,
+        }));
+        setIsDirty(true);
+      }
+    } else if (templateName === "Custom") {
+      setFormData((prev) => ({
+        ...prev,
+        answerOptions: [{ optionText: "", color: "#FFFFFF" }],
+        template: "Custom",
+      }));
+      setIsDirty(true);
+    }
+  };
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -163,7 +225,10 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
 
   const handleSubmit = () => {
     if (validateForm()) {
-      onUpdate(formData);
+      onUpdate({
+        ...formData,
+        template: selectedTemplate,
+      });
     }
   };
 
@@ -328,6 +393,29 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
               <AlertCircle className="w-4 h-4" />
               {errors.image}
             </p>
+          )}
+        </div>
+
+        <div>
+          {/* Template Selector - Only show for ArtPulse */}
+          {surveyType === "ArtPulse" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Question Template
+              </label>
+              <select
+                value={selectedTemplate}
+                onChange={handleTemplateChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a template</option>
+                {ARTPULSE_TEMPLATES.map((template) => (
+                  <option key={template.name} value={template.name}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 

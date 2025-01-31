@@ -84,7 +84,7 @@ const SurveyCreator = () => {
   const [slides, setSlides] = useState([]);
   const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+  const [surveyType, setSurveyType] = useState("survey");
   // Hooks
   const { surveyId } = useParams();
   const navigate = useNavigate();
@@ -354,6 +354,7 @@ const SurveyCreator = () => {
       try {
         const survey = await getSurveyById(surveyId);
         setSurveyTitle(survey.title || "");
+        setSurveyType(survey.type || "survey");
 
         const surveyQuestions = survey.questions || [];
         const surveySlides = survey.slides || [];
@@ -514,6 +515,7 @@ const SurveyCreator = () => {
         <SurveyQuestionEditor
           onUpdate={handleAddQuestion}
           onClose={() => clearAllEditors()}
+          surveyType={surveyType}
         />
       );
     }
@@ -526,6 +528,7 @@ const SurveyCreator = () => {
             handleUpdateQuestion(currentQuestion._id, updatedData)
           }
           onClose={() => clearAllEditors()}
+          surveyType={surveyType}
         />
       );
     }
