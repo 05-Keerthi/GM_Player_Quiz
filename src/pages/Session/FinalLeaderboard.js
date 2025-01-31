@@ -86,38 +86,57 @@ const FinalLeaderboard = ({ sessionId, isAdmin, userId }) => {
         </p>
       </div>
 
-      {userId && userScore && (
+      {userId && (
         <div className="mb-6 sm:mb-8 space-y-4 border-b-4 border-black pb-4">
-          <div className="bg-blue-50 rounded-lg p-4 sm:p-6 text-center">
-            <p className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2">
-              {userScore.totalPoints} pts
-            </p>
-            <p className="text-sm sm:text-base text-gray-600">
-              Your Final Score
-            </p>
-          </div>
+          {userScore ? (
+            <>
+              <div className="bg-blue-50 rounded-lg p-4 sm:p-6 text-center">
+                <div
+                  className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2"
+                  data-testid="user-score"
+                >
+                  {userScore.totalPoints} pts
+                </div>
+                <p className="text-sm sm:text-base text-gray-600">
+                  Your Final Score
+                </p>
+              </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 flex items-center justify-center">
-              {userRank === 1 ? (
-                <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-500" />
-              ) : userRank === 2 ? (
-                <Medal className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
-              ) : userRank === 3 ? (
-                <Medal className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-700" />
-              ) : (
-                <span className="text-gray-600 font-semibold">#{userRank}</span>
-              )}
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4 flex items-center justify-center">
+                  {userRank === 1 ? (
+                    <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-500" />
+                  ) : userRank === 2 ? (
+                    <Medal className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                  ) : userRank === 3 ? (
+                    <Medal className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-700" />
+                  ) : (
+                    <span className="text-gray-600 font-semibold">
+                      #{userRank}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
+                  <p
+                    className="text-lg sm:text-xl font-semibold text-gray-800"
+                    data-testid="user-rank"
+                  >
+                    #{userRank}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-400 font-semibold">
+                    Your Rank
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div
+              className="text-center text-gray-500 py-6 sm:py-8"
+              data-testid="no-score-message"
+            >
+              No score recorded
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
-              <p className="text-lg sm:text-xl font-semibold text-gray-800">
-                #{userRank}
-              </p>
-              <p className="text-xs sm:text-sm text-gray-400 font-semibold">
-                Your Rank
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
