@@ -9,10 +9,22 @@ const SurveyResults = () => {
   const [error, setError] = useState(null);
   const [surveyType, setSurveyType] = useState("");
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [isTableView, setIsTableView] = useState(true);
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const location = useLocation();
   const joinCode = new URLSearchParams(location.search).get("joinCode");
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsTableView(window.innerWidth >= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
 
   useEffect(() => {
     const fetchSessionAnswers = async () => {
@@ -172,20 +184,30 @@ const SurveyResults = () => {
             <p className="text-gray-500">No questions available.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-64" />{" "}
+                  {/* Fixed width for question column */}
+                  <col className="w-48" />{" "}
+                  {/* Fixed width for total responses */}
+                  {surveyType === "ArtPulse" &&
+                    uniqueOptions.map((option) => (
+                      <col key={option} className="w-32" /> // Fixed width for each option column
+                    ))}
+                </colgroup>
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="text-left p-3 border border-gray-200">
+                    <th className="text-left p-3 border border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
                       {surveyType === "ArtPulse" ? "Art Piece" : "Question"}
                     </th>
-                    <th className="text-center p-3 border border-gray-200">
+                    <th className="text-center p-3 border border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
                       Total Responses
                     </th>
                     {surveyType === "ArtPulse" &&
                       uniqueOptions.map((option) => (
                         <th
                           key={option}
-                          className="text-center p-3 border border-gray-200"
+                          className="text-center p-3 border border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis"
                         >
                           {option}
                         </th>
@@ -199,10 +221,10 @@ const SurveyResults = () => {
                       onClick={() => handleRowClick(question._id)}
                       className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
                     >
-                      <td className="p-3 border border-gray-200">
+                      <td className="p-3 border border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
                         {question.title}
                       </td>
-                      <td className="text-center p-3 border border-gray-200">
+                      <td className="text-center p-3 border border-gray-200 whitespace-nowrap">
                         <span className="bg-gray-100 px-3 py-1 rounded-full">
                           {getTotalResponses(question._id)} /{" "}
                           {totalParticipants}
@@ -212,7 +234,7 @@ const SurveyResults = () => {
                         uniqueOptions.map((option) => (
                           <td
                             key={option}
-                            className="text-center p-3 border border-gray-200"
+                            className="text-center p-3 border border-gray-200 whitespace-nowrap"
                           >
                             {getOptionCount(question._id, option)}
                           </td>
