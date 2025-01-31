@@ -52,7 +52,48 @@ const SurveyQuestionEditor = ({
   onClose,
   surveyType = "survey",
 }) => {
-  const [formData, setFormData] = useState(processQuestionData(question));
+  // Initial state setup
+  const [formData, setFormData] = useState(() => {
+    if (question) {
+      return processQuestionData(question);
+    }
+    // Default empty state for new question
+    return {
+      title: "",
+      description: "",
+      dimension: "",
+      year: "",
+      imageUrl: null,
+      timer: 30,
+      template: "",
+      answerOptions: [{ optionText: "", color: "#FFFFFF" }],
+    };
+  });
+
+  useEffect(() => {
+    if (question) {
+      setFormData(processQuestionData(question));
+      setImagePreview(question.imageUrl);
+      setSelectedTemplate(question.template || "");
+    } else {
+      // Reset form when in add mode
+      setFormData({
+        title: "",
+        description: "",
+        dimension: "",
+        year: "",
+        imageUrl: null,
+        timer: 30,
+        template: "",
+        answerOptions: [{ optionText: "", color: "#FFFFFF" }],
+      });
+      setImagePreview(null);
+      setSelectedTemplate("");
+      setErrors({});
+    }
+  }, [question]);
+
+  
   const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(question?.imageUrl || null);
   const [isUploading, setIsUploading] = useState(false);

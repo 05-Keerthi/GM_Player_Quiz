@@ -12,18 +12,23 @@ const processSlideData = (data) => {
 };
 
 const SurveySlideEditor = ({ slide, onUpdate, onClose }) => {
-  const [formData, setFormData] = useState(() =>
-    processSlideData({
-      surveyTitle: slide?.surveyTitle || "",
-      surveyContent: slide?.surveyContent || "",
-      imageUrl: slide?.imageUrl || null,
-      position: slide?.position || 0,
-    })
-  );
-
-  const [imagePreview, setImagePreview] = useState(slide?.imageUrl || null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState("");
+  const [formData, setFormData] = useState(() => {
+    if (slide) {
+      return processSlideData({
+        surveyTitle: slide.surveyTitle || "",
+        surveyContent: slide.surveyContent || "",
+        imageUrl: slide.imageUrl || null,
+        position: slide.position || 0,
+      });
+    }
+    // Default empty state for new slide
+    return {
+      surveyTitle: "",
+      surveyContent: "",
+      imageUrl: null,
+      position: 0,
+    };
+  });
 
   useEffect(() => {
     if (slide) {
@@ -34,9 +39,23 @@ const SurveySlideEditor = ({ slide, onUpdate, onClose }) => {
         position: slide.position || 0,
       });
       setFormData(processedData);
-      setImagePreview(slide.imageUrl); // Directly use the imageUrl from the slide
+      setImagePreview(slide.imageUrl);
+    } else {
+      // Reset form when in add mode
+      setFormData({
+        surveyTitle: "",
+        surveyContent: "",
+        imageUrl: null,
+        position: 0,
+      });
+      setImagePreview(null);
+      setError("");
     }
   }, [slide]);
+
+  const [imagePreview, setImagePreview] = useState(slide?.imageUrl || null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({

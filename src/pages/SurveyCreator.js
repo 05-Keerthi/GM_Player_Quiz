@@ -172,7 +172,7 @@ const SurveyCreator = () => {
     }
   };
 
-  // Question Handlers
+  // Question Handler
   const handleAddQuestion = async (questionData) => {
     setIsSubmitting(true);
     try {
@@ -185,10 +185,17 @@ const SurveyCreator = () => {
           data: newQuestion,
         };
         const updatedOrderedItems = [...orderedItems, newOrderedItem];
+
         setQuestions(updatedQuestions);
         setOrderedItems(processOrderedItems(updatedOrderedItems));
         await updateSurveyOrder(updatedQuestions, slides, updatedOrderedItems);
+
+        // Set new question after adding
+        setIsAddingQuestion(false);
         setCurrentQuestion(newQuestion);
+        setIsAddingSlide(false);
+        setCurrentSlide(null);
+
         showAlert("Question added successfully", "success");
       }
     } catch (error) {
@@ -254,8 +261,7 @@ const SurveyCreator = () => {
     }
   };
 
-  // Slide Handlers
-
+  // Slide Handler
   const handleAddSlide = async (slideData) => {
     setIsSubmitting(true);
     try {
@@ -277,7 +283,12 @@ const SurveyCreator = () => {
         setOrderedItems(processOrderedItems(updatedOrderedItems));
         await updateSurveyOrder(questions, updatedSlides, updatedOrderedItems);
 
+        // Set new slide after adding
+        setIsAddingSlide(false);
         setCurrentSlide(newSlide);
+        setIsAddingQuestion(false);
+        setCurrentQuestion(null);
+
         showAlert("Slide added successfully", "success");
       }
     } catch (error) {
