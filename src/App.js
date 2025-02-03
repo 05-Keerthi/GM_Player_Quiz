@@ -78,14 +78,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/tenants/:id"
-          element={
-            <ProtectedRoute>
-              <TenantDetailsPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/tenants/:id" element={<TenantDetailsPage />} />
 
         {/* Content Routes */}
         <Route path="/selectQuizCategory" element={<SelectCategoryPage />} />

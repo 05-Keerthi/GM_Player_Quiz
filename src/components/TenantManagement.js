@@ -154,7 +154,7 @@ const TenantManagement = () => {
                   onClick={() => handleTenantClick(tenant._id)}
                 >
                   <img
-                    src={tenant.logo}
+                    src={tenant.logo || tenant.customLogo}
                     alt={tenant.name}
                     className="w-10 h-10 rounded-lg object-cover"
                   />

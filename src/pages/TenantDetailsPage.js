@@ -22,6 +22,7 @@ const TenantDetailsPage = () => {
   // State management
   const [tenant, setTenant] = useState(null);
   const [admins, setAdmins] = useState([]);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +42,18 @@ const TenantDetailsPage = () => {
     } catch (err) {
       toast.error("Failed to fetch tenant details");
     }
+  };
+
+  // Function to truncate text
+  const truncateText = (text, maxLength = 150) => {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + "...";
+  };
+
+  const handleTenantUpdate = async (updatedTenant) => {
+    setTenant(updatedTenant);
+    await fetchTenantDetails(); // Refresh all data to ensure everything is in sync
   };
 
   const getInitial = (username) => {
@@ -120,7 +133,7 @@ const TenantDetailsPage = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
                     <img
-                      src={tenant.logo}
+                      src={tenant.logo || tenant.customLogo}
                       alt={tenant.name}
                       className="w-16 h-16 rounded-lg object-cover"
                       data-testid="tenant-logo"
@@ -161,9 +174,33 @@ const TenantDetailsPage = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-sm text-gray-500">Description</p>
-                          <p data-testid="tenant-description">
-                            {tenant.description || "No description available"}
-                          </p>
+                          <div
+                            className="relative"
+                            data-testid="tenant-description"
+                          >
+                            <p
+                              className={
+                                isDescriptionExpanded ? "" : "line-clamp-2"
+                              }
+                            >
+                              {tenant.description || "No description available"}
+                            </p>
+                            {tenant.description &&
+                              tenant.description.length > 150 && (
+                                <button
+                                  onClick={() =>
+                                    setIsDescriptionExpanded(
+                                      !isDescriptionExpanded
+                                    )
+                                  }
+                                  className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-1"
+                                >
+                                  {isDescriptionExpanded
+                                    ? "View less"
+                                    : "View more"}
+                                </button>
+                              )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -174,12 +211,47 @@ const TenantDetailsPage = () => {
                         <Mail className="w-5 h-5" />
                         Contact Information
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <div>
-                          <p className="text-sm text-gray-500">Email</p>
-                          <p data-testid="tenant-email">
-                            {tenant.contactEmail}
+                          <p className="text-sm text-gray-500">
+                            Mobile Numbers
                           </p>
+                          <div className="space-y-1">
+                            {tenant.mobileNumber?.map((number, index) => (
+                              <p
+                                key={index}
+                                data-testid={`tenant-mobile-${index}`}
+                              >
+                                {number}
+                              </p>
+                            ))}
+                            {(!tenant.mobileNumber ||
+                              tenant.mobileNumber.length === 0) && (
+                              <p className="text-gray-400">
+                                No mobile numbers available
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">
+                            Email Addresses
+                          </p>
+                          <div className="space-y-1">
+                            {tenant.email?.map((email, index) => (
+                              <p
+                                key={index}
+                                data-testid={`tenant-email-${index}`}
+                              >
+                                {email}
+                              </p>
+                            ))}
+                            {(!tenant.email || tenant.email.length === 0) && (
+                              <p className="text-gray-400">
+                                No email addresses available
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -292,6 +364,7 @@ const TenantDetailsPage = () => {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           tenant={tenant}
+          onUpdate={handleTenantUpdate}
         />
 
         <TenantAdminModal

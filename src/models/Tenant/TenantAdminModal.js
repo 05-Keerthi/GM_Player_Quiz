@@ -32,7 +32,7 @@ const TenantAdminModal = ({
           email: admin.email || "",
           mobile: admin.mobile || "",
           role: admin.role || "tenant_admin",
-          password: "", // Password field remains empty in edit mode
+          password: "",
         });
       } else {
         // Reset form for add mode

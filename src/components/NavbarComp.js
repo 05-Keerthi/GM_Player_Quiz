@@ -8,7 +8,9 @@ import DefaultLogo from "../assets/GMI-Logo.png";
 const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthContext();
-  const [logoSrc, setLogoSrc] = useState(user?.tenantId?.logo || DefaultLogo);
+  const [logoSrc, setLogoSrc] = useState(
+    user?.tenantId?.customLogo || DefaultLogo || user?.tenantId?.logo
+  );
 
   const handleLogoError = () => {
     setLogoSrc(DefaultLogo);
