@@ -16,7 +16,7 @@ jest.mock("react-toastify", () => ({
 
 jest.mock("../context/AuthContext");
 
-// Mock all page components
+// Mock Core Components
 jest.mock("../pages/LoginPage", () => () => <div>Login Page</div>);
 jest.mock("../pages/RegisterPage", () => () => <div>Register Page</div>);
 jest.mock("../pages/Home", () => () => <div>Home Page</div>);
@@ -24,13 +24,6 @@ jest.mock("../pages/NotFoundPage", () => () => <div>404 Page</div>);
 jest.mock("../pages/ProfilePage", () => () => <div>Profile Page</div>);
 jest.mock("../pages/TenantDetailsPage", () => () => (
   <div>Tenant Details Page</div>
-));
-jest.mock("../pages/Report/Report", () => () => <div>Reports Page</div>);
-jest.mock("../pages/Report/UserReport", () => () => (
-  <div>User Report Page</div>
-));
-jest.mock("../pages/Activity/ActivityLog", () => () => (
-  <div>Activity Log Page</div>
 ));
 
 // Mock Content Route Components
@@ -85,20 +78,49 @@ jest.mock("../pages/Session/Start/QuestionDetailsResult", () => () => (
   <div>Question Details Result</div>
 ));
 
-// Create MockProtectedRoute
+// Mock Report and Dashboard Components
+jest.mock("../pages/Activity/AdminDashboard", () => () => (
+  <div>Admin Dashboard Page</div>
+));
+jest.mock("../pages/Report/UserDashboard/DetailedReport", () => () => (
+  <div>Detailed Report Dashboard</div>
+));
+jest.mock("../pages/Report/UserDashboard/SessionDashboard", () => () => (
+  <div>Session Dashboard</div>
+));
+jest.mock("../pages/Report/UserDashboard/Dashboard", () => () => (
+  <div>User Dashboard</div>
+));
+jest.mock("../pages/Report/AdminDashboard/ReportAdminDashboard", () => () => (
+  <div>Report Admin Dashboard</div>
+));
+jest.mock(
+  "../pages/Report/AdminDashboard/DetailedAdminReportDashboard",
+  () => () => <div>Detailed Admin Report Dashboard</div>
+);
+jest.mock("../pages/Report/AdminDashboard/SessionDetails", () => () => (
+  <div>Session Details Page</div>
+));
+
+// Mock ProtectedRoute Component
 const MockProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthContext();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Mock ProtectedRoute
 jest.mock("../routes/ProtectedRoute", () => ({
   __esModule: true,
   default: (props) => <MockProtectedRoute {...props} />,
 }));
 
-// Test utility function
-const renderWithRouter = (ui, { route = "/", authState = {} } = {}) => {
+// Enhanced Test Utility Function
+const renderWithRouter = (
+  ui,
+  { route = "/", authState = {}, searchParams = {} } = {}
+) => {
+  const queryString = new URLSearchParams(searchParams).toString();
+  const fullRoute = queryString ? `${route}?${queryString}` : route;
+
   const defaultAuthState = {
     user: null,
     isAuthenticated: false,
@@ -110,7 +132,7 @@ const renderWithRouter = (ui, { route = "/", authState = {} } = {}) => {
   useAuthContext.mockImplementation(() => defaultAuthState);
 
   return {
-    ...render(<MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>),
+    ...render(<MemoryRouter initialEntries={[fullRoute]}>{ui}</MemoryRouter>),
     authState: defaultAuthState,
   };
 };
@@ -185,23 +207,13 @@ describe("App Component", () => {
       });
     });
 
-    test("renders reports page when authenticated", async () => {
+    test("renders tenant details page when authenticated", async () => {
       renderWithRouter(<App />, {
-        route: "/reports",
+        route: "/tenants/123",
         authState: { isAuthenticated: true },
       });
       await waitFor(() => {
-        expect(screen.getByText("Reports Page")).toBeInTheDocument();
-      });
-    });
-
-    test("redirects to login from reports when not authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/reports",
-        authState: { isAuthenticated: false },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Login Page")).toBeInTheDocument();
+        expect(screen.getByText("Tenant Details Page")).toBeInTheDocument();
       });
     });
   });
@@ -220,6 +232,20 @@ describe("App Component", () => {
         expect(
           screen.getByText("Select Survey Category Page")
         ).toBeInTheDocument();
+      });
+    });
+
+    test("renders quiz creator page", async () => {
+      renderWithRouter(<App />, { route: "/createQuiz/123" });
+      await waitFor(() => {
+        expect(screen.getByText("Quiz Creator Page")).toBeInTheDocument();
+      });
+    });
+
+    test("renders survey creator page", async () => {
+      renderWithRouter(<App />, { route: "/createSurvey/123" });
+      await waitFor(() => {
+        expect(screen.getByText("Survey Creator Page")).toBeInTheDocument();
       });
     });
 
@@ -266,6 +292,100 @@ describe("App Component", () => {
         expect(screen.getByText("User Play")).toBeInTheDocument();
       });
     });
+
+    test("renders survey play page", async () => {
+      renderWithRouter(<App />, { route: "/survey-play" });
+      await waitFor(() => {
+        expect(screen.getByText("User Survey Play")).toBeInTheDocument();
+      });
+    });
+
+    test("renders final leaderboard", async () => {
+      renderWithRouter(<App />, {
+        route: "/leaderboard",
+        searchParams: { sessionId: "123", isAdmin: "true" },
+        authState: { user: { id: "user123" } },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Final Leaderboard")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Report and Dashboard Routes", () => {
+    test("renders admin dashboard when authenticated", async () => {
+      renderWithRouter(<App />, {
+        route: "/admin-dashboard",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Report Admin Dashboard")).toBeInTheDocument();
+      });
+    });
+
+    test("renders user dashboard when authenticated", async () => {
+      renderWithRouter(<App />, {
+        route: "/dashboard",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("User Dashboard")).toBeInTheDocument();
+      });
+    });
+
+    test("renders detailed report dashboard for specific type", async () => {
+      renderWithRouter(<App />, {
+        route: "/quiz-reports/quiz/123",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByText("Detailed Report Dashboard")
+        ).toBeInTheDocument();
+      });
+    });
+
+    test("renders admin detailed report dashboard", async () => {
+      renderWithRouter(<App />, {
+        route: "/admin/quiz-reports/quiz/123",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByText("Detailed Admin Report Dashboard")
+        ).toBeInTheDocument();
+      });
+    });
+
+    test("renders session dashboard", async () => {
+      renderWithRouter(<App />, {
+        route: "/session/quiz/123",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Session Dashboard")).toBeInTheDocument();
+      });
+    });
+
+    test("renders session details page", async () => {
+      renderWithRouter(<App />, {
+        route: "/quiz/session/123",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Session Details Page")).toBeInTheDocument();
+      });
+    });
+
+    test("renders activity log page when authenticated", async () => {
+      renderWithRouter(<App />, {
+        route: "/Activity-log",
+        authState: { isAuthenticated: true },
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Admin Dashboard Page")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("Session Handling", () => {
@@ -278,10 +398,10 @@ describe("App Component", () => {
         expect(toast.error).toHaveBeenCalledWith(
           "Your session has expired. Please log in again."
         );
-        });
-  
-        await waitFor(() => {
-          expect(authState.resetSessionState).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(authState.resetSessionState).toHaveBeenCalled();
       });
     });
   });
@@ -289,7 +409,8 @@ describe("App Component", () => {
   describe("Legacy Route Redirects", () => {
     test("renders unified details for quiz-details route", async () => {
       renderWithRouter(<App />, {
-        route: "/quiz-details?type=quiz&quizId=123&hostId=456",
+        route: "/quiz-details",
+        searchParams: { type: "quiz", quizId: "123", hostId: "456" },
       });
       await waitFor(() => {
         expect(screen.getByText("Unified Details Page")).toBeInTheDocument();
@@ -298,7 +419,8 @@ describe("App Component", () => {
 
     test("renders unified details for survey-details route", async () => {
       renderWithRouter(<App />, {
-        route: "/survey-details?type=survey&surveyId=789&hostId=456",
+        route: "/survey-details",
+        searchParams: { type: "survey", surveyId: "789", hostId: "456" },
       });
       await waitFor(() => {
         expect(screen.getByText("Unified Details Page")).toBeInTheDocument();

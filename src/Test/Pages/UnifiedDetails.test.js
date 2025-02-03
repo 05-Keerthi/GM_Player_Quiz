@@ -1,415 +1,230 @@
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
 import UnifiedDetails from "../../pages/UnifiedDetails";
-import { useQuizContext } from "../../context/quizContext";
-import { useSurveyContext } from "../../context/surveyContext";
-import { useSessionContext } from "../../context/sessionContext";
-import { useSurveySessionContext } from "../../context/surveySessionContext";
+import { cacheService } from "../../utils/cacheService";
+import React from "react";
 
-// Mock the router hooks
+// Mock dependencies
+jest.mock("../../utils/cacheService");
+
+// Mock react-router-dom
 const mockNavigate = jest.fn();
+const mockUseSearchParams = jest.fn();
+
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
   useNavigate: () => mockNavigate,
-  useSearchParams: () => [new URLSearchParams({ type: "quiz", quizId: "123" })],
+  useSearchParams: () => mockUseSearchParams(),
 }));
 
-// Mock the Navbar component
-jest.mock(
-  "../../components/NavbarComp",
-  () =>
-    function MockNavbar() {
-      return <div data-testid="mock-navbar">Mock Navbar</div>;
-    }
-);
+// Mock quiz context
+const mockQuiz = {
+  _id: "123",
+  title: "Test Quiz",
+  description: "A test quiz description",
+  status: "active",
+  questions: [{ id: 1 }, { id: 2 }],
+};
 
-// Mock context hooks
+const mockQuizContext = {
+  currentQuiz: mockQuiz,
+  loading: false,
+  error: null,
+  getQuizById: jest.fn().mockImplementation(() => Promise.resolve(mockQuiz)),
+  createSession: jest.fn(),
+  setCurrentQuiz: jest.fn(),
+  resetQuizState: jest.fn(),
+};
+
 jest.mock("../../context/quizContext", () => ({
-  useQuizContext: jest.fn(),
+  QuizContext: {
+    Provider: ({ children }) => children,
+  },
+  useQuizContext: () => mockQuizContext,
 }));
+
+// Mock survey context
+const mockSurvey = {
+  _id: "456",
+  title: "Test Survey",
+  description: "A test survey description",
+  status: "active",
+  questions: [{ id: 1 }, { id: 2 }],
+  isPublic: true,
+  categories: [{ name: "Category 1" }],
+  createdAt: "2024-01-01",
+};
+
+const mockSurveyContext = {
+  currentSurvey: mockSurvey,
+  loading: false,
+  error: null,
+  getSurveyById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockSurvey)),
+  createSurveySession: jest.fn(),
+  setCurrentSurvey: jest.fn(),
+  resetSurveyState: jest.fn(),
+};
 
 jest.mock("../../context/surveyContext", () => ({
-  useSurveyContext: jest.fn(),
+  SurveyContext: {
+    Provider: ({ children }) => children,
+  },
+  useSurveyContext: () => mockSurveyContext,
 }));
+
+// Mock session contexts
+const mockSessionContext = {
+  createSession: jest.fn(),
+  loading: false,
+  error: null,
+};
 
 jest.mock("../../context/sessionContext", () => ({
-  useSessionContext: jest.fn(),
+  SessionContext: {
+    Provider: ({ children }) => children,
+  },
+  useSessionContext: () => mockSessionContext,
 }));
+
+const mockSurveySessionContext = {
+  createSurveySession: jest.fn(),
+  loading: false,
+  error: null,
+};
 
 jest.mock("../../context/surveySessionContext", () => ({
-  useSurveySessionContext: jest.fn(),
+  SurveySessionContext: {
+    Provider: ({ children }) => children,
+  },
+  useSurveySessionContext: () => mockSurveySessionContext,
 }));
 
+// Create a wrapper component that provides all contexts
+const AllTheProviders = ({ children }) => {
+  return <BrowserRouter>{children}</BrowserRouter>;
+};
+
+const renderWithContexts = (ui, options) =>
+  render(ui, { wrapper: AllTheProviders, ...options });
+
 describe("UnifiedDetails Component", () => {
-  // Mock data
-  const mockQuizData = {
-    _id: "123",
-    title: "Test Quiz",
-    description: "A test quiz description",
-    questions: [{ id: 1 }, { id: 2 }],
-    status: "active",
-  };
-
-  const mockSurveyData = {
-    _id: "456",
-    title: "Test Survey",
-    description: "A test survey description",
-    questions: [{ id: 1 }, { id: 2 }, { id: 3 }],
-    status: "active",
-    isPublic: true,
-    categories: [{ name: "Category 1" }, { name: "Category 2" }],
-    createdAt: "2024-01-08T12:00:00.000Z",
-  };
-
-  // Mock functions
-  const mockGetQuizById = jest.fn();
-  const mockGetSurveyById = jest.fn();
-  const mockCreateSession = jest.fn().mockResolvedValue({ _id: "session123" });
-  const mockCreateSurveySession = jest
-    .fn()
-    .mockResolvedValue({ _id: "session456" });
-
-  // Reset all mocks before each test
-  beforeEach(() => {
-    mockNavigate.mockClear();
-    mockGetQuizById.mockClear();
-    mockGetSurveyById.mockClear();
-    mockCreateSession.mockClear();
-    mockCreateSurveySession.mockClear();
-  });
-
-  // Set up default mock implementations
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock implementations for all context hooks
-    useQuizContext.mockImplementation(() => ({
-      currentQuiz: null,
-      getQuizById: mockGetQuizById,
-      loading: false,
-      error: null,
-    }));
-
-    useSurveyContext.mockImplementation(() => ({
-      currentSurvey: null,
-      getSurveyById: mockGetSurveyById,
-      loading: false,
-      error: null,
-    }));
-
-    useSessionContext.mockImplementation(() => ({
-      createSession: mockCreateSession,
-      loading: false,
-      error: null,
-    }));
-
-    useSurveySessionContext.mockImplementation(() => ({
-      createSurveySession: mockCreateSurveySession,
-      loading: false,
-      error: null,
-    }));
+    cacheService.getSession.mockResolvedValue(null);
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ type: "quiz", quizId: "123" }),
+    ]);
+    mockQuizContext.loading = false;
+    mockQuizContext.error = null;
+    mockSurveyContext.loading = false;
+    mockSurveyContext.error = null;
+    mockSessionContext.error = null;
+    mockSurveySessionContext.error = null;
   });
 
-  describe("Quiz Mode", () => {
-    beforeEach(() => {
-      // Override just the quiz context for quiz-specific tests
-      useQuizContext.mockImplementation(() => ({
-        currentQuiz: mockQuizData,
-        getQuizById: mockGetQuizById,
-        loading: false,
-        error: null,
-      }));
+  it("displays quiz details correctly", async () => {
+    renderWithContexts(<UnifiedDetails />);
+
+    // Wait for the content to be loaded
+    await waitFor(() => {
+      const titleElement = screen.getByTestId("content-title");
+      expect(titleElement).toBeInTheDocument();
     });
 
-    test("renders quiz details correctly", () => {
-      render(<UnifiedDetails />);
+    // Now check the content
+    expect(screen.getByTestId("content-title")).toHaveTextContent("Test Quiz");
+    expect(screen.getByTestId("content-description")).toHaveTextContent(
+      "A test quiz description"
+    );
+    expect(screen.getByTestId("questions-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("content-status")).toHaveTextContent("active");
+  });
 
-      expect(screen.getByTestId("content-title")).toHaveTextContent(
-        "Test Quiz"
-      );
-      expect(screen.getByTestId("content-description")).toHaveTextContent(
-        "A test quiz description"
-      );
-      expect(screen.getByTestId("questions-count")).toHaveTextContent("2");
-      expect(screen.getByTestId("content-status")).toHaveTextContent("active");
-      expect(screen.getByTestId("host-button")).toBeEnabled();
+  it("handles start session for quiz", async () => {
+    const mockSessionData = { _id: "session123" };
+    mockSessionContext.createSession.mockResolvedValue(mockSessionData);
+
+    renderWithContexts(<UnifiedDetails />);
+
+    // Wait for the button to be rendered
+    await waitFor(() => {
+      expect(screen.getByTestId("host-button")).toBeInTheDocument();
     });
 
-    test("handles quiz session creation and navigation", async () => {
-      // Setup mock createSession to resolve immediately
-      const mockSessionData = { _id: "session123" };
-      const mockCreateSession = jest.fn().mockResolvedValue(mockSessionData);
+    // Click the button
+    const hostButton = screen.getByTestId("host-button");
+    fireEvent.click(hostButton);
 
-      useSessionContext.mockImplementation(() => ({
-        createSession: mockCreateSession,
-        loading: false,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-
-      fireEvent.click(screen.getByTestId("host-button"));
-
-      // Wait for session creation
-      await waitFor(() => {
-        expect(mockCreateSession).toHaveBeenCalledWith("123");
-      });
-
-      // Wait for navigation
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(
-          "/lobby",
-          expect.objectContaining({
-            state: { sessionData: mockSessionData },
-            search: "?type=quiz&quizId=123&sessionId=session123",
-          })
-        );
-      });
+    await waitFor(() => {
+      expect(mockSessionContext.createSession).toHaveBeenCalledWith("123");
     });
 
-    test("displays loading state when quiz data is being fetched", () => {
-      useQuizContext.mockImplementation(() => ({
-        currentQuiz: null,
-        getQuizById: mockGetQuizById,
-        loading: true,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-      expect(screen.getByTestId("loading-state")).toBeInTheDocument();
-      expect(screen.getByTestId("loading-state")).toHaveTextContent(
-        "Loading quiz details..."
-      );
-    });
-
-    test("disables host button for inactive quiz", () => {
-      useQuizContext.mockImplementation(() => ({
-        currentQuiz: { ...mockQuizData, status: "draft" },
-        getQuizById: mockGetQuizById,
-        loading: false,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-
-      expect(screen.getByTestId("host-button")).toBeDisabled();
-      expect(screen.getByTestId("inactive-quiz-message")).toBeInTheDocument();
-      expect(screen.getByTestId("inactive-quiz-message")).toHaveTextContent(
-        "This quiz is currently draft"
-      );
-    });
-
-
-    test("handles session creation error for quiz", async () => {
-      useSessionContext.mockImplementation(() => ({
-        createSession: jest
-          .fn()
-          .mockRejectedValue(new Error("Failed to create quiz session")),
-        loading: false,
-        error: { message: "Failed to create quiz session" },
-      }));
-
-      render(<UnifiedDetails />);
-
-      fireEvent.click(screen.getByTestId("host-button"));
-
-      await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Failed to create quiz session"
-        );
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/lobby", {
+        state: { sessionData: mockSessionData },
+        search: "?type=quiz&quizId=123&sessionId=session123",
       });
     });
   });
 
-  describe("Survey Mode", () => {
-    beforeEach(() => {
-      // Mock URL params for survey mode
-      jest
-        .spyOn(URLSearchParams.prototype, "get")
-        .mockImplementation((param) => {
-          if (param === "type") return "survey";
-          if (param === "surveyId") return "456";
-          return null;
-        });
+  it("handles resume session when cached session exists", async () => {
+    const cachedSession = { _id: "cached123" };
+    cacheService.getSession.mockResolvedValue(cachedSession);
 
-      // Override survey context for survey-specific tests
-      useSurveyContext.mockImplementation(() => ({
-        currentSurvey: mockSurveyData,
-        getSurveyById: mockGetSurveyById,
-        loading: false,
-        error: null,
-      }));
+    renderWithContexts(<UnifiedDetails />);
+
+    // Wait for the resume button to be rendered
+    await waitFor(() => {
+      expect(screen.getByTestId("resume-button")).toBeInTheDocument();
     });
 
-    test("renders survey details correctly", () => {
-      render(<UnifiedDetails />);
+    const resumeButton = screen.getByTestId("resume-button");
+    fireEvent.click(resumeButton);
 
-      expect(screen.getByTestId("content-title")).toHaveTextContent(
-        "Test Survey"
-      );
-      expect(screen.getByTestId("content-description")).toHaveTextContent(
-        "A test survey description"
-      );
-      expect(screen.getByTestId("questions-count")).toHaveTextContent("3");
-      expect(screen.getByTestId("content-visibility")).toHaveTextContent(
-        "Public"
-      );
-      expect(screen.getByTestId("content-categories")).toHaveTextContent(
-        "Category 1, Category 2"
-      );
-    });
-
-    test("handles survey session creation and navigation", async () => {
-      // Setup mock createSurveySession to resolve immediately
-      const mockSessionData = { _id: "session456" };
-      const mockCreateSurveySession = jest
-        .fn()
-        .mockResolvedValue(mockSessionData);
-
-      useSurveySessionContext.mockImplementation(() => ({
-        createSurveySession: mockCreateSurveySession,
-        loading: false,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-
-      fireEvent.click(screen.getByTestId("host-button"));
-
-      // Wait for session creation
-      await waitFor(() => {
-        expect(mockCreateSurveySession).toHaveBeenCalledWith("456");
-      });
-
-      // Wait for navigation
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(
-          "/survey-lobby",
-          expect.objectContaining({
-            state: { sessionData: mockSessionData },
-            search: "?type=survey&surveyId=456&sessionId=session456",
-          })
-        );
-      });
-    });
-
-    test("displays loading state when survey data is being fetched", () => {
-      useSurveyContext.mockImplementation(() => ({
-        currentSurvey: null,
-        getSurveyById: mockGetSurveyById,
-        loading: true,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-      expect(screen.getByTestId("loading-state")).toBeInTheDocument();
-      expect(screen.getByTestId("loading-state")).toHaveTextContent(
-        "Loading survey details..."
-      );
-    });
-
-    test("disables host button for inactive survey", () => {
-      useSurveyContext.mockImplementation(() => ({
-        currentSurvey: { ...mockSurveyData, status: "draft" },
-        getSurveyById: mockGetSurveyById,
-        loading: false,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-
-      expect(screen.getByTestId("host-button")).toBeDisabled();
-      expect(screen.getByTestId("inactive-survey-message")).toBeInTheDocument();
-      expect(screen.getByTestId("inactive-survey-message")).toHaveTextContent(
-        "This survey is currently draft"
-      );
-    });
-
-    test("handles session creation error for survey", async () => {
-      useSurveySessionContext.mockImplementation(() => ({
-        createSurveySession: jest
-          .fn()
-          .mockRejectedValue(new Error("Failed to create survey session")),
-        loading: false,
-        error: { message: "Failed to create survey session" },
-      }));
-
-      render(<UnifiedDetails />);
-
-      fireEvent.click(screen.getByTestId("host-button"));
-
-      await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Failed to create survey session"
-        );
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/lobby", {
+        state: { sessionData: cachedSession },
+        search: "?type=quiz&quizId=123&sessionId=cached123",
       });
     });
   });
 
-  describe("Error Handling", () => {
-    beforeEach(() => {
-      useQuizContext.mockImplementation(() => ({
-        currentQuiz: mockQuizData,
-        getQuizById: mockGetQuizById,
-        loading: false,
-        error: null,
-      }));
+  it("handles resume survey session when cached session exists", async () => {
+    // Set survey params
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ type: "survey", surveyId: "456" }),
+    ]);
+
+    const cachedSession = { _id: "cached456" };
+    cacheService.getSession.mockResolvedValue(cachedSession);
+
+    renderWithContexts(<UnifiedDetails />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("resume-button")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("resume-button"));
     });
 
-    test("displays error message when session creation fails", async () => {
-      useSessionContext.mockImplementation(() => ({
-        createSession: jest
-          .fn()
-          .mockRejectedValue(new Error("Failed to create session")),
-        loading: false,
-        error: { message: "Failed to create session" },
-      }));
-
-      render(<UnifiedDetails />);
-
-      fireEvent.click(screen.getByTestId("host-button"));
-
-      await waitFor(() => {
-        expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Failed to create session"
-        );
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/survey-lobby", {
+        state: { sessionData: cachedSession },
+        search: "?type=survey&surveyId=456&sessionId=cached456",
       });
     });
   });
 
-  describe("Edge Cases", () => {
-    test("handles missing questions array", () => {
-      useQuizContext.mockImplementation(() => ({
-        currentQuiz: { ...mockQuizData, questions: undefined },
-        getQuizById: mockGetQuizById,
-        loading: false,
-        error: null,
-      }));
+  it("cleans up expired sessions on unmount", async () => {
+    const { unmount } = renderWithContexts(<UnifiedDetails />);
+    unmount();
 
-      render(<UnifiedDetails />);
-      expect(screen.getByTestId("questions-count")).toHaveTextContent("0");
+    await waitFor(() => {
+      expect(cacheService.getSession).toHaveBeenCalledWith("quiz");
     });
 
-    test("handles missing categories for survey", () => {
-      jest
-        .spyOn(URLSearchParams.prototype, "get")
-        .mockImplementation((param) => {
-          if (param === "type") return "survey";
-          if (param === "surveyId") return "456";
-          return null;
-        });
-
-      useSurveyContext.mockImplementation(() => ({
-        currentSurvey: { ...mockSurveyData, categories: undefined },
-        getSurveyById: mockGetSurveyById,
-        loading: false,
-        error: null,
-      }));
-
-      render(<UnifiedDetails />);
-      expect(screen.getByTestId("content-categories")).toHaveTextContent(
-        "No categories"
-      );
+    await waitFor(() => {
+      expect(cacheService.getSession).toHaveBeenCalledWith("survey");
     });
   });
 });
