@@ -4,9 +4,8 @@ import { Building, Edit, Mail, Plus, Pencil, Trash, Star } from "lucide-react";
 import { useTenantContext } from "../context/TenantContext";
 import { toast } from "react-toastify";
 import TenantModal from "../models/Tenant/TenantModal";
+import TenantAdminModal from "../models/Tenant/TenantAdminModal";
 import ConfirmationModal from "../models/ConfirmationModal";
-import TenantAddAdminModal from "../models/Tenant/TenantAddAdminModal";
-import TenantAdminEditModal from "../models/Tenant/TenantAdminEditModal";
 import Navbar from "../components/NavbarComp";
 
 const TenantDetailsPage = () => {
@@ -26,8 +25,7 @@ const TenantDetailsPage = () => {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
-  const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Selected item states
@@ -74,7 +72,18 @@ const TenantDetailsPage = () => {
 
   const handleEditAdmin = (admin) => {
     setSelectedAdmin(admin);
-    setIsEditAdminModalOpen(true);
+    setIsAdminModalOpen(true);
+  };
+
+  const handleAddAdmin = () => {
+    setSelectedAdmin(null);
+    setIsAdminModalOpen(true);
+  };
+
+  const handleCloseAdminModal = () => {
+    setIsAdminModalOpen(false);
+    setSelectedAdmin(null);
+    fetchTenantDetails();
   };
 
   const handleEditTenant = () => {
@@ -217,7 +226,7 @@ const TenantDetailsPage = () => {
               <div className="flex items-center justify-between p-6 pb-2">
                 <h2 className="text-lg font-semibold">Administrators</h2>
                 <button
-                  onClick={() => setIsAddAdminModalOpen(true)}
+                  onClick={handleAddAdmin}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   data-testid="add-admin-button"
                 >
@@ -285,30 +294,15 @@ const TenantDetailsPage = () => {
           tenant={tenant}
         />
 
-        <TenantAdminEditModal
-          data-testid="edit-admin-modal"
-          isOpen={isEditAdminModalOpen}
-          onClose={() => {
-            setIsEditAdminModalOpen(false);
-            setSelectedAdmin(null);
-            fetchTenantDetails();
-          }}
+        <TenantAdminModal
+          isOpen={isAdminModalOpen}
+          onClose={handleCloseAdminModal}
           admin={selectedAdmin}
           tenantId={id}
-        />
-
-        <TenantAddAdminModal
-          data-testid="add-admin-modal"
-          isOpen={isAddAdminModalOpen}
-          onClose={() => {
-            setIsAddAdminModalOpen(false);
-            fetchTenantDetails();
-          }}
-          tenant={tenant}
+          mode={selectedAdmin ? "edit" : "add"}
         />
 
         <ConfirmationModal
-          data-testid="confirmation-modal"
           isOpen={isDeleteModalOpen}
           onClose={() => {
             setIsDeleteModalOpen(false);
