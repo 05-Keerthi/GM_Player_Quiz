@@ -22,12 +22,12 @@ import Card from "../components/CardComp";
 import Navbar from "../components/NavbarComp";
 import UserManagement from "../components/UserManagement";
 import TenantManagement from "../components/TenantManagement";
-import CreateTenantModal from "../models/Tenant/CreateTenantModel";
+import TenantModal from "../models/Tenant/TenantModal";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthContext();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -40,10 +40,9 @@ export default function HomePage() {
     }
 
     if (action.modalAction) {
-      setIsCreateModalOpen(true);
+      setIsModalOpen(true);
     } else if (action.path) {
       if (action.surveyType) {
-        // Pass the survey type when navigating
         navigate(action.path, {
           state: { surveyType: action.surveyType },
         });
@@ -316,49 +315,50 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <Navbar />
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <section className="mb-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {getRoleBasedActions().map((action, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl shadow-md p-6 flex items-center space-x-6 hover:shadow-lg transition-shadow"
-              >
-                {action.icon}
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">
-                    {action.title}
-                  </h2>
-                  <p className="text-gray-500">{action.description}</p>
-                  <button
-                    data-testid={
-                      action.path === "/join"
-                        ? "button-join-now"
-                        : "create-quiz-button"
-                    }
-                    onClick={() => handleAction(action)}
-                    className={`mt-4 px-4 py-2 text-white rounded-lg transition-colors ${action.buttonColor}`}
-                  >
-                    {action.buttonText}
-                  </button>
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gray-50">
+        <main className="container mx-auto px-4 py-8">
+          <section className="mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {getRoleBasedActions().map((action, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-2xl shadow-md p-6 flex items-center space-x-6 hover:shadow-lg transition-shadow"
+                >
+                  {action.icon}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {action.title}
+                    </h2>
+                    <p className="text-gray-500">{action.description}</p>
+                    <button
+                      data-testid={
+                        action.path === "/join"
+                          ? "button-join-now"
+                          : "create-quiz-button"
+                      }
+                      onClick={() => handleAction(action)}
+                      className={`mt-4 px-4 py-2 text-white rounded-lg transition-colors ${action.buttonColor}`}
+                    >
+                      {action.buttonText}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
 
-        {renderSecondSection()}
+          {renderSecondSection()}
 
-        <CreateTenantModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-        />
-      </main>
-    </div>
+          {/* Unified Modal for Create/Edit Tenant */}
+          <TenantModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            tenant={null} // Passing null as we're always creating in this context
+          />
+        </main>
+      </div>
+    </>
   );
 }

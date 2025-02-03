@@ -203,7 +203,7 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm min-h-screen">
+    <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
       <div className="mb-8">
         {/* Admin Section */}
         <div className="mb-8 border-b-8">

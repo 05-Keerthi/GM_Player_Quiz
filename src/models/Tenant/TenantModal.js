@@ -1,10 +1,11 @@
-// CreateTenantModal.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useTenantContext } from "../../context/TenantContext";
 
-const CreateTenantModal = ({ isOpen, onClose }) => {
-  const { createTenant } = useTenantContext();
+const TenantModal = ({ isOpen, onClose, tenant = null }) => {
+  const { createTenant, updateTenant } = useTenantContext();
+  const isEditing = Boolean(tenant);
+
   const [formData, setFormData] = useState({
     name: "",
     customDomain: "",
@@ -16,6 +17,31 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (tenant) {
+      setFormData({
+        name: tenant.name || "",
+        customDomain: tenant.customDomain || "",
+        theme: tenant.theme || "",
+        primaryColor: tenant.primaryColor || "#000000",
+        secondaryColor: tenant.secondaryColor || "#000000",
+        fontFamily: tenant.fontFamily || "",
+        logo: tenant.logo || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        customDomain: "",
+        theme: "",
+        primaryColor: "#000000",
+        secondaryColor: "#000000",
+        fontFamily: "",
+        logo: "",
+      });
+    }
+    setErrors({});
+  }, [tenant, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,17 +56,13 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await createTenant(formData);
-      toast.success("Tenant created successfully!");
-      setFormData({
-        name: "",
-        customDomain: "",
-        theme: "",
-        primaryColor: "#FFFFFF",
-        secondaryColor: "#FFFFFF",
-        fontFamily: "",
-        logo: "",
-      });
+      if (isEditing) {
+        await updateTenant(tenant._id, formData);
+        toast.success("Tenant updated successfully!");
+      } else {
+        await createTenant(formData);
+        toast.success("Tenant created successfully!");
+      }
       onClose();
     } catch (error) {
       if (error.response?.data?.errors) {
@@ -53,7 +75,10 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
           toast.error(`${err.field}: ${err.message}`)
         );
       } else {
-        toast.error(error.response?.data?.message || "Failed to create tenant");
+        toast.error(
+          error.response?.data?.message ||
+            `Failed to ${isEditing ? "update" : "create"} tenant`
+        );
       }
     } finally {
       setLoading(false);
@@ -65,11 +90,16 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-bold mb-4">Create New Tenant</h2>
+        <h2 className="text-lg font-bold mb-4">
+          {isEditing ? "Edit Tenant" : "Create New Tenant"}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium mb-2">
+              Name
+            </label>
             <input
+              id="name"
               type="text"
               name="name"
               value={formData.name}
@@ -86,10 +116,14 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
+            <label
+              htmlFor="customDomain"
+              className="block text-sm font-medium mb-2"
+            >
               Custom Domain
             </label>
             <input
+              id="customDomain"
               type="text"
               name="customDomain"
               value={formData.customDomain}
@@ -106,8 +140,11 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Logo URL</label>
+            <label htmlFor="logo" className="block text-sm font-medium mb-2">
+              Logo URL
+            </label>
             <input
+              id="logo"
               type="url"
               name="logo"
               value={formData.logo}
@@ -124,8 +161,11 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Theme</label>
+            <label htmlFor="theme" className="block text-sm font-medium mb-2">
+              Theme
+            </label>
             <select
+              id="theme"
               name="theme"
               value={formData.theme}
               onChange={handleChange}
@@ -145,10 +185,14 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label
+                htmlFor="primaryColor"
+                className="block text-sm font-medium mb-2"
+              >
                 Primary Color
               </label>
               <input
+                id="primaryColor"
                 type="color"
                 name="primaryColor"
                 value={formData.primaryColor}
@@ -162,10 +206,14 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Secondary Color
+              <label
+                htmlFor="secondaryColor"
+                className="block text-sm font-medium mb-2"
+              >
+                Font Color
               </label>
               <input
+                id="secondaryColor"
                 type="color"
                 name="secondaryColor"
                 value={formData.secondaryColor}
@@ -181,10 +229,14 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
+            <label
+              htmlFor="fontFamily"
+              className="block text-sm font-medium mb-2"
+            >
               Font Family
             </label>
             <input
+              id="fontFamily"
               type="text"
               name="fontFamily"
               value={formData.fontFamily}
@@ -216,7 +268,13 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
                 loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"
               }`}
             >
-              {loading ? "Creating..." : "Create Tenant"}
+              {loading
+                ? isEditing
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditing
+                ? "Save Changes"
+                : "Create Tenant"}
             </button>
           </div>
         </form>
@@ -225,4 +283,4 @@ const CreateTenantModal = ({ isOpen, onClose }) => {
   );
 };
 
-export default CreateTenantModal;
+export default TenantModal;

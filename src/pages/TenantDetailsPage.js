@@ -1,21 +1,9 @@
-// File: TenantDetailsPage.js
-
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-  Building,
-  Edit,
-  Globe,
-  Mail,
-  Plus,
-  Pencil,
-  Trash,
-  Calendar,
-  Star,
-} from "lucide-react";
+import { Building, Edit, Mail, Plus, Pencil, Trash, Star } from "lucide-react";
 import { useTenantContext } from "../context/TenantContext";
 import { toast } from "react-toastify";
-import TenantEditModal from "../models/Tenant/TenantEditModel";
+import TenantModal from "../models/Tenant/TenantModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import TenantAddAdminModal from "../models/Tenant/TenantAddAdminModal";
 import TenantAdminEditModal from "../models/Tenant/TenantAdminEditModal";
@@ -31,13 +19,19 @@ const TenantDetailsPage = () => {
     loading,
     clearError,
   } = useTenantContext();
+
+  // State management
   const [tenant, setTenant] = useState(null);
   const [admins, setAdmins] = useState([]);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Selected item states
+  const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [adminToDelete, setAdminToDelete] = useState(null);
 
   const fetchTenantDetails = async () => {
@@ -61,9 +55,8 @@ const TenantDetailsPage = () => {
 
   useEffect(() => {
     if (error) {
-      toast.error(error, {
-        onClose: clearError,
-      });
+      toast.error(error);
+      clearError();
     }
   }, [error, clearError]);
 
@@ -82,6 +75,10 @@ const TenantDetailsPage = () => {
   const handleEditAdmin = (admin) => {
     setSelectedAdmin(admin);
     setIsEditAdminModalOpen(true);
+  };
+
+  const handleEditTenant = () => {
+    setIsModalOpen(true);
   };
 
   if (loading) {
@@ -135,7 +132,7 @@ const TenantDetailsPage = () => {
                     </div>
                   </div>
                   <button
-                    onClick={() => setIsEditOpen(true)}
+                    onClick={handleEditTenant}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     data-testid="edit-tenant-button"
                   >
@@ -282,10 +279,9 @@ const TenantDetailsPage = () => {
         </div>
 
         {/* Modals */}
-        <TenantEditModal
-          data-testid="edit-tenant-modal"
-          isOpen={isEditOpen}
-          onClose={() => setIsEditOpen(false)}
+        <TenantModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
           tenant={tenant}
         />
 
