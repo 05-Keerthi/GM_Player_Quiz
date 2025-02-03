@@ -442,7 +442,7 @@ const SurveyQuestionEditor = ({
           {surveyType === "ArtPulse" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Question Template
+               Option Template
               </label>
               <select
                 value={selectedTemplate}
