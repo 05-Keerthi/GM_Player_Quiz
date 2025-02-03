@@ -25,6 +25,7 @@ const surveyNotificationRoutes = require("./routes/surveyNotificationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const surveySlideRoutes = require("./routes/surveySlideRoutes");
+const templateRoutes = require('./routes/templateRoutes');
 
 
 const path = require('path');
@@ -60,6 +61,7 @@ app.use("/api", surveyAnswerRoutes);
 app.use("/api", surveyNotificationRoutes)
 app.use('/api', subscriptionRoutes);
 app.use('/api', surveySlideRoutes);
+app.use('/api', templateRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
