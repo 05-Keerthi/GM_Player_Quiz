@@ -64,5 +64,6 @@ app.use('/api', surveySlideRoutes);
 app.use('/api', templateRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/Logos', express.static(path.join(__dirname, 'Logos')));
 
 module.exports = app;

@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { sendInviteEmail } = require('../services/mailService');
 const crypto = require('crypto');
 
+
 const createTenant = async (req, res) => {
   try {
     // Check if custom domain exists if provided
@@ -16,13 +17,30 @@ const createTenant = async (req, res) => {
       }
     }
 
-    const newTenant = new Tenant(req.body);
+    // Handle customLogo upload if provided
+    let customLogoPath = null;
+    if (req.file) {
+      const baseUrl = process.env.Logo || `${req.protocol}://${req.get('host')}/Logos/`; // Ensure base URL
+      const encodedLogoPath = encodeURIComponent(req.file.filename); // Encode filename
+      customLogoPath = `${baseUrl}${encodedLogoPath}`;
+    }
+
+    // Prepare tenant data
+    const tenantData = {
+      ...req.body,
+      customLogo: customLogoPath // Store the full URL of the uploaded logo
+    };
+
+    const newTenant = new Tenant(tenantData);
     await newTenant.save();
     res.status(201).json(newTenant);
   } catch (error) {
-    handleError(res, error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
 
 const registerTenantAdmin = async (req, res) => {
   try {
