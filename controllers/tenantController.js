@@ -245,14 +245,22 @@ const getTenantById = async (req, res) => {
 
 const updateTenant = async (req, res) => {
   try {
-    // Check if custom domain is being updated
-    if (req.body.customDomain) {
-      const existingTenant = await Tenant.findOne({
+    const tenantId = req.params.id;
+
+    // Check if tenant exists
+    const existingTenant = await Tenant.findById(tenantId);
+    if (!existingTenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+
+    // Check if custom domain exists if provided (excluding current tenant)
+    if (req.body.customDomain && req.body.customDomain !== existingTenant.customDomain) {
+      const domainExists = await Tenant.findOne({
         customDomain: req.body.customDomain,
-        _id: { $ne: req.params.id } 
+        _id: { $ne: tenantId }
       });
       
-      if (existingTenant) {
+      if (domainExists) {
         return res.status(400).json({
           message: 'Validation Error',
           errors: [{ field: 'customDomain', message: 'Custom domain already exists' }]
@@ -260,18 +268,30 @@ const updateTenant = async (req, res) => {
       }
     }
 
+    // Handle customLogo upload if provided
+    let customLogoPath = existingTenant.customLogo; // Keep existing logo by default
+    if (req.file) {
+      const baseUrl = process.env.Logo || `${req.protocol}://${req.get('host')}/Logos/`;
+      const encodedLogoPath = encodeURIComponent(req.file.filename);
+      customLogoPath = `${baseUrl}${encodedLogoPath}`;
+    }
+
+    // Prepare update data
+    const updateData = {
+      ...req.body,
+      customLogo: customLogoPath
+    };
+
+    // Update tenant with new data
     const updatedTenant = await Tenant.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      tenantId,
+      { $set: updateData },
       { new: true, runValidators: true }
     );
-    
-    if (!updatedTenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
-    }
-    res.status(200).json(updatedTenant);
+
+    res.json(updatedTenant);
   } catch (error) {
-    handleError(res, error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

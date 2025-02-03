@@ -7,7 +7,7 @@ const { uploadLogo } = require('../config/logoConfig');
 router.post('/tenants', uploadLogo.single('customLogo'), auth, isSuperAdmin, createTenant);         
 router.get('/tenants', auth, isSuperAdmin, getAllTenants);         
 router.get('/tenants/:id', auth, isSuperAdminOrTenantAdmin, getTenantById);     
-router.put('/tenants/:id', auth, isSuperAdminOrTenantAdmin, updateTenant);      
+router.put('/tenants/:id', uploadLogo.single('customLogo'), auth, isSuperAdminOrTenantAdmin, updateTenant);      
 router.delete('/tenants/:id', auth, isSuperAdmin, deleteTenant);
 router.post('/registerTenantAdmin/:id', auth, isSuperAdmin, registerTenantAdmin);   
 router.put('/updateTenantAdmin/:id/:userId', auth,isSuperAdmin, updateTenantAdmin);
