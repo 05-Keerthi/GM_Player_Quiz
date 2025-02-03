@@ -72,12 +72,15 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size should be less than 5MB");
+        setErrors((prev) => ({
+          ...prev,
+          logo: "File size should be less than 5MB",
+        }));
         return;
       }
 
       if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file");
+        setErrors((prev) => ({ ...prev, logo: "Please upload an image file" }));
         return;
       }
 
@@ -85,6 +88,7 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
       const fileUrl = URL.createObjectURL(file);
       setPreviewUrl(fileUrl);
       setFormData((prev) => ({ ...prev, logo: "" }));
+      setErrors((prev) => ({ ...prev, logo: "" }));
     }
   };
 
@@ -109,7 +113,6 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
   const removeArrayField = (index, fieldName) => {
     setFormData((prev) => {
       const newArray = prev[fieldName].filter((_, i) => i !== index);
-      // If removing the last item, add an empty string to maintain the input field
       return {
         ...prev,
         [fieldName]: newArray.length === 0 ? [""] : newArray,
@@ -131,7 +134,6 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      Object.values(newErrors).forEach((error) => toast.error(error));
       return;
     }
 
@@ -140,13 +142,10 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
     try {
       const submitData = new FormData();
 
-      // Add all form fields except logo-related fields
       Object.keys(formData).forEach((key) => {
         if (key === "mobileNumber" || key === "email") {
-          // Filter out empty values from arrays
           const filteredArray = formData[key].filter((item) => item.trim());
           if (filteredArray.length === 0) {
-            // If array is empty after filtering, append an empty array indicator
             submitData.append(key, "");
           } else {
             filteredArray.forEach((item) => {
@@ -178,7 +177,6 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
         toast.success("Tenant created successfully!");
       }
 
-      // Call onUpdate with the new/updated tenant data
       if (onUpdate) {
         onUpdate(updatedTenant);
       }
@@ -191,9 +189,6 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
           return acc;
         }, {});
         setErrors(fieldErrors);
-        error.response.data.errors.forEach((err) =>
-          toast.error(`${err.field}: ${err.message}`)
-        );
       } else {
         toast.error(
           error.response?.data?.message ||
