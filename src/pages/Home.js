@@ -16,6 +16,7 @@ import {
   ScrollText,
   LineChart,
   BookOpen,
+  Building2,
 } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
 import Card from "../components/CardComp";
@@ -88,6 +89,33 @@ export default function HomePage() {
         ];
 
       case "tenant_admin":
+        return [
+          {
+            icon: <Building2 className="text-blue-600" size={48} />,
+            title: "Manage tenant details ",
+            description: "Tenant details",
+            buttonText: "Go to Tenant Details",
+            buttonColor: "bg-blue-500 hover:bg-blue-600",
+            path: `/tenants/${user?.tenantId?._id}`,
+          },
+          {
+            icon: <Activity className="text-amber-600" size={48} />,
+            title: "View Activity Log",
+            description: "Manage and monitor activities",
+            buttonText: "Go to Activity Log",
+            buttonColor: "bg-amber-500 hover:bg-amber-600",
+            path: "/activity-log",
+          },
+          {
+            icon: <BarChart3 className="text-fuchsia-600" size={48} />,
+            title: "Dashboard",
+            description: "Manage and monitor all reports",
+            buttonText: "Go to Dashboard",
+            buttonColor: "bg-fuchsia-500 hover:bg-fuchsia-600",
+            path: "/admin-dashboard",
+          },
+        ];
+
       case "admin":
         return [
           {

@@ -1,6 +1,5 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Routes, Route, useSearchParams, Navigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -14,7 +13,7 @@ import TenantDetailsPage from "./pages/TenantDetailsPage";
 import AdminDashboard from "./pages/Activity/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
-// Import all necessary components for Content and Session routes
+// Import Content and Session routes components
 import SelectCategoryPage from "./pages/SelectCategoryPage";
 import SelectSurveyCategory from "./pages/SelectSurveyCategory";
 import QuizCreator from "./pages/quizCreator";
@@ -43,16 +42,8 @@ import DetailedAdminReportDashboard from "./pages/Report/AdminDashboard/Detailed
 import SessionDetails from "./pages/Report/AdminDashboard/SessionDetails";
 
 export default function App() {
-  const { user, isAuthenticated, sessionExpired, resetSessionState } =
-    useAuthContext();
+  const { user, isAuthenticated } = useAuthContext();
   const [searchParams] = useSearchParams();
-
-  useEffect(() => {
-    if (sessionExpired) {
-      toast.error("Your session has expired. Please log in again.");
-      resetSessionState();
-    }
-  }, [sessionExpired, resetSessionState]);
 
   return (
     <>
@@ -68,41 +59,128 @@ export default function App() {
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
 
+        <Route path="/user/profile" element={<ProfilePage />} />
+
         {/* Core Routes */}
-        <Route path="/" element={<HomePage />} />
         <Route
-          path="/user/profile"
+          path="/"
           element={
             <ProtectedRoute>
-              <ProfilePage />
+              <HomePage />
             </ProtectedRoute>
           }
         />
-        <Route path="/tenants/:id" element={<TenantDetailsPage />} />
+
+        <Route
+          path="/tenants/:id"
+          element={
+            <ProtectedRoute>
+              <TenantDetailsPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Content Routes */}
-        <Route path="/selectQuizCategory" element={<SelectCategoryPage />} />
+        <Route
+          path="/selectQuizCategory"
+          element={
+            <ProtectedRoute>
+              <SelectCategoryPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/selectSurveyCategory"
-          element={<SelectSurveyCategory />}
+          element={
+            <ProtectedRoute>
+              <SelectSurveyCategory />
+            </ProtectedRoute>
+          }
         />
-        <Route path="/createQuiz/:quizId" element={<QuizCreator />} />
-        <Route path="/createSurvey/:surveyId" element={<SurveyCreator />} />
-        <Route path="/quiz-list" element={<UnifiedList contentType="quiz" />} />
+
+        <Route
+          path="/createQuiz/:quizId"
+          element={
+            <ProtectedRoute>
+              <QuizCreator />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/createSurvey/:surveyId"
+          element={
+            <ProtectedRoute>
+              <SurveyCreator />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/quiz-list"
+          element={
+            <ProtectedRoute>
+              <UnifiedList contentType="quiz" />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/survey-list"
-          element={<UnifiedList contentType="survey" />}
+          element={
+            <ProtectedRoute>
+              <UnifiedList contentType="survey" />
+            </ProtectedRoute>
+          }
         />
-        <Route path="/details" element={<UnifiedDetails />} />
-        <Route path="/preview/:quizId" element={<PreviewPage />} />
+
+        <Route
+          path="/details"
+          element={
+            <ProtectedRoute>
+              <UnifiedDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/preview/:quizId"
+          element={
+            <ProtectedRoute>
+              <PreviewPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/surveyPreview/:surveyId"
-          element={<SurveyPreviewPage />}
+          element={
+            <ProtectedRoute>
+              <SurveyPreviewPage />
+            </ProtectedRoute>
+          }
         />
 
         {/* Session Routes */}
-        <Route path="/lobby" element={<Lobby />} />
-        <Route path="/survey-lobby" element={<SurveyLobby />} />
+        <Route
+          path="/lobby"
+          element={
+            <ProtectedRoute>
+              <Lobby />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/survey-lobby"
+          element={
+            <ProtectedRoute>
+              <SurveyLobby />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/join"
           element={
@@ -111,13 +189,33 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route path="/joinsurvey" element={<UnifiedJoin type="survey" />} />
+
         <Route path="/user-lobby" element={<UserLobby />} />
         <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
-        <Route path="/start" element={<AdminStart />} />
-        <Route path="/start-survey" element={<AdminSurveyStart />} />
+
+        <Route
+          path="/start"
+          element={
+            <ProtectedRoute>
+              <AdminStart />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/start-survey"
+          element={
+            <ProtectedRoute>
+              <AdminSurveyStart />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="/play" element={<UserPlay />} />
         <Route path="/survey-play" element={<UserSurveyPlay />} />
+
         <Route
           path="/leaderboard"
           element={
@@ -128,30 +226,88 @@ export default function App() {
             />
           }
         />
-        <Route path="/results/:sessionId" element={<SurveyResults />} />
+
+        <Route
+          path="/results/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SurveyResults />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/question-details/:sessionId/:questionId"
-          element={<QuestionDetailsResult />}
+          element={
+            <ProtectedRoute>
+              <QuestionDetailsResult />
+            </ProtectedRoute>
+          }
         />
 
         {/* Report Routes */}
-        <Route path="/admin-dashboard" element={<ReportAdminDashboard />} />
         <Route
-          path="/admin/:type-reports/:type/:id"
-          element={<DetailedAdminReportDashboard />}
-        />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route
-          path="/:type-reports/:type/:id"
-          element={<DetailedReportDashboard />}
-        />
-        <Route path="/:type/session/:sessionId" element={<SessionDetails />} />
-        <Route
-          path="/session/:type/:sessionId"
-          element={<SessionDashboard />}
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute>
+              <ReportAdminDashboard />
+            </ProtectedRoute>
+          }
         />
 
-        <Route path="/Activity-log" element={<AdminDashboard />} />
+        <Route
+          path="/admin/:type-reports/:type/:id"
+          element={
+            <ProtectedRoute>
+              <DetailedAdminReportDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/:type-reports/:type/:id"
+          element={
+            <ProtectedRoute>
+              <DetailedReportDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/:type/session/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/session/:type/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/Activity-log"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Legacy Redirect Routes */}
         <Route path="/quiz-details" element={<UnifiedDetails />} />

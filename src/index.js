@@ -8,9 +8,9 @@ import { AppProviders } from "./providers";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <AppProviders>
-    <BrowserRouter>
+  <BrowserRouter>
+    <AppProviders>
       <App />
-    </BrowserRouter>
-  </AppProviders>
+    </AppProviders>
+  </BrowserRouter>
 );
