@@ -173,6 +173,21 @@ const isSuperAdminOrTenantAdmin = (req, res, next) => {
   next();
 };
 
+const isSuperAdminOrTenantAdminOrAdmin = (req, res, next) => {
+  if (
+    !req.user ||
+    (req.user.role !== "superadmin" && req.user.role !== "tenant_admin" && req.user.role !== "admin")
+  ) {
+    console.log(
+      `Access denied. User: ${req.user?.email} does not have superadmin or tenant_admin or admin role.`
+    );
+    return res
+      .status(403)
+      .json({ message: "Access denied. Super Admin or Tenant Admin or Admin only ." });
+  }
+  console.log(`SuperAdmin/TenantAdmin/Admin access granted to: ${req.user.email}`);
+  next();
+};
 
 module.exports = {
   auth,
@@ -183,4 +198,5 @@ module.exports = {
   isAdminOrTenantAdmin,
   isGuest,
   isSuperAdminOrTenantAdmin,
+  isSuperAdminOrTenantAdminOrAdmin,
 };
