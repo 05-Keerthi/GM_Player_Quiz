@@ -225,7 +225,9 @@ const TenantAdminModal = ({
               value={formData.mobile}
               onChange={handleMobileChange}
               defaultCountry="IN"
-              className={`w-full mt-1 ${errors.mobile ? "border-red-500" : ""}`}
+              className={`w-full border rounded-lg px-4 py-2 ${
+                errors.mobile ? "border-red-500" : ""
+              }`}
               aria-invalid={errors.mobile ? "true" : "false"}
               aria-describedby={errors.mobile ? "mobile-error" : undefined}
             />
