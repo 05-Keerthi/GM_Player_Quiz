@@ -19,7 +19,7 @@ const processQuestionData = (data = {}) => ({
       : [{ optionText: "", color: "#FFFFFF" }],
 });
 
-const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
+const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
   const {
     templates,
     getAllTemplates,
@@ -426,7 +426,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose }) => {
           </div>
 
           {/* Template Selector */}
-          {renderTemplateSection()}
+          {surveyType === "ArtPulse" && renderTemplateSection()}
 
           {/* Answer Options */}
           <div>
