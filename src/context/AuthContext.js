@@ -28,20 +28,30 @@ export const AuthProvider = ({ children }) => {
     navigate("/login");
   };
 
+  // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user"));
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const token = localStorage.getItem("token");
+        const user = JSON.parse(localStorage.getItem("user"));
 
-      if (token && user) {
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
+        if (token && user) {
+          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
+        } else {
+          dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     };
 
     initializeAuth();
   }, []);
 
+  // Setup axios interceptor for token refresh
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
@@ -150,33 +160,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const getProfile = async () => {
-    try {
-      const response = await api.get("/auth/me");
-      dispatch({ type: ACTIONS.GET_USER_PROFILE, payload: response.data });
-      return response.data;
-    } catch (error) {
-      dispatch({
-        type: ACTIONS.SET_ERROR,
-        payload: "Failed to fetch user profile",
-      });
-      throw error;
-    }
-  };
-
-  const listUsers = async () => {
-    try {
-      const response = await api.get("/auth/users");
-      dispatch({ type: ACTIONS.LIST_USERS, payload: response.data });
-      return response.data;
-    } catch (error) {
-      dispatch({
-        type: ACTIONS.SET_ERROR,
-        payload: "Failed to fetch users list",
-      });
-      throw error;
-    }
-  };
 
   const clearError = () => {
     dispatch({ type: ACTIONS.CLEAR_ERROR });
@@ -189,8 +172,6 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         register,
-        getProfile,
-        listUsers,
         clearError,
       }}
     >

@@ -4,7 +4,7 @@ export const initialState = {
   user: null,
   token: null,
   users: [],
-  loading: false,
+  loading: true, // Start with loading true
   error: null,
 };
 
@@ -12,8 +12,6 @@ export const ACTIONS = {
   LOGIN: "LOGIN",
   LOGOUT: "LOGOUT",
   REGISTER: "REGISTER",
-  GET_USER_PROFILE: "GET_USER_PROFILE",
-  LIST_USERS: "LIST_USERS",
   SET_LOADING: "SET_LOADING",
   SET_ERROR: "SET_ERROR",
   CLEAR_ERROR: "CLEAR_ERROR",
@@ -35,29 +33,13 @@ export const authReducer = (state, action) => {
     case ACTIONS.LOGOUT:
       return {
         ...initialState,
-      };
-
-    case ACTIONS.GET_USER_PROFILE:
-      return {
-        ...state,
-        user: action.payload,
-        loading: false,
-        error: null,
-      };
-
-    case ACTIONS.LIST_USERS:
-      return {
-        ...state,
-        users: action.payload,
-        loading: false,
-        error: null,
+        loading: false, // Ensure loading is false after logout
       };
 
     case ACTIONS.SET_LOADING:
       return {
         ...state,
         loading: action.payload,
-        error: null,
       };
 
     case ACTIONS.SET_ERROR:

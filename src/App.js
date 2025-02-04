@@ -59,9 +59,16 @@ export default function App() {
           element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />}
         />
 
-        <Route path="/user/profile" element={<ProfilePage />} />
-
         {/* Core Routes */}
+
+        <Route
+          path="/user/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/"
           element={
@@ -190,7 +197,14 @@ export default function App() {
           }
         />
 
-        <Route path="/joinsurvey" element={<UnifiedJoin type="survey" />} />
+        <Route
+          path="/joinsurvey"
+          element={
+            <ProtectedRoute>
+              <UnifiedJoin type="survey" />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/user-lobby" element={<UserLobby />} />
         <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
@@ -213,7 +227,14 @@ export default function App() {
           }
         />
 
-        <Route path="/play" element={<UserPlay />} />
+        <Route
+          path="/play"
+          element={
+            <ProtectedRoute>
+              <UserPlay />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/survey-play" element={<UserSurveyPlay />} />
 
         <Route
@@ -310,8 +331,22 @@ export default function App() {
         />
 
         {/* Legacy Redirect Routes */}
-        <Route path="/quiz-details" element={<UnifiedDetails />} />
-        <Route path="/survey-details" element={<UnifiedDetails />} />
+        <Route
+          path="/quiz-details"
+          element={
+            <ProtectedRoute>
+              <UnifiedDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/survey-details"
+          element={
+            <ProtectedRoute>
+              <UnifiedDetails />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
