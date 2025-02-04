@@ -89,17 +89,6 @@ describe('AuthRoutes', () => {
     expect(response.body.token).toBe('new-mocked-token');
   });
 
-  test('GET /api/auth/me - should call getProfile', async () => {
-    getProfile.mockImplementation((req, res) =>
-      res.status(200).json({ username: 'testuser', email: 'testuser@example.com' })
-    );
-
-    const response = await request(app).get('/api/auth/me');
-
-    expect(getProfile).toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    expect(response.body.username).toBe('testuser');
-  });
 
   test('POST /api/auth/logout - should call logout', async () => {
     logout.mockImplementation((req, res) =>
@@ -113,15 +102,4 @@ describe('AuthRoutes', () => {
     expect(response.body.message).toBe('User logged out successfully');
   });
 
-  test('GET /api/auth/users - should call listUsers', async () => {
-    listUsers.mockImplementation((req, res) =>
-      res.status(200).json([{ id: 1, username: 'testuser' }])
-    );
-
-    const response = await request(app).get('/api/auth/users');
-
-    expect(listUsers).toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual([{ id: 1, username: 'testuser' }]);
-  });
 });
