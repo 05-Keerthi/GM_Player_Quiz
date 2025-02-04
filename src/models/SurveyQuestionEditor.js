@@ -220,17 +220,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
   };
 
   const handleClose = () => {
-    if (isDirty) {
-      if (
-        window.confirm(
-          "You have unsaved changes. Are you sure you want to close?"
-        )
-      ) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
+    onClose();
   };
 
   const renderTemplateSection = () => (
