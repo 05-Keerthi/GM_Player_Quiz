@@ -45,7 +45,7 @@ function parseQuestionData(question) {
   };
 }
 
-const QuestionEditor = ({ question, onUpdate, onClose }) => {
+const QuizQuestionEditor = ({ question, onUpdate, onClose }) => {
   const [parsedQuestion, setParsedQuestion] = useState(() =>
     parseQuestionData(question)
   );
@@ -423,4 +423,4 @@ const QuestionEditor = ({ question, onUpdate, onClose }) => {
   );
 };
 
-export default QuestionEditor;
+export default QuizQuestionEditor;

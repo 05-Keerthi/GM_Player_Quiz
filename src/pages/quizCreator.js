@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { X, Trash2, AlertCircle, Menu } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import QuestionTypeModal from "../models/QuestionTypeModal";
-import QuestionEditor from "../components/QuestionEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/NavbarComp";
-import SlideTypeModal from "../models/SlideTypeModal";
 import ConfirmationModal from "../models/ConfirmationModal";
-import SlideEditor from "../components/SlideEditor";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import { useQuizContext } from "../context/quizContext";
 import { toast } from "react-toastify";
+import QuestionEditor from "../models/QuestionEditor";
+import SlideEditor from "../models/SlideEditor";
 
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {
@@ -22,8 +20,7 @@ const CustomAlert = ({ message, type = "error", onClose }) => {
 
   return (
     <div
-      data-testid="alert-message"
-      className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in`}
+      className={`fixed top-4 right-4 p-4 rounded-lg border ${bgColor} ${textColor} ${borderColor} flex items-center gap-2 max-w-md animate-fade-in z-50`}
     >
       <AlertCircle className="w-5 h-5" />
       <p className="flex-1">{message}</p>
@@ -49,13 +46,13 @@ const QuizCreator = () => {
   const [alert, setAlert] = useState({ message: "", type: "error" });
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
-  const [showDeleteSlideModal, setShowDeleteSlideModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [deleteType, setDeleteType] = useState(null);
   const [quizTitle, setQuizTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const userId = JSON.parse(localStorage.getItem("user"))?.id || "";
 
   const [quiz, setQuiz] = useState({
     title: "",
@@ -64,6 +61,13 @@ const QuizCreator = () => {
 
   const { quizId } = useParams();
   const navigate = useNavigate();
+
+  const closeAllEditors = () => {
+    setCurrentQuestion(null);
+    setCurrentSlide(null);
+    setIsAddQuestionOpen(false);
+    setIsAddSlideOpen(false);
+  };
 
   const handlePreviewClick = () => {
     navigate(`/preview/${quizId}`);
@@ -99,7 +103,6 @@ const QuizCreator = () => {
       });
 
       if (response.status === 401) {
-        console.error("Unauthorized access - token may be invalid or expired");
         localStorage.removeItem("token");
         navigate("/login");
         throw new Error("Session expired. Please log in again.");
@@ -137,17 +140,15 @@ const QuizCreator = () => {
 
     try {
       setLoading(true);
-      // Format order array properly
       const order = orderedItems
         .map((item) => ({
           id: item.id,
           type: item.type,
         }))
-        .filter((item) => item.id); // Filter out any items without id
+        .filter((item) => item.id);
 
-      // Get actual slides and questions arrays
-      const cleanSlides = slides.filter((slide) => slide._id); // Filter out malformed slides
-      const cleanQuestions = questions.filter((question) => question._id); // Filter out malformed questions
+      const cleanSlides = slides.filter((slide) => slide._id);
+      const cleanQuestions = questions.filter((question) => question._id);
 
       await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
@@ -171,335 +172,215 @@ const QuizCreator = () => {
     }
   };
 
-  const handleAddSlide = async (slideData) => {
+  const handleAddOrUpdateQuestion = async (questionData) => {
     try {
       setLoading(true);
-      console.log("Sending slide data:", slideData);
 
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(slideData),
-        }
-      );
+      if (currentQuestion) {
+        // Update existing question
+        const response = await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/questions/${currentQuestion._id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(questionData),
+          }
+        );
 
-      if (!response.ok) {
-        throw new Error(`Failed to add slide: ${response.statusText}`);
+        const { question: updatedQuestion } = await response.json();
+
+        setQuestions((prevQuestions) =>
+          prevQuestions.map((q) =>
+            q._id === currentQuestion._id ? updatedQuestion : q
+          )
+        );
+
+        setOrderedItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === currentQuestion._id && item.type === "question"
+              ? { ...item, data: updatedQuestion }
+              : item
+          )
+        );
+
+        // Set the current question to show the updated data in the editor
+        setCurrentQuestion(updatedQuestion);
+        showAlert("Question updated successfully", "success");
+      } else {
+        // Add new question
+        const response = await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/questions`,
+          {
+            method: "POST",
+            body: JSON.stringify({ ...questionData, quizId }),
+          }
+        );
+
+        const newQuestion = await response.json();
+
+        // Update local state with new question
+        setQuestions((prev) => [...prev, newQuestion]);
+
+        // Add new question to ordered items
+        const updatedOrderedItems = [
+          ...orderedItems,
+          { id: newQuestion._id, type: "question", data: newQuestion },
+        ];
+        setOrderedItems(updatedOrderedItems);
+
+        // Set the current question to show the new data in the editor
+        setCurrentQuestion(newQuestion);
+
+        // Update quiz order
+        await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              title: quiz.title,
+              description: quiz.description,
+              questions: [...questions, newQuestion],
+              slides,
+              order: updatedOrderedItems.map((item) => ({
+                id: item.id,
+                type: item.type,
+              })),
+            }),
+          }
+        );
+
+        showAlert("Question added successfully", "success");
       }
+    } catch (err) {
+      handleApiError(err);
+      closeAllEditors();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const newSlide = await response.json();
-      console.log("Received slide response:", newSlide);
+  const handleAddOrUpdateSlide = async (slideData) => {
+    try {
+      setLoading(true);
 
-      // Ensure the slide data is in the correct format for our UI
-      const formattedSlide = {
-        _id: newSlide._id,
-        title: newSlide.title,
-        content: newSlide.content,
-        type: newSlide.type,
-        imageUrl: newSlide.imageUrl,
-        position: newSlide.position || 0,
-        quiz: newSlide.quiz,
-      };
+      if (currentSlide) {
+        // Update existing slide
+        const response = await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/slides/${currentSlide._id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(slideData),
+          }
+        );
 
-      // Update slides array BEFORE updating orderedItems
-      setSlides((prevSlides) => [...prevSlides, formattedSlide]);
+        const { slide: updatedSlide } = await response.json();
 
-      // Create new ordered item
-      const newOrderedItem = {
-        id: formattedSlide._id,
-        type: "slide",
-        data: formattedSlide,
-      };
+        setSlides((prevSlides) =>
+          prevSlides.map((s) => (s._id === currentSlide._id ? updatedSlide : s))
+        );
 
-      // Update ordered items
-      const updatedOrderedItems = [...orderedItems, newOrderedItem];
-      setOrderedItems(updatedOrderedItems);
+        setOrderedItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === currentSlide._id && item.type === "slide"
+              ? { ...item, data: updatedSlide }
+              : item
+          )
+        );
 
-      // Save the updated quiz state to backend with the new slides array
+        // Set the current slide to show the updated data in the editor
+        setCurrentSlide(updatedSlide);
+        showAlert("Slide updated successfully", "success");
+      } else {
+        // Add new slide
+        const response = await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/slides`,
+          {
+            method: "POST",
+            body: JSON.stringify({ ...slideData, quizId }),
+          }
+        );
+
+        const newSlide = await response.json();
+
+        // Update local state with new slide
+        setSlides((prev) => [...prev, newSlide]);
+
+        // Add new slide to ordered items
+        const updatedOrderedItems = [
+          ...orderedItems,
+          { id: newSlide._id, type: "slide", data: newSlide },
+        ];
+        setOrderedItems(updatedOrderedItems);
+
+        // Set the current slide to show the new data in the editor
+        setCurrentSlide(newSlide);
+
+        // Update quiz order
+        await authenticatedFetch(
+          `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              title: quiz.title,
+              description: quiz.description,
+              questions,
+              slides: [...slides, newSlide],
+              order: updatedOrderedItems.map((item) => ({
+                id: item.id,
+                type: item.type,
+              })),
+            }),
+          }
+        );
+
+        showAlert("Slide added successfully", "success");
+      }
+    } catch (err) {
+      handleApiError(err);
+      closeAllEditors();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      const endpoint = deleteType === "question" ? "questions" : "slides";
+
       await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            title: quiz.title,
-            description: quiz.description,
-            questions: questions,
-            slides: [...slides, formattedSlide], // Include the new slide in the update
-            order: updatedOrderedItems.map((item) => ({
-              id: item.id,
-              type: item.type,
-            })),
-          }),
-        }
-      );
-
-      setCurrentSlide(formattedSlide);
-      setIsAddSlideOpen(false);
-      showAlert("Slide added successfully", "success");
-    } catch (err) {
-      console.error("Error adding slide:", err);
-      handleApiError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateSlide = async (slideId, updatedData) => {
-    try {
-      setLoading(true);
-
-      // Handle image deletion if needed
-      if (updatedData.deleteImage) {
-        const currentSlide = slides.find((s) => s._id === slideId);
-        if (currentSlide?.imageUrl) {
-          await handleDeleteImage(currentSlide.imageUrl);
-        }
-        updatedData.imageUrl = null;
-      }
-      // Rest of the update logic remains the same
-      else if (updatedData.imageFile) {
-        const imageId = await handleImageUpload(updatedData.imageFile);
-        updatedData.imageUrl = imageId;
-      }
-
-      const updatePayload = {
-        title: updatedData.title,
-        content: updatedData.content || "",
-        type: updatedData.type,
-        imageUrl: updatedData.imageUrl,
-      };
-
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/slides/${slideId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatePayload),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update slide");
-      }
-
-      const { slide: updatedSlide } = await response.json();
-
-      setSlides((prevSlides) =>
-        prevSlides.map((s) => (s._id === slideId ? updatedSlide : s))
-      );
-      setCurrentSlide(updatedSlide);
-      setOrderedItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === slideId && item.type === "slide"
-            ? { ...item, data: updatedSlide }
-            : item
-        )
-      );
-
-      showAlert("Slide updated successfully", "success");
-    } catch (err) {
-      console.error("Error updating slide:", err);
-      handleApiError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteSlide = async (e, slideId) => {
-    e.stopPropagation();
-    setItemToDelete(slideId);
-    setShowDeleteSlideModal(true);
-  };
-
-  const handleConfirmDeleteSlide = async () => {
-    try {
-      setLoading(true);
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/slides/${itemToDelete}`,
+        `${process.env.REACT_APP_API_URL}/api/${endpoint}/${itemToDelete}`,
         {
           method: "DELETE",
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to delete slide: ${response.statusText}`);
+      if (deleteType === "question") {
+        setQuestions((prev) => prev.filter((q) => q._id !== itemToDelete));
+        if (currentQuestion?._id === itemToDelete) setCurrentQuestion(null);
+      } else {
+        setSlides((prev) => prev.filter((s) => s._id !== itemToDelete));
+        if (currentSlide?._id === itemToDelete) setCurrentSlide(null);
       }
 
-      setSlides((prevSlides) =>
-        prevSlides.filter((s) => s._id !== itemToDelete)
-      );
-      if (currentSlide?._id === itemToDelete) {
-        setCurrentSlide(null);
-      }
-
-      // Remove from ordered items
-      setOrderedItems((prevItems) =>
-        prevItems.filter(
-          (item) => !(item.id === itemToDelete && item.type === "slide")
+      setOrderedItems((prev) =>
+        prev.filter(
+          (item) => !(item.id === itemToDelete && item.type === deleteType)
         )
       );
 
-      showAlert("Slide deleted successfully", "success");
+      showAlert(
+        `${
+          deleteType === "question" ? "Question" : "Slide"
+        } deleted successfully`,
+        "success"
+      );
     } catch (err) {
       handleApiError(err);
     } finally {
       setLoading(false);
-      setShowDeleteSlideModal(false);
+      setShowDeleteModal(false);
       setItemToDelete(null);
-    }
-  };
-
-  const handleAddQuestion = async (questionData) => {
-    try {
-      setLoading(true);
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}/questions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...questionData,
-            quizId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to add question: ${response.statusText}`);
-      }
-
-      const newQuestion = await response.json();
-
-      if (!newQuestion || !newQuestion._id) {
-        throw new Error("Invalid question data received from server");
-      }
-
-      // Update questions array
-      const updatedQuestions = [...questions, newQuestion];
-      setQuestions(updatedQuestions);
-
-      // Create new ordered item
-      const newOrderedItem = {
-        id: newQuestion._id,
-        type: "question",
-        data: newQuestion,
-      };
-
-      // Update ordered items
-      const updatedOrderedItems = [...orderedItems, newOrderedItem];
-      setOrderedItems(updatedOrderedItems);
-
-      // Save the updated quiz state to backend
-      await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            title: quiz.title,
-            description: quiz.description,
-            questions: updatedQuestions,
-            slides: slides,
-            order: updatedOrderedItems.map((item) => ({
-              id: item.id,
-              type: item.type,
-            })),
-          }),
-        }
-      );
-
-      setCurrentQuestion(newQuestion);
-      setIsAddQuestionOpen(false);
-      showAlert("Question added successfully", "success");
-    } catch (err) {
-      console.error("Error adding question:", err);
-      handleApiError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const validateOptions = (options) => {
-    if (!Array.isArray(options)) return [];
-    return options.filter((option) => option.text && option.text.trim() !== "");
-  };
-
-  const handleUpdateQuestion = async (questionId, updatedData) => {
-    try {
-      setLoading(true);
-
-      // Handle image deletion
-      if (updatedData.deleteImage) {
-        const currentQuestion = questions.find((q) => q._id === questionId);
-        if (currentQuestion?.imageUrl) {
-          await handleDeleteImage(currentQuestion.imageUrl);
-        }
-        updatedData.imageUrl = null;
-      }
-      // Handle new image upload
-      else if (updatedData.imageFile) {
-        const imageId = await handleImageUpload(updatedData.imageFile);
-        updatedData.imageUrl = imageId;
-      }
-
-      // Validate and sanitize options
-      const validatedOptions = validateOptions(updatedData.options);
-
-      const updatePayload = {
-        title: updatedData.title,
-        type: updatedData.type,
-        imageUrl: updatedData.imageUrl,
-        options: validatedOptions,
-        correctAnswer: updatedData.correctAnswer,
-        points: updatedData.points || 0,
-        timer: updatedData.timer || 0,
-      };
-
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/questions/${questionId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatePayload),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update question");
-      }
-
-      const { question: updatedQuestion } = await response.json();
-
-      if (!updatedQuestion || !updatedQuestion._id) {
-        throw new Error("Invalid question data received from server");
-      }
-
-      // Update state
-      setQuestions((prevQuestions) =>
-        prevQuestions.map((q) => (q._id === questionId ? updatedQuestion : q))
-      );
-      setCurrentQuestion(updatedQuestion);
-      setOrderedItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === questionId && item.type === "question"
-            ? { ...item, data: updatedQuestion }
-            : item
-        )
-      );
-
-      showAlert("Question updated successfully", "success");
-    } catch (err) {
-      console.error("Error updating question:", err);
-      handleApiError(err);
-    } finally {
-      setLoading(false);
+      setDeleteType(null);
     }
   };
 
@@ -507,7 +388,7 @@ const QuizCreator = () => {
     setIsSubmitting(true);
     try {
       await publishQuiz(quizId);
-      toast("Quiz published successfully", "success");
+      toast.success("Quiz published successfully");
       navigate(`/quiz-details?type=quiz&quizId=${quizId}&hostId=${userId}`);
     } catch (error) {
       handleApiError(error);
@@ -516,153 +397,12 @@ const QuizCreator = () => {
     }
   };
 
-  // Helper function for image upload
-  const handleImageUpload = async (file) => {
-    try {
-      const formData = new FormData();
-      formData.append("media", file);
-
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/media/upload`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Image upload failed");
-      }
-
-      const data = await response.json();
-      const imageId = data.media[0]._id;
-      return imageId;
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      throw error;
-    }
-  };
-
-  // Utility function to handle URL encodings correctly
-  const getMediaIdentifier = (imageUrl) => {
-    if (!imageUrl) return null;
-
-    try {
-      // If it's already a Media ID (no slashes), return it
-      if (typeof imageUrl === "string" && !imageUrl.includes("/")) {
-        return imageUrl;
-      }
-
-      // Extract just the filename from the URL
-      if (typeof imageUrl === "string" && imageUrl.includes("/uploads/")) {
-        // Split by /uploads/ and take the last part
-        const parts = imageUrl.split("/uploads/");
-        if (parts.length !== 2) return null;
-
-        // The filename might be encoded multiple times, so decode it
-        let filename = parts[1];
-        while (filename.includes("%")) {
-          try {
-            const decoded = decodeURIComponent(filename);
-            if (decoded === filename) break;
-            filename = decoded;
-          } catch (e) {
-            break;
-          }
-        }
-        return filename;
-      }
-    } catch (error) {
-      console.error("Error processing image URL:", error);
-    }
-    return null;
-  };
-
-  // Updated handleDeleteImage function
-  const handleDeleteImage = async (imageUrl) => {
-    try {
-      if (!imageUrl) {
-        console.log("No image URL provided");
-        return false;
-      }
-
-      const filename = getMediaIdentifier(imageUrl);
-      if (!filename) {
-        console.error("Could not extract filename from:", imageUrl);
-        return false;
-      }
-
-      console.log("Attempting to delete image:", filename);
-
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${
-          process.env.REACT_APP_API_URL
-        }/api/media/byFilename/${encodeURIComponent(filename)}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to delete image");
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error deleting image:", error);
-      return false;
-    }
-  };
-
-  const handleDeleteQuestion = async (e, questionId) => {
-    e.stopPropagation();
-    setItemToDelete(questionId);
-    setShowDeleteQuestionModal(true);
-  };
-
-  const handleConfirmDeleteQuestion = async () => {
-    try {
-      setLoading(true);
-      const response = await authenticatedFetch(
-        `${process.env.REACT_APP_API_URL}/api/questions/${itemToDelete}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete question: ${response.statusText}`);
-      }
-
-      setQuestions((prevQuestions) =>
-        prevQuestions.filter((q) => q._id !== itemToDelete)
-      );
-      if (currentQuestion?._id === itemToDelete) {
-        setCurrentQuestion(null);
-      }
-
-      // Remove from ordered items
-      setOrderedItems((prevItems) =>
-        prevItems.filter(
-          (item) => !(item.id === itemToDelete && item.type === "question")
-        )
-      );
-
-      showAlert("Question deleted successfully", "success");
-    } catch (err) {
-      handleApiError(err);
-    } finally {
-      setLoading(false);
-      setShowDeleteQuestionModal(false);
-      setItemToDelete(null);
+  const handleItemClick = (item) => {
+    closeAllEditors();
+    if (item.type === "question") {
+      setCurrentQuestion(item.data);
+    } else {
+      setCurrentSlide(item.data);
     }
   };
 
@@ -670,13 +410,12 @@ const QuizCreator = () => {
     if (sourceIndex === destinationIndex) return;
 
     try {
-      // Update local state
       const reorderedItems = [...orderedItems];
       const [movedItem] = reorderedItems.splice(sourceIndex, 1);
       reorderedItems.splice(destinationIndex, 0, movedItem);
+
       setOrderedItems(reorderedItems);
 
-      // Update the individual arrays based on type
       const newSlides = reorderedItems
         .filter((item) => item.type === "slide")
         .map((item) => item.data);
@@ -687,12 +426,6 @@ const QuizCreator = () => {
       setSlides(newSlides);
       setQuestions(newQuestions);
 
-      // Automatically save the new order to backend
-      const order = reorderedItems.map((item) => ({
-        id: item.id,
-        type: item.type,
-      }));
-
       await authenticatedFetch(
         `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`,
         {
@@ -702,7 +435,10 @@ const QuizCreator = () => {
             description: quiz.description,
             questions: newQuestions,
             slides: newSlides,
-            order,
+            order: reorderedItems.map((item) => ({
+              id: item.id,
+              type: item.type,
+            })),
           }),
         }
       );
@@ -713,26 +449,7 @@ const QuizCreator = () => {
     }
   };
 
-  // Helper functions for validation
-  const isValidQuestion = (question) => {
-    return (
-      question &&
-      typeof question === "object" &&
-      "_id" in question &&
-      "title" in question &&
-      "type" in question
-    );
-  };
-
-  const isValidSlide = (slide) => {
-    return (
-      slide && typeof slide === "object" && "_id" in slide && "title" in slide
-    );
-  };
-
-  // Use in useEffect
   useEffect(() => {
-    // Updated loadQuizData function
     const loadQuizData = async () => {
       if (!quizId) {
         showAlert("Invalid quiz ID");
@@ -741,78 +458,48 @@ const QuizCreator = () => {
 
       try {
         setLoading(true);
-        const quizResponse = await authenticatedFetch(
+        const response = await authenticatedFetch(
           `${process.env.REACT_APP_API_URL}/api/quizzes/${quizId}`
         );
 
-        if (!quizResponse.ok) {
-          throw new Error(`Failed to fetch quiz: ${quizResponse.statusText}`);
-        }
+        const quizData = await response.json();
 
-        const quizData = await quizResponse.json();
-
-        // Validate and set basic quiz data
         setQuiz({
           title: quizData.title || "",
           description: quizData.description || "",
         });
         setQuizTitle(quizData.title || "");
 
-        // Validate questions and slides
-        const validQuestions = Array.isArray(quizData.questions)
-          ? quizData.questions.filter(isValidQuestion)
-          : [];
+        const validQuestions = (quizData.questions || []).filter((q) => q._id);
+        const validSlides = (quizData.slides || []).filter((s) => s._id);
 
-        const validSlides = Array.isArray(quizData.slides)
-          ? quizData.slides.filter(isValidSlide)
-          : [];
-
-        // Set questions and slides state
         setQuestions(validQuestions);
         setSlides(validSlides);
 
-        // Handle ordered items
-        let finalOrderedItems = [];
+        let orderItems = [];
 
-        if (
-          quizData.order &&
-          Array.isArray(quizData.order) &&
-          quizData.order.length > 0
-        ) {
-          // Process existing order
-          finalOrderedItems = quizData.order
-            .filter((item) => item && item.id && item.type) // Filter valid order items
+        if (quizData.order?.length > 0) {
+          orderItems = quizData.order
+            .filter((item) => item?.id && item?.type)
             .map((item) => {
-              if (item.type === "question") {
-                const questionData = validQuestions.find(
-                  (q) => q._id === item.id
-                );
-                return questionData
-                  ? {
-                      id: questionData._id,
-                      type: "question",
-                      data: questionData,
-                    }
-                  : null;
-              } else if (item.type === "slide") {
-                const slideData = validSlides.find((s) => s._id === item.id);
-                return slideData
-                  ? {
-                      id: slideData._id,
-                      type: "slide",
-                      data: slideData,
-                    }
-                  : null;
-              }
-              return null;
+              const itemData =
+                item.type === "question"
+                  ? validQuestions.find((q) => q._id === item.id)
+                  : validSlides.find((s) => s._id === item.id);
+
+              return itemData
+                ? {
+                    id: itemData._id,
+                    type: item.type,
+                    data: itemData,
+                  }
+                : null;
             })
-            .filter(Boolean); // Remove null entries
+            .filter(Boolean);
         }
 
-        // If no valid order exists or order array is empty, create default order
-        if (finalOrderedItems.length === 0) {
-          // Create default order by combining slides and questions
-          finalOrderedItems = [
+        if (orderItems.length === 0) {
+          orderItems = [
             ...validSlides.map((slide) => ({
               id: slide._id,
               type: "slide",
@@ -826,22 +513,20 @@ const QuizCreator = () => {
           ];
         }
 
-        // Set the final ordered items
-        setOrderedItems(finalOrderedItems);
-
-        // Reset current selections
-        setCurrentQuestion(null);
-        setCurrentSlide(null);
+        setOrderedItems(orderItems);
       } catch (err) {
-        console.error("Error loading quiz data:", err);
         handleApiError(err);
         navigate("/quizzes");
       } finally {
         setLoading(false);
       }
     };
+
     loadQuizData();
   }, [quizId, navigate]);
+
+  const isEditorOpen =
+    currentQuestion || currentSlide || isAddQuestionOpen || isAddSlideOpen;
 
   return (
     <>
@@ -893,11 +578,10 @@ const QuizCreator = () => {
                 className={`${
                   isMenuOpen ? "flex" : "hidden"
                 } lg:flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3
-        w-full lg:w-auto absolute lg:relative top-full left-0 right-0 
-        bg-white lg:bg-transparent px-4 pb-4 lg:p-0 z-10 
-        border-b lg:border-0 shadow-md lg:shadow-none`}
+                w-full lg:w-auto absolute lg:relative top-full left-0 right-0 
+                bg-white lg:bg-transparent px-4 pb-4 lg:p-0 z-10 
+                border-b lg:border-0 shadow-md lg:shadow-none`}
               >
-                {/* Action Buttons Container */}
                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                   <button
                     className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-center w-full md:w-auto"
@@ -932,7 +616,7 @@ const QuizCreator = () => {
                   </button>
 
                   <button
-                    data-testid="publish-survey-button"
+                    data-testid="publish-quiz-button"
                     onClick={handlePublishQuiz}
                     disabled={isSubmitting}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 
@@ -961,101 +645,107 @@ const QuizCreator = () => {
               <div className="bg-white rounded-lg shadow-sm p-4">
                 <h2 className="font-medium text-lg mb-4">Content</h2>
                 <div className="space-y-2">
-                  {orderedItems.map((item, index) => (
-                    <div
-                      data-testid={`content-item-${index}`}
-                      key={item.id}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", index.toString());
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const sourceIndex = parseInt(
-                          e.dataTransfer.getData("text/plain"),
-                          10
-                        );
-                        handleReorderItems(sourceIndex, index);
-                      }}
-                      className={`p-3 rounded-lg cursor-move transition-colors ${
-                        (item.type === "question" &&
-                          currentQuestion?._id === item.id) ||
-                        (item.type === "slide" && currentSlide?._id === item.id)
-                          ? "bg-blue-50 border-2 border-blue-500"
-                          : "hover:bg-gray-50 border border-gray-200"
-                      }`}
-                      onClick={() => {
-                        if (item.type === "question") {
-                          setCurrentQuestion(item.data);
-                          setCurrentSlide(null);
-                        } else {
-                          setCurrentSlide(item.data);
-                          setCurrentQuestion(null);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">
-                          {item.type === "question"
-                            ? `Question ${index + 1}`
-                            : `Slide ${index + 1}`}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.type === "question") {
-                              handleDeleteQuestion(e, item.id);
-                            } else {
-                              handleDeleteSlide(e, item.id);
-                            }
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                    {/* Title */}
-                    <p className="text-sm text-gray-500 truncate">
-                              {item.type === "question"
-                                ? item.data.title
-                                : item.data.title}
-                            </p>
+                  {orderedItems.map((item, index) => {
+                    // Calculate the sequence number for this type
+                    const itemsOfType = orderedItems
+                      .slice(0, index + 1)
+                      .filter((i) => i.type === item.type);
+                    const sequenceNumber = itemsOfType.length;
+                    const sequenceLabel = `${
+                      item.type === "question" ? "Question" : "Slide"
+                    } ${sequenceNumber}`;
 
-                            {/* Image Preview */}
-                            {item.data.imageUrl && (
-                              <div className="mt-2 h-20 flex items-center justify-center">
-                                <img
-                                  src={
-                                    item.type === "question"
-                                      ? item.data.imageUrl
-                                      : item.data.imageUrl
-                                  }
-                                  alt={
-                                    item.type === "question"
-                                      ? "Question image"
-                                      : "Slide image"
-                                  }
-                                  className="max-h-full max-w-full object-contain shadow-md rounded p-1"
-                                />
-                              </div>
-                            )}
-                    </div>
-                  ))}
+                    return (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData(
+                            "text/plain",
+                            index.toString()
+                          );
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const sourceIndex = parseInt(
+                            e.dataTransfer.getData("text/plain"),
+                            10
+                          );
+                          handleReorderItems(sourceIndex, index);
+                        }}
+                        className={`p-3 rounded-lg cursor-move transition-colors ${
+                          (item.type === "question" &&
+                            currentQuestion?._id === item.id) ||
+                          (item.type === "slide" &&
+                            currentSlide?._id === item.id)
+                            ? "bg-blue-50 border-2 border-blue-500"
+                            : "hover:bg-gray-50 border border-gray-200"
+                        }`}
+                        onClick={() => handleItemClick(item)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{sequenceLabel}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete(item.id);
+                              setDeleteType(item.type);
+                              setShowDeleteModal(true);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-gray-500 truncate">
+                          {item.data.title}
+                        </p>
+                        {item.data.imageUrl && (
+                          <div className="mt-2 h-20 flex items-center justify-center">
+                            <img
+                              src={item.data.imageUrl}
+                              alt={
+                                item.type === "question"
+                                  ? "Question image"
+                                  : "Slide image"
+                              }
+                              className="max-h-full max-w-full object-contain shadow-md rounded p-1"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                console.error("Error loading image:", e);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="space-y-2 mt-4">
                   <button
-                    data-testid="add-question-sidebar-btn"
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    onClick={() => setIsAddQuestionOpen(true)}
+                    onClick={() => {
+                      // Reset all editing states
+                      setCurrentQuestion(null);
+                      setCurrentSlide(null);
+                      closeAllEditors();
+                      // Open new question modal
+                      setIsAddQuestionOpen(true);
+                    }}
                   >
                     Add Question
                   </button>
                   <button
-                    data-testid="add-slide-sidebar-btn"
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    onClick={() => setIsAddSlideOpen(true)}
+                    onClick={() => {
+                      // Reset all editing states
+                      setCurrentQuestion(null);
+                      setCurrentSlide(null);
+                      closeAllEditors();
+                      // Open new slide modal
+                      setIsAddSlideOpen(true);
+                    }}
                   >
                     Add Slide
                   </button>
@@ -1064,26 +754,35 @@ const QuizCreator = () => {
             </div>
 
             {/* Editor Container */}
-            <div data-testid="editor-container" className="md:col-span-2">
-              <AnimatePresence>
+            <div className="md:col-span-2">
+              <AnimatePresence mode="wait">
                 {currentQuestion ? (
                   <QuestionEditor
-                    question={currentQuestion}
-                    onUpdate={(updatedData) =>
-                      handleUpdateQuestion(
-                        currentQuestion.id || currentQuestion._id,
-                        updatedData
-                      )
-                    }
+                    key="edit-question"
+                    initialQuestion={currentQuestion}
+                    onSubmit={handleAddOrUpdateQuestion}
                     onClose={() => setCurrentQuestion(null)}
                   />
                 ) : currentSlide ? (
                   <SlideEditor
-                    slide={currentSlide}
-                    onUpdate={(updatedData) =>
-                      handleUpdateSlide(currentSlide._id, updatedData)
-                    }
+                    key="edit-slide"
+                    initialSlide={currentSlide}
+                    onSubmit={handleAddOrUpdateSlide}
                     onClose={() => setCurrentSlide(null)}
+                  />
+                ) : isAddQuestionOpen ? (
+                  <QuestionEditor
+                    key="new-question"
+                    initialQuestion={null}
+                    onSubmit={handleAddOrUpdateQuestion}
+                    onClose={() => setIsAddQuestionOpen(false)}
+                  />
+                ) : isAddSlideOpen ? (
+                  <SlideEditor
+                    key="new-slide"
+                    initialSlide={null}
+                    onSubmit={handleAddOrUpdateSlide}
+                    onClose={() => setIsAddSlideOpen(false)}
                   />
                 ) : (
                   <motion.div
@@ -1101,18 +800,6 @@ const QuizCreator = () => {
         </div>
 
         {/* Modals */}
-        <QuestionTypeModal
-          isOpen={isAddQuestionOpen}
-          onClose={() => setIsAddQuestionOpen(false)}
-          onAddQuestion={handleAddQuestion}
-        />
-
-        <SlideTypeModal
-          isOpen={isAddSlideOpen}
-          onClose={() => setIsAddSlideOpen(false)}
-          onAddSlide={handleAddSlide}
-        />
-
         <UnifiedSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
@@ -1127,25 +814,15 @@ const QuizCreator = () => {
         />
 
         <ConfirmationModal
-          isOpen={showDeleteQuestionModal}
+          isOpen={showDeleteModal}
           onClose={() => {
-            setShowDeleteQuestionModal(false);
+            setShowDeleteModal(false);
             setItemToDelete(null);
+            setDeleteType(null);
           }}
-          onConfirm={handleConfirmDeleteQuestion}
-          title="Delete Question"
-          message="Are you sure you want to delete this question? This action cannot be undone."
-        />
-
-        <ConfirmationModal
-          isOpen={showDeleteSlideModal}
-          onClose={() => {
-            setShowDeleteSlideModal(false);
-            setItemToDelete(null);
-          }}
-          onConfirm={handleConfirmDeleteSlide}
-          title="Delete Slide"
-          message="Are you sure you want to delete this slide? This action cannot be undone."
+          onConfirm={handleDelete}
+          title={`Delete ${deleteType === "question" ? "Question" : "Slide"}`}
+          message={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`}
         />
       </div>
     </>
