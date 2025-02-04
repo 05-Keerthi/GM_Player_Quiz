@@ -2,10 +2,9 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const BlacklistedToken = require("../models/BlacklistedToken");
 
-// Optional auth middleware for routes that support both guest and authenticated users
+// optional auth middleware
 const optionalAuth = async (req, res, next) => {
   try {
-    // If it's a guest request, let it pass through
     if (req.body.isGuest === true) {
       return next();
     }
@@ -15,34 +14,44 @@ const optionalAuth = async (req, res, next) => {
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Access denied. No token provided." });
+        .json({ message: "Access denied. No token provided" });
     }
 
     // Check if token is blacklisted
     const isBlacklisted = await BlacklistedToken.findOne({ token });
     if (isBlacklisted) {
-      return res.status(401).json({ message: "Token has been invalidated." });
+      return res.status(401).json({ message: "Token has been invalidated" });
     }
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Verify token type
+    if (decoded.type !== "access") {
+      return res.status(401).json({ message: "Invalid token type" });
+    }
+
     // Check if user exists
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("tenantId");
+
     if (!user) {
-      return res.status(401).json({ message: "User not found." });
+      return res.status(401).json({ message: "User not found" });
     }
 
     req.user = user;
     req.token = token;
     next();
   } catch (error) {
-    console.log("Authentication error:", error);
-    return res.status(401).json({ message: "Invalid or expired token." });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token has expired" });
+    }
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
-// Required auth middleware for routes that need authentication
+// auth middleware
 const auth = async (req, res, next) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -50,30 +59,40 @@ const auth = async (req, res, next) => {
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Access denied. No token provided." });
+        .json({ message: "Access denied. No token provided" });
     }
 
     // Check if token is blacklisted
     const isBlacklisted = await BlacklistedToken.findOne({ token });
     if (isBlacklisted) {
-      return res.status(401).json({ message: "Token has been invalidated." });
+      return res.status(401).json({ message: "Token has been invalidated" });
     }
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Verify token type
+    if (decoded.type !== "access") {
+      return res.status(401).json({ message: "Invalid token type" });
+    }
+
     // Check if user exists
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("tenantId");
+
     if (!user) {
-      return res.status(401).json({ message: "User not found." });
+      return res.status(401).json({ message: "User not found" });
     }
 
     req.user = user;
     req.token = token;
     next();
   } catch (error) {
-    console.log("Authentication error:", error);
-    return res.status(401).json({ message: "Invalid or expired token." });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token has expired" });
+    }
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 

@@ -27,12 +27,10 @@ const register = async (req, res) => {
         .json({ field: "email", message: "Email is already registered" });
     }
     if (await User.findOne({ mobile })) {
-      return res
-        .status(400)
-        .json({
-          field: "mobile",
-          message: "Phone number is already registered",
-        });
+      return res.status(400).json({
+        field: "mobile",
+        message: "Phone number is already registered",
+      });
     }
 
     // Create new user
@@ -66,7 +64,6 @@ const register = async (req, res) => {
   }
 };
 
-
 // Login user
 const login = async (req, res) => {
   try {
@@ -74,12 +71,12 @@ const login = async (req, res) => {
     const existingUser = await User.findOne({ email }).populate("tenantId");
 
     if (!existingUser) {
-      return res.status(400).json({ message: "Invalid Email." });
+      return res.status(400).json({ message: "Invalid email" });
     }
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Password." });
+      return res.status(400).json({ message: "Invalid password" });
     }
 
     const token = generateAccessToken(existingUser);
@@ -89,10 +86,11 @@ const login = async (req, res) => {
     const refreshTokenInstance = new RefreshToken({
       token: refreshToken,
       userId: existingUser._id,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     });
     await refreshTokenInstance.save();
 
-    // Log the activity
+    // Log activity
     const activityLog = new ActivityLog({
       user: existingUser._id,
       activityType: "login",
@@ -100,8 +98,7 @@ const login = async (req, res) => {
         username: existingUser.username,
         email: existingUser.email,
         role: existingUser.role,
-        mobile: existingUser.mobile,
-        tenantId: existingUser.tenantId ? existingUser.tenantId._id : null,
+        tenantId: existingUser.tenantId?._id,
       },
     });
     await activityLog.save();
@@ -129,35 +126,61 @@ const refreshToken = async (req, res) => {
     const { refresh_token } = req.body;
 
     if (!refresh_token) {
-      return res.status(400).json({ message: "Refresh token is required." });
+      return res.status(400).json({ message: "Refresh token is required" });
     }
 
     // Verify the refresh token
-    const payload = verifyToken(refresh_token, process.env.JWT_REFRESH_SECRET);
+    const decoded = verifyToken(refresh_token, process.env.JWT_REFRESH_SECRET);
 
-    // Check if the token exists in the database
+    // Verify token type
+    if (decoded.type !== "refresh") {
+      return res.status(401).json({ message: "Invalid token type" });
+    }
+
+    // Check if token is blacklisted
+    const isBlacklisted = await BlacklistedToken.findOne({
+      token: refresh_token,
+    });
+    if (isBlacklisted) {
+      return res.status(401).json({ message: "Token has been invalidated" });
+    }
+
+    // Check if refresh token exists in database
     const storedToken = await RefreshToken.findOne({ token: refresh_token });
     if (!storedToken) {
       return res
         .status(401)
-        .json({ message: "Invalid or expired refresh token." });
+        .json({ message: "Invalid or expired refresh token" });
     }
 
-    // Fetch the user to get the latest details
-    const user = await User.findById(payload.id);
+    // Fetch the user
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("tenantId");
+
     if (!user) {
-      return res.status(401).json({ message: "User not found." });
+      return res.status(401).json({ message: "User not found" });
     }
 
-    // Generate a new access token
+    // Generate new tokens
     const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
 
-    // Optionally, update the refresh token in the database (if rotation is required)
-    storedToken.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // Extend expiry time
-    await storedToken.save();
+    // Update refresh token in database
+    await RefreshToken.findByIdAndUpdate(storedToken._id, {
+      token: newRefreshToken,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    });
+
+    // Blacklist old refresh token
+    const blacklistedToken = new BlacklistedToken({
+      token: refresh_token,
+    });
+    await blacklistedToken.save();
 
     res.status(200).json({
       token: newAccessToken,
+      refresh_token: newRefreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -167,18 +190,10 @@ const refreshToken = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(401).json({ message: "Token validation failed." });
+    res.status(401).json({ message: "Token validation failed" });
   }
 };
 
-const getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 const logout = async (req, res) => {
   try {
@@ -194,23 +209,10 @@ const logout = async (req, res) => {
   }
 };
 
-const listUsers = async (req, res) => {
-  try {
-    const users = await User.find({ role: "user" })
-      .select("-password") // Exclude passwords from the response
-      .populate("tenantId"); // Populate tenantId field with tenant details
-
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 module.exports = {
   register,
   login,
   refreshToken,
-  getProfile,
   logout,
-  listUsers,
 };
