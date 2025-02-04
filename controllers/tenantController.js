@@ -163,7 +163,7 @@ const getTenantAdmins = async (req, res) => {
     const tenantId = req.params.id;
 
     // SuperAdmin can view all tenant admins; tenantAdmin can view their own
-    if (req.user.role === 'tenant_admin' && req.user.tenantId !== tenantId) {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
       return res
         .status(403)
         .json({ message: 'Access denied. You can only view your own tenant users.' });

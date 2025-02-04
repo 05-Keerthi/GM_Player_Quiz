@@ -10,8 +10,8 @@ router.get('/tenants/:id', auth, isSuperAdminOrTenantAdmin, getTenantById);
 router.put('/tenants/:id', uploadLogo.single('customLogo'), auth, isSuperAdminOrTenantAdmin, updateTenant);      
 router.delete('/tenants/:id', auth, isSuperAdmin, deleteTenant);
 router.post('/registerTenantAdmin/:id', auth, isSuperAdmin, registerTenantAdmin);   
-router.put('/updateTenantAdmin/:id/:userId', auth,isSuperAdmin, updateTenantAdmin);
-router.get('/tenant-admins/:id', auth,isSuperAdmin, getTenantAdmins);
-router.delete('/tenant-admins/:id/:userId', auth, isSuperAdmin, deleteTenantAdmin);
+router.put('/updateTenantAdmin/:id/:userId', auth,isSuperAdminOrTenantAdmin, updateTenantAdmin);
+router.get('/tenant-admins/:id', auth,isSuperAdminOrTenantAdmin, getTenantAdmins);
+router.delete('/tenant-admins/:id/:userId', auth, isSuperAdminOrTenantAdmin, deleteTenantAdmin);
 
 module.exports = router;
