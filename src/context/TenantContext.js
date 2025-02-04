@@ -9,17 +9,20 @@ import {
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: `${process.env.REACT_APP_API_URL}/api`,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-// Add request interceptor to always get fresh token
+// Add request interceptor to handle both JSON and FormData
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Don't set Content-Type for FormData - let the browser set it with boundary
+  if (!(config.data instanceof FormData)) {
+    config.headers["Content-Type"] = "application/json";
+  }
+
   return config;
 });
 
@@ -28,13 +31,18 @@ export const TenantContext = createContext();
 export const TenantProvider = ({ children }) => {
   const [state, dispatch] = useReducer(tenantReducer, initialState);
 
-
   const actions = {
-    // Existing tenant actions...
     createTenant: async (tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: newTenant } = await api.post("/tenants", tenantData);
+        const { data: newTenant } = await api.post("/tenants", tenantData, {
+          headers: {
+            "Content-Type":
+              tenantData instanceof FormData
+                ? "multipart/form-data"
+                : "application/json",
+          },
+        });
         dispatch({ type: ACTIONS.ADD_TENANT, payload: newTenant });
         return newTenant;
       } catch (error) {
@@ -54,7 +62,15 @@ export const TenantProvider = ({ children }) => {
       try {
         const { data: updatedTenant } = await api.put(
           `/tenants/${id}`,
-          tenantData
+          tenantData,
+          {
+            headers: {
+              "Content-Type":
+                tenantData instanceof FormData
+                  ? "multipart/form-data"
+                  : "application/json",
+            },
+          }
         );
         dispatch({ type: ACTIONS.UPDATE_TENANT, payload: updatedTenant });
         return updatedTenant;
@@ -130,12 +146,16 @@ export const TenantProvider = ({ children }) => {
     registerTenantAdmin: async (tenantId, adminData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: newAdmin } = await api.post(`/registerTenantAdmin/${tenantId}`, adminData);
+        const { data: newAdmin } = await api.post(
+          `/registerTenantAdmin/${tenantId}`,
+          adminData
+        );
         // Optionally dispatch an action to update tenant admins list if your reducer supports it
         return newAdmin;
       } catch (error) {
         const errorPayload = {
-          message: error.response?.data?.message || "Failed to register tenant admin",
+          message:
+            error.response?.data?.message || "Failed to register tenant admin",
           errors: error.response?.data?.errors || [],
         };
         dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
@@ -148,11 +168,15 @@ export const TenantProvider = ({ children }) => {
     updateTenantAdmin: async (tenantId, userId, adminData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: updatedAdmin } = await api.put(`/updateTenantAdmin/${tenantId}/${userId}`, adminData);
+        const { data: updatedAdmin } = await api.put(
+          `/updateTenantAdmin/${tenantId}/${userId}`,
+          adminData
+        );
         return updatedAdmin;
       } catch (error) {
         const errorPayload = {
-          message: error.response?.data?.message || "Failed to update tenant admin",
+          message:
+            error.response?.data?.message || "Failed to update tenant admin",
           errors: error.response?.data?.errors || [],
         };
         dispatch({ type: ACTIONS.SET_ERROR, payload: errorPayload });
@@ -165,14 +189,17 @@ export const TenantProvider = ({ children }) => {
     getTenantAdmins: async (tenantId) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: tenantAdmins } = await api.get(`/tenant-admins/${tenantId}`);
+        const { data: tenantAdmins } = await api.get(
+          `/tenant-admins/${tenantId}`
+        );
         // Optionally dispatch an action to update tenant admins list if your reducer supports it
         return tenantAdmins;
       } catch (error) {
         dispatch({
           type: ACTIONS.SET_ERROR,
           payload: {
-            message: error.response?.data?.message || "Failed to fetch tenant admins",
+            message:
+              error.response?.data?.message || "Failed to fetch tenant admins",
           },
         });
         throw error;
@@ -190,7 +217,8 @@ export const TenantProvider = ({ children }) => {
         dispatch({
           type: ACTIONS.SET_ERROR,
           payload: {
-            message: error.response?.data?.message || "Failed to delete tenant admin",
+            message:
+              error.response?.data?.message || "Failed to delete tenant admin",
           },
         });
         throw error;

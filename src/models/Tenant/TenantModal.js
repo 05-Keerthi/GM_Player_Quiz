@@ -142,31 +142,33 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
     try {
       const submitData = new FormData();
 
+      // Add all form fields to FormData
       Object.keys(formData).forEach((key) => {
         if (key === "mobileNumber" || key === "email") {
+          // Handle arrays
           const filteredArray = formData[key].filter((item) => item.trim());
-          if (filteredArray.length === 0) {
-            submitData.append(key, "");
-          } else {
-            filteredArray.forEach((item) => {
-              submitData.append(key, item);
-            });
-          }
-        } else if (key !== "logo") {
+          filteredArray.forEach((item) => {
+            submitData.append(key, item);
+          });
+        } else if (key !== "logo" && formData[key] !== "") {
+          // Add other fields
           submitData.append(key, formData[key]);
         }
       });
 
+      // Handle logo upload
       if (selectedFile) {
         submitData.append("customLogo", selectedFile);
-        submitData.append("logo", "");
       } else if (formData.logo) {
         submitData.append("logo", formData.logo);
-        submitData.append("customLogo", "");
-      } else {
-        submitData.append("logo", "");
-        submitData.append("customLogo", "");
       }
+
+      console.log("Form data being sent:", {
+        name: submitData.get("name"),
+        customDomain: submitData.get("customDomain"),
+        customLogo: submitData.get("customLogo"),
+        logo: submitData.get("logo"),
+      });
 
       let updatedTenant;
       if (isEditing) {
@@ -183,6 +185,7 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
 
       onClose();
     } catch (error) {
+      console.error("Upload error:", error);
       if (error.response?.data?.errors) {
         const fieldErrors = error.response.data.errors.reduce((acc, err) => {
           acc[err.field] = err.message;
