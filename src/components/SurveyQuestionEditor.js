@@ -225,11 +225,15 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
 
   const renderTemplateSection = () => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label
+        htmlFor="template-select"
+        className="block text-sm font-medium text-gray-700 mb-1"
+      >
         Select Template
       </label>
       <div className="flex gap-2">
         <select
+          id="template-select"
           value={selectedTemplateId}
           onChange={(e) => {
             const template = templates.find((t) => t._id === e.target.value);
@@ -239,6 +243,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
           }}
           className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           disabled={templatesLoading}
+          aria-label="Select template"
         >
           <option value="">Select a template</option>
           {templates.map((template) => (
@@ -251,6 +256,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
           onClick={() => setIsTemplateModalOpen(true)}
           className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
           title="Manage Templates"
+          disabled={templatesLoading}
         >
           <Settings className="w-5 h-5" />
           Manage Templates
@@ -258,7 +264,7 @@ const SurveyQuestionEditor = ({ question, onUpdate, onClose, surveyType }) => {
       </div>
       {templatesLoading && (
         <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-          <Loader className="w-4 h-4 animate-spin" />
+          <Loader className="w-4 h-4 animate-spin" data-testid="loader-icon" />
           <span>Loading templates...</span>
         </div>
       )}

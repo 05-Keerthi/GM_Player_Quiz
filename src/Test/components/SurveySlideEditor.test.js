@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import SurveySlideEditor from "../../models/SurveySlideEditor";
+import SurveySlideEditor from "../../components/SurveySlideEditor";
 
 // Mock dependencies
 jest.mock("lucide-react", () => ({
