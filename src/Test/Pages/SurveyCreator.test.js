@@ -46,7 +46,7 @@ jest.mock("../../components/NavbarComp", () => {
 });
 
 // Mock the modals
-jest.mock("../../models/SurveyQuestionEditor", () => {
+jest.mock("../../components/SurveyQuestionEditor", () => {
   return function MockSurveyQuestionEditor({ question, onUpdate, onClose }) {
     return (
       <div data-testid="survey-question-editor">
@@ -59,7 +59,7 @@ jest.mock("../../models/SurveyQuestionEditor", () => {
   };
 });
 
-jest.mock("../../models/SurveySlideEditor", () => {
+jest.mock("../../components/SurveySlideEditor", () => {
   return function MockSurveySlideEditor({ slide, onUpdate, onClose }) {
     return (
       <div data-testid="survey-slide-editor">
@@ -314,7 +314,6 @@ describe("SurveyCreator", () => {
     });
   });
 
-  
   test("handles deleting a question", async () => {
     const mockSurveyWithOrder = {
       ...mockSurvey,

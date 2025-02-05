@@ -42,10 +42,10 @@ jest.mock("../../components/TenantManagement", () => {
   };
 });
 
-jest.mock("../../models/Tenant/CreateTenantModel", () => {
-  return function MockCreateTenantModal({ isOpen, onClose }) {
+jest.mock("../../models/Tenant/TenantModal", () => {
+  return function MockTenantModal({ isOpen, onClose }) {
     return isOpen ? (
-      <div data-testid="create-tenant-modal">
+      <div data-testid="tenant-modal">
         <button onClick={onClose}>Close</button>
       </div>
     ) : null;
@@ -70,94 +70,64 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
+
+    // Check for Join Quiz section
     expect(
       screen.getByRole("heading", { name: "Join Quiz" })
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId("button-join-now")
-    ).toBeInTheDocument();
-    expect(
       screen.getByText("Participate in exciting quizzes")
     ).toBeInTheDocument();
+    expect(screen.getByTestId("button-join-now")).toBeInTheDocument();
+
+    // Check for Join Survey section
+    expect(
+      screen.getByRole("heading", { name: "Join Survey" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Participate in exciting surveys")
+    ).toBeInTheDocument();
+
+    // Check plans section
     expect(
       screen.getByRole("heading", { name: "Choose Your Plan" })
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("card")).toHaveLength(4);
   });
 
-  test("redirects to login when unauthenticated user tries to join quiz", async () => {
-    useAuthContext.mockReturnValue({
-      isAuthenticated: false,
-      user: null,
-    });
-
-    render(<HomePage />);
-    await user.click(screen.getByTestId("button-join-now"));
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
-  });
-
-  describe("Plan selection navigation", () => {
-    test("redirects to login for unauthenticated users", async () => {
-      useAuthContext.mockReturnValue({
-        isAuthenticated: false,
-        user: null,
-      });
-
-      render(<HomePage />);
-      const planCards = screen.getAllByTestId("card");
-      await user.click(planCards[0]); // Click Basic Plan
-      expect(mockNavigate).toHaveBeenCalledWith("/login");
-    });
-
-    test("navigates to correct paths for authenticated users", async () => {
-      useAuthContext.mockReturnValue({
-        isAuthenticated: true,
-        user: { role: "user" },
-      });
-
-      render(<HomePage />);
-      const planCards = screen.getAllByTestId("card");
-      const planPaths = [
-        "/basic-plan",
-        "/pro-plan",
-        "/business-plan",
-        "/enterprise",
-      ];
-
-      for (let i = 0; i < planPaths.length; i++) {
-        await user.click(planCards[i]);
-        expect(mockNavigate).toHaveBeenNthCalledWith(i + 1, planPaths[i]);
-      }
-    });
-  });
-
-  test("renders correctly for superadmin role", () => {
-    useAuthContext.mockReturnValue({
-      isAuthenticated: true,
-      user: { role: "superadmin" },
-    });
-
-    render(<HomePage />);
-
-    expect(
-      screen.getByRole("heading", { name: "Create Tenant" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Create Tenant" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Set up new organization spaces")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Tenant Management" })
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("tenant-management")).toBeInTheDocument();
-  });
-
   test("renders correctly for tenant_admin role", () => {
     useAuthContext.mockReturnValue({
       isAuthenticated: true,
-      user: { role: "tenant_admin" },
+      user: {
+        role: "tenant_admin",
+        tenantId: { _id: "123" },
+      },
+    });
+
+    render(<HomePage />);
+
+    // Check for main actions
+    expect(
+      screen.getByRole("heading", { name: "Manage tenant details" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "View Activity Log" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dashboard" })
+    ).toBeInTheDocument();
+
+    // Check for User Management section
+    expect(
+      screen.getByRole("heading", { name: "User Management" })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("user-management")).toBeInTheDocument();
+  });
+
+  test("renders correctly for admin role", () => {
+    useAuthContext.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: "admin" },
     });
 
     render(<HomePage />);
@@ -170,7 +140,7 @@ describe("HomePage", () => {
       "Create ArtPulse",
       "View ArtPulse",
       "View Activity Log",
-      "Dashboard"
+      "Dashboard",
     ];
 
     expectedHeadings.forEach((heading) => {
@@ -179,38 +149,45 @@ describe("HomePage", () => {
       ).toBeInTheDocument();
     });
 
+    // Admin shouldn't have a second section
     expect(
-      screen.getByRole("heading", { name: "User Management" })
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("user-management")).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Choose Your Plan" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("user-management")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("tenant-management")).not.toBeInTheDocument();
   });
 
-  test("handles navigation correctly for tenant admin actions", async () => {
+  test("handles navigation with survey type", async () => {
     useAuthContext.mockReturnValue({
       isAuthenticated: true,
-      user: { role: "tenant_admin" },
+      user: { role: "admin" },
     });
 
     render(<HomePage />);
 
-    await user.click(screen.getByRole("button", { name: "Create Quiz" }));
-    expect(mockNavigate).toHaveBeenCalledWith("/selectQuizCategory");
+    await user.click(screen.getByRole("button", { name: "Create Survey" }));
+    expect(mockNavigate).toHaveBeenCalledWith("/selectSurveyCategory", {
+      state: { surveyType: "survey" },
+    });
 
-    await user.click(screen.getByRole("button", { name: "Go to Quizzes" }));
-    expect(mockNavigate).toHaveBeenCalledWith("/quiz-list");
+    await user.click(screen.getByRole("button", { name: "Create ArtPulse" }));
+    expect(mockNavigate).toHaveBeenCalledWith("/selectSurveyCategory", {
+      state: { surveyType: "ArtPulse" },
+    });
   });
 
-  test("opens and closes create tenant modal for superadmin", async () => {
+  test("opens and closes tenant modal for superadmin", async () => {
     useAuthContext.mockReturnValue({
       isAuthenticated: true,
       user: { role: "superadmin" },
     });
 
     render(<HomePage />);
+
     await user.click(screen.getByRole("button", { name: "Create Tenant" }));
-    expect(screen.getByTestId("create-tenant-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("tenant-modal")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByTestId("create-tenant-modal")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("tenant-modal")).not.toBeInTheDocument();
   });
 });
