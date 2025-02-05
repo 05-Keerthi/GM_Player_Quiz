@@ -190,14 +190,7 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/joinsurvey"
-          element={
-            <ProtectedRoute>
-              <UnifiedJoin type="survey" />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/joinsurvey" element={<UnifiedJoin type="survey" />} />
 
         <Route path="/user-lobby" element={<UserLobby />} />
         <Route path="/survey-user-lobby" element={<SurveyUserLobby />} />
