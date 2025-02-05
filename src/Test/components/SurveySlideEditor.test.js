@@ -22,11 +22,19 @@ describe("SurveySlideEditor", () => {
   test("renders the component with default props", () => {
     render(<SurveySlideEditor onUpdate={mockOnUpdate} onClose={mockOnClose} />);
 
-    expect(screen.getByRole('heading', { name: /Add Slide/i })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Enter slide title/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Enter slide content/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Add Slide/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Enter slide title/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Enter slide content/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/Click to upload image/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add Slide/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Add Slide/i })
+    ).toBeInTheDocument();
   });
 
   test("handles input changes", () => {
@@ -45,14 +53,14 @@ describe("SurveySlideEditor", () => {
   test("validates form submission", async () => {
     render(<SurveySlideEditor onUpdate={mockOnUpdate} onClose={mockOnClose} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Add Slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Add Slide/i }));
 
     expect(screen.getByText(/Please enter a slide title/i)).toBeInTheDocument();
 
     const titleInput = screen.getByPlaceholderText(/Enter slide title/i);
     fireEvent.change(titleInput, { target: { value: "Valid Title" } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Add Slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Add Slide/i }));
     expect(screen.getByText(/Please enter slide content/i)).toBeInTheDocument();
   });
 
@@ -65,14 +73,16 @@ describe("SurveySlideEditor", () => {
     fireEvent.change(titleInput, { target: { value: "Valid Title" } });
     fireEvent.change(contentInput, { target: { value: "Valid Content" } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Add Slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Add Slide/i }));
 
-    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledWith({
-      surveyTitle: "Valid Title",
-      surveyContent: "Valid Content",
-      imageUrl: null,
-      position: 0,
-    }));
+    await waitFor(() =>
+      expect(mockOnUpdate).toHaveBeenCalledWith({
+        surveyTitle: "Valid Title",
+        surveyContent: "Valid Content",
+        imageUrl: null,
+        position: 0,
+      })
+    );
 
     expect(mockOnClose).toHaveBeenCalled();
   });
@@ -89,7 +99,9 @@ describe("SurveySlideEditor", () => {
     render(<SurveySlideEditor onUpdate={mockOnUpdate} onClose={mockOnClose} />);
 
     const fileInput = screen.getByLabelText(/Click to upload image/i);
-    const file = new File(["dummy content"], "example.jpg", { type: "image/jpeg" });
+    const file = new File(["dummy content"], "example.jpg", {
+      type: "image/jpeg",
+    });
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
@@ -100,6 +112,8 @@ describe("SurveySlideEditor", () => {
           method: "POST",
         })
       );
+    });
+    await waitFor(() => {
       expect(screen.getByAltText(/Slide/i)).toBeInTheDocument();
     });
   });
@@ -107,7 +121,12 @@ describe("SurveySlideEditor", () => {
   test("handles image removal", async () => {
     render(
       <SurveySlideEditor
-        slide={{ surveyTitle: "", surveyContent: "", imageUrl: "test.jpg", position: 0 }}
+        slide={{
+          surveyTitle: "",
+          surveyContent: "",
+          imageUrl: "test.jpg",
+          position: 0,
+        }}
         onUpdate={mockOnUpdate}
         onClose={mockOnClose}
       />
