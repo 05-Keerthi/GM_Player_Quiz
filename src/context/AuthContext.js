@@ -160,6 +160,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const getProfile = async () => {
+    try {
+      const response = await api.get("/auth/me");
+      dispatch({ type: ACTIONS.GET_USER_PROFILE, payload: response.data });
+      return response.data;
+    } catch (error) {
+      dispatch({
+        type: ACTIONS.SET_ERROR,
+        payload: "Failed to fetch user profile",
+      });
+      throw error;
+    }
+  };
+
+  const listUsers = async () => {
+    try {
+      const response = await api.get("/auth/users");
+      dispatch({ type: ACTIONS.LIST_USERS, payload: response.data });
+      return response.data;
+    } catch (error) {
+      dispatch({
+        type: ACTIONS.SET_ERROR,
+        payload: "Failed to fetch users list",
+      });
+      throw error;
+    }
+  };
 
   const clearError = () => {
     dispatch({ type: ACTIONS.CLEAR_ERROR });
@@ -172,6 +199,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         register,
+        getProfile,
+        listUsers,
         clearError,
       }}
     >

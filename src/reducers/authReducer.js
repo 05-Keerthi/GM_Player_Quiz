@@ -12,6 +12,8 @@ export const ACTIONS = {
   LOGIN: "LOGIN",
   LOGOUT: "LOGOUT",
   REGISTER: "REGISTER",
+  GET_USER_PROFILE: "GET_USER_PROFILE",
+  LIST_USERS: "LIST_USERS",
   SET_LOADING: "SET_LOADING",
   SET_ERROR: "SET_ERROR",
   CLEAR_ERROR: "CLEAR_ERROR",
@@ -34,6 +36,22 @@ export const authReducer = (state, action) => {
       return {
         ...initialState,
         loading: false, // Ensure loading is false after logout
+      };
+
+    case ACTIONS.GET_USER_PROFILE:
+      return {
+        ...state,
+        user: action.payload,
+        loading: false,
+        error: null,
+      };
+
+    case ACTIONS.LIST_USERS:
+      return {
+        ...state,
+        users: action.payload,
+        loading: false,
+        error: null,
       };
 
     case ACTIONS.SET_LOADING:
