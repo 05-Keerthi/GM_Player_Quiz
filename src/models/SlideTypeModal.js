@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  X,
-  Image,
-  Type,
-  ListOrdered,
-} from "lucide-react";
+import { X, Image, Type, ListOrdered } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Slide Type Selection Modal
@@ -34,7 +29,11 @@ export const SlideTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50"
+        data-testid="modal-overlay"
+        onClick={onClose}
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -47,6 +46,7 @@ export const SlideTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
           </h2>
           <button
             onClick={onClose}
+            data-testid="close-modal-button"
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
@@ -64,7 +64,10 @@ export const SlideTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
               className="p-4 border rounded-lg text-left transition-all hover:border-blue-300 hover:bg-blue-50"
             >
               <div className="flex items-center gap-3">
-                <type.icon className="w-5 h-5 text-blue-600" />
+                <type.icon
+                  className="w-5 h-5 text-blue-600"
+                  data-testid="slide-type-icon"
+                />
                 <div>
                   <h3 className="font-medium text-gray-900">{type.title}</h3>
                   <p className="text-sm text-gray-500">{type.description}</p>

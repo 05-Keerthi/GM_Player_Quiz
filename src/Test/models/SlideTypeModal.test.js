@@ -1,183 +1,131 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import SlideTypeModal from '../../models/SlideTypeModal';
-import { act } from 'react-dom/test-utils';
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { SlideTypeModal } from "../../models/SlideTypeModal";
 
-// Mock react-router-dom
-jest.mock('react-router-dom', () => ({
-  useParams: () => ({ quizId: 'test-quiz-id' }),
-}));
-
-// Mock environment variables
-process.env.REACT_APP_API_URL = 'http://test-api.com';
-
-describe('SlideTypeModal', () => {
+describe("SlideTypeModal", () => {
   const mockOnClose = jest.fn();
-  const mockOnAddSlide = jest.fn();
-  
-  // Mock localStorage
-  beforeEach(() => {
-    jest.spyOn(window.localStorage.__proto__, 'getItem').mockReturnValue('test-token');
-    global.fetch = jest.fn();
-  });
+  const mockOnTypeSelect = jest.fn();
 
-  afterEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  const defaultProps = {
-    isOpen: true,
-    onClose: mockOnClose,
-    onAddSlide: mockOnAddSlide,
-  };
-
   const renderModal = (props = {}) => {
-    return render(<SlideTypeModal {...defaultProps} {...props} />);
+    return render(
+      <SlideTypeModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onTypeSelect={mockOnTypeSelect}
+        {...props}
+      />
+    );
   };
 
-  describe('Initial Render', () => {
-    it('should not render when isOpen is false', () => {
-      renderModal({ isOpen: false });
-      expect(screen.queryByText('Select Slide Type')).not.toBeInTheDocument();
+  describe("Initial Render", () => {
+    it("renders slide type selection screen when isOpen is true", () => {
+      renderModal();
+
+      // Check heading
+      expect(screen.getByText("Select Slide Type")).toBeInTheDocument();
+
+      // Check all slide types are present
+      expect(screen.getByText("Classic")).toBeInTheDocument();
+      expect(screen.getByText("Big Title")).toBeInTheDocument();
+      expect(screen.getByText("Bullet Points")).toBeInTheDocument();
+
+      // Check descriptions
+      expect(
+        screen.getByText("Give players more context or additional explanation")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Display large text with emphasis")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Present information in a structured list")
+      ).toBeInTheDocument();
     });
 
-    it('should render slide type selection screen initially', () => {
-      renderModal();
-      expect(screen.getByText('Select Slide Type')).toBeInTheDocument();
-      expect(screen.getByText('Classic')).toBeInTheDocument();
-      expect(screen.getByText('Big Title')).toBeInTheDocument();
-      expect(screen.getByText('Bullet Points')).toBeInTheDocument();
-    });
-  });
-
-  describe('Form Interactions', () => {
-    it('should handle bullet point additions and removals', async () => {
-      renderModal();
-      
-      // Select bullet points type
-      await userEvent.click(screen.getByText('Bullet Points'));
-      
-      // Check initial point input
-      const initialPointInput = screen.getByPlaceholderText('Point 1');
-      expect(initialPointInput).toBeInTheDocument();
-      
-      // Add a new point
-      await userEvent.click(screen.getByRole('button', { name: /add point/i }));
-      
-      // Get all point inputs
-      const pointInputs = screen.getAllByPlaceholderText(/point \d/i);
-      expect(pointInputs).toHaveLength(2);
-      
-      // Remove a point
-      const removeButtons = screen.getAllByRole('button', { name: /remove point/i });
-      await userEvent.click(removeButtons[0]);
-      
-      // Check that one point input remains
-      const remainingInputs = screen.getAllByPlaceholderText(/point \d/i);
-      expect(remainingInputs).toHaveLength(1);
-    });
-  });
-
-  describe('Slide Submission', () => {
-    it('should submit classic slide correctly', async () => {
-      renderModal();
-      
-      await userEvent.click(screen.getByText('Classic'));
-      
-      // Use getByRole for better accessibility
-      const titleInput = screen.getByRole('textbox', { name: /slide title/i });
-      const contentInput = screen.getByPlaceholderText('Enter slide content...');
-      
-      await userEvent.type(titleInput, 'Test Title');
-      await userEvent.type(contentInput, 'Test Content');
-      
-      await userEvent.click(screen.getByRole('button', { name: /create slide/i }));
-      
-      expect(mockOnAddSlide).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Test Title',
-          content: 'Test Content',
-          type: 'classic',
-          quizId: 'test-quiz-id'
-        })
+    it("does not render when isOpen is false", () => {
+      render(
+        <SlideTypeModal
+          isOpen={false}
+          onClose={mockOnClose}
+          onTypeSelect={mockOnTypeSelect}
+        />
       );
+      expect(screen.queryByText("Select Slide Type")).not.toBeInTheDocument();
     });
 
-    it('should submit bullet points slide correctly', async () => {
+    it("renders close button", () => {
       renderModal();
-      
-      await userEvent.click(screen.getByText('Bullet Points'));
-      
-      const titleInput = screen.getByRole('textbox', { name: /slide title/i });
-      const pointInput = screen.getByPlaceholderText('Point 1');
-      
-      await userEvent.type(titleInput, 'Test Title');
-      await userEvent.type(pointInput, 'Test Point');
-      
-      await userEvent.click(screen.getByRole('button', { name: /create slide/i }));
-      
-      expect(mockOnAddSlide).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Test Title',
-          content: 'Test Point',
-          type: 'bullet_points',
-          quizId: 'test-quiz-id'
-        })
-      );
+      const closeButton = screen.getByTestId("close-modal-button");
+      expect(closeButton).toBeInTheDocument();
     });
 
-    it('should prevent submission without title', async () => {
+    it("renders all slide type icons", () => {
       renderModal();
-      
-      await userEvent.click(screen.getByText('Classic'));
-      
-      const submitButton = screen.getByRole('button', { name: /create slide/i });
-      expect(submitButton).toBeDisabled();
-    });
-  });
-
-  describe('Image Upload', () => {
-    const mockFile = new File(['test'], 'test.png', { type: 'image/png' });
-
-    beforeEach(() => {
-      global.fetch.mockImplementation(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            media: [{ _id: 'test-media-id', filename: 'test.png' }]
-          })
-        })
-      );
-    });
-
-    it('should handle image upload successfully', async () => {
-      renderModal();
-      await userEvent.click(screen.getByText('Classic'));
-      
-      const fileInput = screen.getByLabelText(/upload image/i);
-      await userEvent.upload(fileInput, mockFile);
-      
-      await waitFor(() => {
-        expect(screen.getByAltText('Slide')).toBeInTheDocument();
+      // Check that all icons are rendered (they should have the correct CSS class)
+      const icons = screen.getAllByTestId("slide-type-icon");
+      expect(icons).toHaveLength(3);
+      icons.forEach((icon) => {
+        expect(icon).toHaveClass("w-5 h-5 text-blue-600");
       });
     });
+  });
 
-    it('should handle image removal', async () => {
+  describe("Interactions", () => {
+    it("calls onClose when clicking the close button", async () => {
       renderModal();
-      await userEvent.click(screen.getByText('Classic'));
-      
-      const fileInput = screen.getByLabelText(/upload image/i);
-      await userEvent.upload(fileInput, mockFile);
-      
-      await waitFor(() => {
-        expect(screen.getByAltText('Slide')).toBeInTheDocument();
+      const closeButton = screen.getByTestId("close-modal-button");
+      await userEvent.click(closeButton);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onClose when clicking the overlay", async () => {
+      renderModal();
+      const overlay = screen.getByTestId("modal-overlay");
+      await userEvent.click(overlay);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onTypeSelect with correct type ID when selecting Classic", async () => {
+      renderModal();
+      const classicButton = screen.getByRole("button", { name: /Classic/i });
+      await userEvent.click(classicButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("classic");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onTypeSelect with correct type ID when selecting Big Title", async () => {
+      renderModal();
+      const bigTitleButton = screen.getByRole("button", { name: /Big Title/i });
+      await userEvent.click(bigTitleButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("big_title");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onTypeSelect with correct type ID when selecting Bullet Points", async () => {
+      renderModal();
+      const bulletPointsButton = screen.getByRole("button", {
+        name: /Bullet Points/i,
       });
-      
-      const removeButton = screen.getByTitle('Remove image');
-      await userEvent.click(removeButton);
-      
-      expect(screen.queryByAltText('Slide')).not.toBeInTheDocument();
+      await userEvent.click(bulletPointsButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("bullet_points");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("applies hover styles when hovering over slide type buttons", async () => {
+      renderModal();
+      const buttons = screen
+        .getAllByRole("button")
+        .filter((button) => button.className.includes("border rounded-lg"));
+
+      for (const button of buttons) {
+        await userEvent.hover(button);
+        expect(button).toHaveClass("hover:border-blue-300");
+        expect(button).toHaveClass("hover:bg-blue-50");
+      }
     });
   });
 });
