@@ -163,30 +163,30 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="bg-white rounded-lg p-6 shadow-lg w-full"
+        className="bg-white rounded-lg p-3 sm:p-4 md:p-6 shadow-lg w-full max-w-3xl mx-auto"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 border-b pb-4">
-          <h2 className="text-2xl font-semibold text-gray-800">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 border-b pb-3 sm:pb-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">
             {initialSlide ? "Edit Slide" : "Add New Slide"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center gap-2 text-sm sm:text-base">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             {error}
           </div>
         )}
 
         {/* Form Content */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -198,7 +198,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
               placeholder="Enter slide title"
             />
           </div>
@@ -208,7 +208,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
             <label className="block text-sm font-medium text-gray-700">
               Slide Image (Optional)
             </label>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-2 sm:gap-4">
               <input
                 type="file"
                 className="hidden"
@@ -218,28 +218,28 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
               />
               <label
                 htmlFor="image-upload"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200"
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 text-sm sm:text-base"
               >
-                <Upload className="w-5 h-5" />
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
                 Upload Image
               </label>
               {imagePreview && (
                 <button
                   onClick={handleImageRemove}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm sm:text-base"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   Remove
                 </button>
               )}
             </div>
 
             {imagePreview && (
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <img
                   src={imagePreview}
                   alt="Slide"
-                  className="w-full max-h-64 object-contain rounded-lg"
+                  className="w-full max-h-48 sm:max-h-64 object-contain rounded-lg"
                 />
               </div>
             )}
@@ -247,7 +247,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
 
           {/* Content Section */}
           {formData.type === "bullet_points" ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex justify-between items-center">
                 <label className="block text-sm font-medium text-gray-700">
                   Bullet Points <span className="text-red-500">*</span>
@@ -262,21 +262,21 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
                 )}
               </div>
               {formData.points.map((point, index) => (
-                <div key={index} className="flex items-center gap-3">
+                <div key={index} className="flex items-center gap-2 sm:gap-3">
                   <span className="text-gray-500">•</span>
                   <input
                     type="text"
                     value={point}
                     onChange={(e) => handlePointChange(index, e.target.value)}
-                    className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                     placeholder={`Point ${index + 1}`}
                   />
                   {formData.points.length > 1 && (
                     <button
                       onClick={() => removePoint(index)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                      className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   )}
                 </div>
@@ -292,7 +292,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, content: e.target.value }))
                 }
-                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[150px] resize-y"
+                className="w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] sm:min-h-[150px] resize-y text-sm sm:text-base"
                 placeholder={
                   formData.type === "big_title"
                     ? "Enter title text"
@@ -300,7 +300,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
                 }
                 style={
                   formData.type === "big_title"
-                    ? { fontSize: "1.5rem", fontWeight: "600" }
+                    ? { fontSize: "1.25rem", fontWeight: "600" }
                     : {}
                 }
               />
@@ -308,17 +308,17 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-4 pt-6 border-t">
+          <div className="flex justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t">
             <button
               onClick={handleSubmit}
               disabled={isUploading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm sm:text-base"
             >
               {initialSlide ? "Update Slide" : "Add Slide"}
             </button>
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base"
             >
               Cancel
             </button>
