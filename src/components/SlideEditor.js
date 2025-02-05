@@ -1,324 +1,331 @@
 import React, { useState, useEffect } from "react";
+import { X, Upload, Trash2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  X,
-  Image as ImageIcon,
-  Type,
-  ListOrdered,
-  Upload,
-  Trash2,
-} from "lucide-react";
+import { SlideTypeModal } from "../models/SlideTypeModal";
 
-const SlideEditor = ({ slide, onUpdate, onClose }) => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [points, setPoints] = useState([""]);
-  const [error, setError] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(!initialSlide);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-
-  const API_BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
+  const [imagePreview, setImagePreview] = useState(null);
+  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "",
+    content: "",
+    points: [""],
+    imageUrl: null,
+    position: 0,
+  });
 
   useEffect(() => {
-    if (slide) {
-      setTitle(slide.title || "");
-      if (slide.type === "bullet_points") {
-        setPoints(slide.content ? slide.content.split("\n") : [""]);
-      } else {
-        setContent(slide.content || "");
-      }
-
-      if (slide.imageUrl) {
-        if (slide.imageUrl.startsWith("/uploads/")) {
-          setImagePreview(`${API_BASE_URL}${slide.imageUrl}`);
-        } else {
-          setImagePreview(slide.imageUrl);
-        }
-      } else {
-        setImagePreview(null);
+    if (initialSlide) {
+      setFormData({
+        ...initialSlide,
+        points:
+          initialSlide.type === "bullet_points"
+            ? initialSlide.content.split("\n")
+            : [""],
+      });
+      if (initialSlide.imageUrl) {
+        setImagePreview(initialSlide.imageUrl);
       }
     }
-  }, [slide]);
+  }, [initialSlide]);
 
-  const getSlideTypeIcon = (type) => {
-    const typeIcons = {
-      classic: <ImageIcon className="w-6 h-6 text-blue-600" />,
-      big_title: <Type className="w-6 h-6 text-purple-600" />,
-      bullet_points: <ListOrdered className="w-6 h-6 text-green-600" />,
-    };
-    return typeIcons[type] || null;
-  };
-
-  const handlePointChange = (index, value) => {
-    const newPoints = [...points];
-    newPoints[index] = value;
-    setPoints(newPoints);
-  };
-
-  const handleAddBulletPoint = () => {
-    setPoints([...points, ""]);
-  };
-
-  const handleRemoveBulletPoint = (index) => {
-    const updatedPoints = [...points];
-    updatedPoints.splice(index, 1);
-    setPoints(updatedPoints);
-    // Also update the content to keep it in sync
-    const newContent = updatedPoints.join("\n");
-    setContent(newContent);
+  const handleTypeSelect = (type) => {
+    setFormData((prev) => ({
+      ...prev,
+      type,
+      points: type === "bullet_points" ? [""] : [],
+      content: "",
+    }));
+    setIsTypeModalOpen(false);
   };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setIsUploading(true);
-      setUploadError(null);
+    if (!file) return;
 
-      try {
-        const formData = new FormData();
-        formData.append("media", file);
+    setIsUploading(true);
+    setError(null);
 
-        const token = localStorage.getItem("token");
-        const uploadResponse = await fetch(`${API_BASE_URL}/media/upload`, {
+    try {
+      const formData = new FormData();
+      formData.append("media", file);
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/media/upload`,
+        {
           method: "POST",
-          body: formData,
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Image upload failed");
+          body: formData,
         }
+      );
 
-        const uploadData = await uploadResponse.json();
-        const mediaData = uploadData.media[0];
+      if (!response.ok) throw new Error("Image upload failed");
 
-        setImagePreview(
-          `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
-        );
+      const data = await response.json();
+      const mediaData = data.media[0];
 
-        if (slide) {
-          slide.imageUrl = mediaData._id;
-        }
-      } catch (error) {
-        console.error("Image upload error:", error);
-        setUploadError("Failed to upload image");
-      } finally {
-        setIsUploading(false);
-      }
+      setImagePreview(
+        `${process.env.REACT_APP_API_URL}/uploads/${mediaData.filename}`
+      );
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: mediaData._id,
+      }));
+    } catch (error) {
+      setError("Failed to upload image");
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleImageRemove = () => {
     setImagePreview(null);
-    if (slide) {
-      slide.imageUrl = null;
+    setFormData((prev) => ({
+      ...prev,
+      imageUrl: null,
+    }));
+  };
+
+  const handlePointChange = (index, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      points: prev.points.map((point, i) => (i === index ? value : point)),
+    }));
+  };
+
+  const addPoint = () => {
+    if (formData.points.length < 6) {
+      // Limit to 6 bullet points
+      setFormData((prev) => ({
+        ...prev,
+        points: [...prev.points, ""],
+      }));
     }
   };
 
-  const handleSave = async () => {
-    try {
-      const updatedData = {
-        title,
-        type: slide.type,
-        content: slide.type === "bullet_points" ? points.join("\n") : content,
-        imageUrl: slide.imageUrl,
-        deleteImage: !imagePreview && slide.imageUrl ? true : undefined,
+  const removePoint = (index) => {
+    if (formData.points.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        points: prev.points.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      setError("Slide title is required");
+      return false;
+    }
+
+    if (formData.type === "bullet_points") {
+      const validPoints = formData.points.filter((point) => point.trim());
+      if (validPoints.length === 0) {
+        setError("At least one bullet point is required");
+        return false;
+      }
+    } else if (!formData.content.trim()) {
+      setError("Slide content is required");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      // Format the data before submission
+      const submissionData = {
+        ...formData,
+        content:
+          formData.type === "bullet_points"
+            ? formData.points.filter((point) => point.trim()).join("\n")
+            : formData.content,
       };
-
-      console.log("Saving slide with data:", updatedData);
-      await onUpdate(updatedData);
-      onClose();
-    } catch (error) {
-      console.error("Error saving slide:", error);
-      setError(error.message);
+      onSubmit(submissionData);
     }
   };
-
-  if (!slide) return null;
 
   return (
-    <motion.div
-      initial={{ x: "100%", opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: "100%", opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="bg-gray-50 rounded-xl shadow-2xl p-8 w-full max-w-2xl mx-auto relative"
-    >
-      <div className="flex items-center justify-between mb-8 border-b pb-4">
-        <div className="flex items-center gap-4">
-          {getSlideTypeIcon(slide.type)}
-          <h2 className="text-2xl font-bold text-gray-800">Edit Slide</h2>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-200 rounded-full transition-colors group"
-        >
-          <X className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
-        </button>
-      </div>
+    <>
+      <SlideTypeModal
+        isOpen={isTypeModalOpen}
+        onClose={() => setIsTypeModalOpen(false)}
+        onTypeSelect={handleTypeSelect}
+      />
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Slide Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300"
-            placeholder="Enter slide title..."
-          />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        className="bg-white rounded-lg p-3 sm:p-4 md:p-6 shadow-lg w-full max-w-3xl mx-auto"
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4 sm:mb-6 border-b pb-3 sm:pb-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">
+            {initialSlide ? "Edit Slide" : "Add New Slide"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full"
+          >
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-700">
-            Slide Image
-          </label>
-          <div className="flex items-center gap-4">
-            <input
-              type="file"
-              className="hidden"
-              id="image-upload"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-            <label
-              htmlFor="image-upload"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 transition"
-            >
-              <Upload className="w-5 h-5" />
-              Upload Image
+        {error && (
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center gap-2 text-sm sm:text-base">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            {error}
+          </div>
+        )}
+
+        {/* Form Content */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Slide Title <span className="text-red-500">*</span>
             </label>
-            {imagePreview && (
-              <button
-                onClick={handleImageRemove}
-                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, title: e.target.value }))
+              }
+              className="w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+              placeholder="Enter slide title"
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Slide Image (Optional)
+            </label>
+            <div className="flex flex-wrap gap-2 sm:gap-4">
+              <input
+                type="file"
+                className="hidden"
+                id="image-upload"
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+              <label
+                htmlFor="image-upload"
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-100 text-blue-700 rounded-lg cursor-pointer hover:bg-blue-200 text-sm sm:text-base"
               >
-                <Trash2 className="w-5 h-5" />
-                Remove
-              </button>
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                Upload Image
+              </label>
+              {imagePreview && (
+                <button
+                  onClick={handleImageRemove}
+                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm sm:text-base"
+                >
+                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Remove
+                </button>
+              )}
+            </div>
+
+            {imagePreview && (
+              <div className="mt-3 sm:mt-4">
+                <img
+                  src={imagePreview}
+                  alt="Slide"
+                  className="w-full max-h-48 sm:max-h-64 object-contain rounded-lg"
+                />
+              </div>
             )}
           </div>
 
-          {uploadError && (
-            <div className="text-red-500 bg-red-50 p-2 rounded-lg">
-              {uploadError}
-            </div>
-          )}
-
-          {imagePreview && (
-            <div className="relative mt-4">
-              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                <div
-                  className="relative w-full"
-                  style={{ paddingBottom: "75%" }}
-                >
-                  <img
-                    src={imagePreview}
-                    alt="Slide"
-                    className="absolute inset-0 w-full h-full object-contain"
-                  />
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
-                    </div>
-                  )}
-                </div>
+          {/* Content Section */}
+          {formData.type === "bullet_points" ? (
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-gray-700">
+                  Bullet Points <span className="text-red-500">*</span>
+                </label>
+                {formData.points.length < 6 && (
+                  <button
+                    onClick={addPoint}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Add Point
+                  </button>
+                )}
               </div>
-              <div className="absolute top-2 right-2 flex gap-2">
-                <button
-                  onClick={handleImageRemove}
-                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                  title="Remove image"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        {slide.type === "bullet_points" ? (
-          <div className="space-y-4">
-            <label className="block text-sm font-semibold text-gray-700">
-              Bullet Points
-            </label>
-            <div className="space-y-3">
-              {points.map((point, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 bg-white p-3 rounded-lg border"
-                >
-                  <span className="text-gray-500 font-bold">•</span>
+              {formData.points.map((point, index) => (
+                <div key={index} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-gray-500">•</span>
                   <input
                     type="text"
                     value={point}
                     onChange={(e) => handlePointChange(index, e.target.value)}
-                    className="flex-1 p-2 border-b-2 border-transparent focus:border-blue-500 transition-colors"
+                    className="flex-1 p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                     placeholder={`Point ${index + 1}`}
                   />
-                  {points.length > 1 && (
+                  {formData.points.length > 1 && (
                     <button
-                      onClick={() => handleRemoveBulletPoint(index)}
-                      className="ml-2 p-2 text-red-600 hover:text-red-800"
-                      aria-label="Remove bullet point"
+                      onClick={() => removePoint(index)}
+                      className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full"
                     >
-                      <Trash2 size={20} data-icon="trash-2" />
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   )}
                 </div>
               ))}
-              <button
-                onClick={handleAddBulletPoint}
-                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-              >
-                Add Bullet Point
-              </button>
             </div>
-          </div>
-        ) : (
-          <div>
-            <label
-              htmlFor="slide-content"
-              className="block text-sm font-semibold text-gray-700 mb-2"
-            >
-              Content <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="slide-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-300 min-h-[150px]"
-              placeholder="Enter slide content..."
-            />
-          </div>
-        )}
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Content <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.content}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, content: e.target.value }))
+                }
+                className="w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] sm:min-h-[150px] resize-y text-sm sm:text-base"
+                placeholder={
+                  formData.type === "big_title"
+                    ? "Enter title text"
+                    : "Enter slide content"
+                }
+                style={
+                  formData.type === "big_title"
+                    ? { fontSize: "1.25rem", fontWeight: "600" }
+                    : {}
+                }
+              />
+            </div>
+          )}
 
-        <div className="flex justify-end gap-4 mt-6">
-          <button
-            onClick={handleSave}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-          >
-            Save
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
-          >
-            Cancel
-          </button>
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t">
+            <button
+              onClick={handleSubmit}
+              disabled={isUploading}
+              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm sm:text-base"
+            >
+              {initialSlide ? "Update Slide" : "Add Slide"}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

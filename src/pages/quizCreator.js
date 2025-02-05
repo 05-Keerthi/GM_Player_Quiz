@@ -7,8 +7,8 @@ import ConfirmationModal from "../models/ConfirmationModal";
 import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import { useQuizContext } from "../context/quizContext";
 import { toast } from "react-toastify";
-import QuestionEditor from "../models/QuestionEditor";
-import SlideEditor from "../models/SlideEditor";
+import QuestionEditor from "../components/QuestionEditor";
+import SlideEditor from "../components/SlideEditor";
 
 // Custom Alert Component
 const CustomAlert = ({ message, type = "error", onClose }) => {

@@ -8,8 +8,8 @@ import UnifiedSettingsModal from "../models/UnifiedSettingsModal";
 import { useQuestionContext } from "../context/questionContext";
 import { useSurveyContext } from "../context/surveyContext";
 import { useSurveySlideContext } from "../context/surveySlideContext";
-import SurveyQuestionEditor from "../models/SurveyQuestionEditor";
-import SurveySlideEditor from "../models/SurveySlideEditor";
+import SurveyQuestionEditor from "../components/SurveyQuestionEditor";
+import SurveySlideEditor from "../components/SurveySlideEditor";
 
 const LoadingWrapper = ({ loading, children }) => {
   if (!loading) return children;

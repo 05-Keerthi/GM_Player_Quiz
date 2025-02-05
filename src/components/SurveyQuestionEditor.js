@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Trash2, Upload, AlertCircle, Loader, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ColorPicker from "../components/ColorPicker";
+import ColorPicker from "./ColorPicker";
 import { useTemplateContext } from "../context/TemplateContext";
-import TemplateModal from "./TemplateModal";
+import TemplateModal from "../models/TemplateModal";
 
 const processQuestionData = (data = {}) => ({
   title: data.title || "",
