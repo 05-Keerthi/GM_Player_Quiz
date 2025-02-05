@@ -109,12 +109,16 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
   };
 
   const removePoint = (index) => {
-    if (formData.points.length > 1) {
-      setFormData((prev) => ({
-        ...prev,
-        points: prev.points.filter((_, i) => i !== index),
-      }));
-    }
+    setFormData((prev) => {
+      // Only remove if there will be at least one point remaining
+      if (prev.points.length > 1) {
+        return {
+          ...prev,
+          points: prev.points.filter((_, i) => i !== index),
+        };
+      }
+      return prev;
+    });
   };
 
   const validateForm = () => {
@@ -150,6 +154,45 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
       onSubmit(submissionData);
     }
   };
+
+  const renderBulletPoints = () => (
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex justify-between items-center">
+        <label className="block text-sm font-medium text-gray-700">
+          Bullet Points <span className="text-red-500">*</span>
+        </label>
+        {formData.points.length < 6 && (
+          <button
+            onClick={addPoint}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Add Point
+          </button>
+        )}
+      </div>
+      {formData.points.map((point, index) => (
+        <div key={index} className="flex items-center gap-2 sm:gap-3">
+          <span className="text-gray-500">•</span>
+          <input
+            type="text"
+            value={point}
+            onChange={(e) => handlePointChange(index, e.target.value)}
+            className="flex-1 p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+            placeholder={`Point ${index + 1}`}
+          />
+          {formData.points.length > 1 && (
+            <button
+              onClick={() => removePoint(index)}
+              className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full"
+              aria-label="Remove point"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -247,41 +290,7 @@ const SlideEditor = ({ initialSlide = null, onSubmit, onClose }) => {
 
           {/* Content Section */}
           {formData.type === "bullet_points" ? (
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">
-                  Bullet Points <span className="text-red-500">*</span>
-                </label>
-                {formData.points.length < 6 && (
-                  <button
-                    onClick={addPoint}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Add Point
-                  </button>
-                )}
-              </div>
-              {formData.points.map((point, index) => (
-                <div key={index} className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-gray-500">•</span>
-                  <input
-                    type="text"
-                    value={point}
-                    onChange={(e) => handlePointChange(index, e.target.value)}
-                    className="flex-1 p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                    placeholder={`Point ${index + 1}`}
-                  />
-                  {formData.points.length > 1 && (
-                    <button
-                      onClick={() => removePoint(index)}
-                      className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full"
-                    >
-                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+            renderBulletPoints()
           ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
