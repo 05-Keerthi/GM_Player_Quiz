@@ -76,17 +76,23 @@ const QuestionDetailsResult = () => {
     return currentItems;
   };
 
+  // Function to determine text color based on background color
+  const getTextColor = (backgroundColor) => {
+    return backgroundColor.toLowerCase() === "#ffffff" ||
+      backgroundColor.toLowerCase() === "white"
+      ? "text-gray-800"
+      : "text-white";
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="bg-white rounded-lg shadow-sm">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 p-4 md:p-8">
-            {/* Image Section - Modified for better aspect ratio handling */}
+            {/* Image Section */}
             {questionData?.imageUrl && (
               <div className="order-1 lg:order-2 rounded-lg overflow-hidden shadow-lg border border-gray-100 ring-1 ring-black ring-opacity-5">
                 <div className="relative w-full pt-[75%]">
-                  {" "}
-                  {/* 4:3 aspect ratio */}
                   <img
                     src={questionData.imageUrl}
                     alt={questionData.title}
@@ -135,7 +141,9 @@ const QuestionDetailsResult = () => {
                               <th
                                 key={`${option.optionText}-name`}
                                 style={{ backgroundColor: option.color }}
-                                className="py-2 px-2 md:px-4 text-left text-white sticky top-0"
+                                className={`py-2 px-2 md:px-4 text-left sticky top-0 ${getTextColor(
+                                  option.color
+                                )}`}
                               >
                                 <div className="font-semibold truncate max-w-xs">
                                   {option.optionText}
