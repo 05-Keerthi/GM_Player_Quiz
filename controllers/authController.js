@@ -209,10 +209,32 @@ const logout = async (req, res) => {
   }
 };
 
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const listUsers = async (req, res) => {
+  try {
+    const users = await User.find({ role: "user" })
+      .select("-password") // Exclude passwords from the response
+      .populate("tenantId"); // Populate tenantId field with tenant details
+
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   register,
   login,
   refreshToken,
+  getProfile,
+  listUsers,
   logout,
 };
