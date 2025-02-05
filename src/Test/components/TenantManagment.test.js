@@ -1,51 +1,67 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useTenantContext } from '../../context/TenantContext';
-import TenantManagement from '../../components/TenantManagement';
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { useTenantContext } from "../../context/TenantContext";
+import TenantManagement from "../../components/TenantManagement";
 
 // Mock the required dependencies
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn()
+jest.mock("react-router-dom", () => ({
+  useNavigate: jest.fn(),
 }));
 
-jest.mock('react-toastify', () => ({
+jest.mock("react-toastify", () => ({
   toast: {
     success: jest.fn(),
-    error: jest.fn()
-  }
+    error: jest.fn(),
+  },
 }));
 
-jest.mock('../../context/TenantContext');
-jest.mock('../../models/Tenant/TenantAdminEditModal', () => {
-  const MockTenantAddAdminModal = ({ isOpen, onClose, tenant }) =>
-    isOpen ? (
-      <div data-testid="mock-tenant-add-admin-modal">
-        <h2>Add Tenant Admin</h2>
-        <p>Tenant Name: {tenant?.name || "Unknown"}</p>
+// Mock Lucide icons
+jest.mock("lucide-react", () => ({
+  Search: () => <div data-testid="search-icon">Search</div>,
+  Pencil: () => <div data-testid="edit-icon">Edit</div>,
+  Trash2: () => <div data-testid="delete-icon">Delete</div>,
+  Plus: () => <div data-testid="plus-icon">Plus</div>,
+}));
+
+jest.mock("../../context/TenantContext");
+
+// Mock the modal components
+jest.mock("../../models/Tenant/TenantModal", () => {
+  return function MockTenantModal({ isOpen, onClose, tenant }) {
+    if (!isOpen) return null;
+    return (
+      <div role="dialog" aria-label="Tenant Modal">
+        <h2>{tenant ? "Edit Tenant" : "Create Tenant"}</h2>
         <button onClick={onClose}>Close</button>
       </div>
-    ) : null;
-  return MockTenantAddAdminModal;
+    );
+  };
 });
 
-
-jest.mock('../../models/Tenant/TenantEditModel', () => {
-  const MockTenantEditModal = ({ isOpen, onClose, tenant }) =>
-    isOpen ? (
-      <div data-testid="mock-tenant-edit-modal">
-        <h2>Edit Tenant</h2>
-        <p>Tenant Name: {tenant.name}</p>
-        <button onClick={onClose}>Close</button>
+jest.mock("../../models/ConfirmationModal", () => {
+  return function MockConfirmationModal({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    message,
+  }) {
+    if (!isOpen) return null;
+    return (
+      <div role="dialog" aria-label="Confirmation Modal">
+        <h2>{title}</h2>
+        <p>{message}</p>
+        <button onClick={onConfirm}>Confirm</button>
+        <button onClick={onClose}>Cancel</button>
       </div>
-    ) : null;
-  return MockTenantEditModal;
+    );
+  };
 });
 
-
-describe('TenantManagement', () => {
-  // Setup mock data and functions
+describe("TenantManagement", () => {
   const mockNavigate = jest.fn();
   const mockGetAllTenants = jest.fn();
   const mockDeleteTenant = jest.fn();
@@ -53,21 +69,20 @@ describe('TenantManagement', () => {
 
   const mockTenants = [
     {
-      _id: '1',
-      name: 'Test Tenant 1',
-      customDomain: 'test1.com',
-      logo: 'test1.jpg'
+      _id: "1",
+      name: "Test Tenant 1",
+      customDomain: "test1.com",
+      logo: "test1.jpg",
     },
     {
-      _id: '2',
-      name: 'Test Tenant 2',
-      customDomain: 'test2.com',
-      logo: 'test2.jpg'
-    }
+      _id: "2",
+      name: "Test Tenant 2",
+      customDomain: "test2.com",
+      logo: "test2.jpg",
+    },
   ];
 
   beforeEach(() => {
-    // Reset all mocks before each test
     jest.clearAllMocks();
     useNavigate.mockReturnValue(mockNavigate);
     useTenantContext.mockReturnValue({
@@ -76,92 +91,243 @@ describe('TenantManagement', () => {
       deleteTenant: mockDeleteTenant,
       clearError: mockClearError,
       loading: false,
-      error: null
+      error: null,
     });
   });
 
-  test('handles delete tenant confirmation', async () => {
+  test("renders tenant list correctly", () => {
     render(<TenantManagement />);
 
-    // Find and click the first delete button
-    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteButtons[0]);
-
-    // Check if confirmation modal appears
-    expect(screen.getByText('Delete Tenant')).toBeInTheDocument();
-    expect(
-      screen.getByText('Are you sure you want to delete this tenant? This action cannot be undone.')
-    ).toBeInTheDocument();
+    expect(screen.getByText("Test Tenant 1")).toBeInTheDocument();
+    expect(screen.getByText("Test Tenant 2")).toBeInTheDocument();
+    expect(screen.getByText("test1.com")).toBeInTheDocument();
+    expect(screen.getByText("test2.com")).toBeInTheDocument();
   });
 
-  test('handles successful tenant deletion', async () => {
-    mockDeleteTenant.mockResolvedValueOnce();
-    
+  test("handles tenant row click navigation", () => {
     render(<TenantManagement />);
 
-    // Find and click delete button
-    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+    const tenantName = screen.getByText("Test Tenant 1");
+    fireEvent.click(tenantName);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/tenants/1");
+  });
+
+  test("handles search functionality", async () => {
+    render(<TenantManagement />);
+
+    const searchInput = screen.getByRole("textbox", { name: /search tenant/i });
+    await userEvent.type(searchInput, "Test Tenant 1");
+
+    expect(screen.getByText("Test Tenant 1")).toBeInTheDocument();
+    expect(screen.queryByText("Test Tenant 2")).not.toBeInTheDocument();
+  });
+
+  test("handles edit button click", () => {
+    render(<TenantManagement />);
+
+    const editButtons = screen.getAllByRole("button", { name: /edit tenant/i });
+    fireEvent.click(editButtons[0]);
+
+    expect(
+      screen.getByRole("dialog", { name: /tenant modal/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Edit Tenant")).toBeInTheDocument();
+  });
+
+  test("handles delete tenant flow", async () => {
+    mockDeleteTenant.mockResolvedValueOnce();
+    render(<TenantManagement />);
+
+    // Click delete button
+    const deleteButtons = screen.getAllByRole("button", {
+      name: /delete tenant/i,
+    });
     fireEvent.click(deleteButtons[0]);
 
-    // Click confirm in modal
-    const confirmButton = screen.getByRole('button', { name: /confirm/i });
+    // Verify confirmation modal
+    expect(
+      screen.getByRole("dialog", { name: /confirmation modal/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Delete Tenant")).toBeInTheDocument();
+
+    // Confirm deletion
+    const confirmButton = screen.getByRole("button", { name: /confirm/i });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
-      expect(mockDeleteTenant).toHaveBeenCalledWith('1');
-      expect(mockGetAllTenants).toHaveBeenCalledTimes(2); // Initial + after deletion
+      expect(mockDeleteTenant).toHaveBeenCalledWith("1");
+    });
+    await waitFor(() => {
+      expect(mockGetAllTenants).toHaveBeenCalled();
+    });
+    await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
-        'Tenant deleted successfully!',
-        expect.any(Object)
+        "Tenant deleted successfully!"
       );
     });
   });
 
-  test('displays loading state', () => {
+  test("displays loading state", () => {
     useTenantContext.mockReturnValue({
       state: { tenants: [] },
       getAllTenants: mockGetAllTenants,
       loading: true,
-      error: null
+      error: null,
+      clearError: mockClearError,
     });
 
     render(<TenantManagement />);
-    
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  // test('handles edit modal opening', () => {
-  //   render(<TenantManagement />);
+  test("displays empty state message", () => {
+    useTenantContext.mockReturnValue({
+      state: { tenants: [] },
+      getAllTenants: mockGetAllTenants,
+      loading: false,
+      error: null,
+      clearError: mockClearError,
+    });
 
-  //   // Find and click edit button
-  //   const editButtons = screen.getAllByRole('button', { name: /edit/i });
-  //   fireEvent.click(editButtons[0]);
+    render(<TenantManagement />);
+    expect(screen.getByText("No tenants found")).toBeInTheDocument();
+  });
 
-  //   // Verify that the edit modal is opened
-  //   expect(screen.getByRole('dialog')).toBeInTheDocument();
-  // });
+  test("handles error state", () => {
+    const error = "Failed to fetch tenants";
+    useTenantContext.mockReturnValue({
+      state: { tenants: [] },
+      getAllTenants: mockGetAllTenants,
+      loading: false,
+      error,
+      clearError: mockClearError,
+    });
 
-  // test('handles add admin modal opening', () => {
-  //   render(<TenantManagement />);
+    render(<TenantManagement />);
+    expect(toast.error).toHaveBeenCalledWith(error);
+    expect(mockClearError).toHaveBeenCalled();
+  });
+  test("handles failed tenant deletion", async () => {
+    // Mock deletion failure
+    mockDeleteTenant.mockRejectedValueOnce(new Error("Deletion failed"));
 
-  //   // Find and click add admin button
-  //   const addAdminButtons = screen.getAllByRole('button', { name: /add admin/i });
-  //   fireEvent.click(addAdminButtons[0]);
-
-  //   // Verify that the add admin modal is opened
-  //   expect(screen.getByRole('dialog')).toBeInTheDocument();
-  // });
-
-  test('handles search functionality', () => {
     render(<TenantManagement />);
 
-    // Get search input
-    const searchInput = screen.getByPlaceholderText('Search Tenant');
+    // Click delete button
+    const deleteButtons = screen.getAllByRole("button", {
+      name: /delete tenant/i,
+    });
+    fireEvent.click(deleteButtons[0]);
 
-    // Type into search input
-    fireEvent.change(searchInput, { target: { value: 'Test Tenant 1' } });
+    // Click confirm in modal
+    const confirmButton = screen.getByRole("button", { name: /confirm/i });
+    fireEvent.click(confirmButton);
 
-    // Verify filtered results
-    expect(screen.getByText('Test Tenant 1')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to delete tenant");
+    });
+  });
+
+  test("handles pagination", () => {
+    // Mock many tenants to trigger pagination
+    const manyTenants = Array.from({ length: 8 }, (_, i) => ({
+      _id: String(i + 1),
+      name: `Test Tenant ${i + 1}`,
+      customDomain: `test${i + 1}.com`,
+      logo: `test${i + 1}.jpg`,
+    }));
+
+    useTenantContext.mockReturnValue({
+      state: { tenants: manyTenants },
+      getAllTenants: mockGetAllTenants,
+      deleteTenant: mockDeleteTenant,
+      clearError: mockClearError,
+      loading: false,
+      error: null,
+    });
+
+    render(<TenantManagement />);
+
+    // First page should show first 5 tenants
+    expect(screen.getByText("Test Tenant 1")).toBeInTheDocument();
+    expect(screen.getByText("Test Tenant 5")).toBeInTheDocument();
+    expect(screen.queryByText("Test Tenant 6")).not.toBeInTheDocument();
+
+    // Click next page
+    const nextButton = screen.getByRole("button", { name: /next/i });
+    fireEvent.click(nextButton);
+
+    // Second page should show remaining tenants
+    expect(screen.getByText("Test Tenant 6")).toBeInTheDocument();
+    expect(screen.queryByText("Test Tenant 1")).not.toBeInTheDocument();
+  });
+
+  test("closes modals correctly", () => {
+    render(<TenantManagement />);
+
+    // Open and close delete confirmation modal
+    const deleteButton = screen.getAllByRole("button", {
+      name: /delete tenant/i,
+    })[0];
+    fireEvent.click(deleteButton);
+    expect(
+      screen.getByRole("dialog", { name: /confirmation modal/i })
+    ).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelButton);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Open and close edit modal
+    const editButton = screen.getAllByRole("button", {
+      name: /edit tenant/i,
+    })[0];
+    fireEvent.click(editButton);
+    expect(
+      screen.getByRole("dialog", { name: /tenant modal/i })
+    ).toBeInTheDocument();
+
+    const closeButton = screen.getByRole("button", { name: /close/i });
+    fireEvent.click(closeButton);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("handles domain search", async () => {
+    render(<TenantManagement />);
+
+    const searchInput = screen.getByRole("textbox", { name: /search tenant/i });
+    await userEvent.type(searchInput, "test1.com");
+
+    expect(screen.getByText("Test Tenant 1")).toBeInTheDocument();
+    expect(screen.queryByText("Test Tenant 2")).not.toBeInTheDocument();
+  });
+
+  test("initializes with empty search query", () => {
+    render(<TenantManagement />);
+
+    const searchInput = screen.getByRole("textbox", { name: /search tenant/i });
+    expect(searchInput).toHaveValue("");
+  });
+
+  test("fetches tenants on mount", () => {
+    render(<TenantManagement />);
+    expect(mockGetAllTenants).toHaveBeenCalledTimes(1);
+  });
+
+  test("displays tenant images correctly", () => {
+    render(<TenantManagement />);
+
+    const tenantImages = screen.getAllByRole("img");
+    expect(tenantImages).toHaveLength(2);
+    expect(tenantImages[0]).toHaveAttribute("src", "test1.jpg");
+    expect(tenantImages[0]).toHaveAttribute("alt", "Test Tenant 1");
+  });
+
+  test("domain links are displayed with correct styling", () => {
+    render(<TenantManagement />);
+
+    const domainLinks = screen.getByText("test1.com");
+    expect(domainLinks).toHaveClass("text-blue-600");
   });
 });

@@ -1,12 +1,17 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "react-toastify";
 import UserManagement from "../../components/UserManagement";
 import { useUserContext } from "../../context/userContext";
 import { useAuthContext } from "../../context/AuthContext";
 
-// Mock the required dependencies
 jest.mock("react-toastify", () => ({
   toast: {
     error: jest.fn(),
@@ -25,16 +30,23 @@ jest.mock("lucide-react", () => ({
 const mockUsers = [
   {
     _id: "1",
-    username: "testuser1",
-    email: "test1@example.com",
+    username: "adminuser1",
+    email: "admin1@example.com",
     mobile: "1234567890",
-    role: "user",
+    role: "admin",
   },
   {
     _id: "2",
-    username: "testuser2",
-    email: "test2@example.com",
+    username: "regularuser1",
+    email: "user1@example.com",
     mobile: "0987654321",
+    role: "user",
+  },
+  {
+    _id: "3",
+    username: "adminuser2",
+    email: "admin2@example.com",
+    mobile: "5555555555",
     role: "admin",
   },
 ];
@@ -46,10 +58,8 @@ describe("UserManagement", () => {
   const mockFetchUserById = jest.fn();
 
   beforeEach(() => {
-    // Reset all mocks
     jest.clearAllMocks();
 
-    // Mock UserContext
     useUserContext.mockReturnValue({
       users: mockUsers,
       loading: false,
@@ -60,7 +70,6 @@ describe("UserManagement", () => {
       fetchUserById: mockFetchUserById,
     });
 
-    // Mock AuthContext with tenant_admin role by default
     useAuthContext.mockReturnValue({
       user: { role: "tenant_admin" },
     });
@@ -76,29 +85,45 @@ describe("UserManagement", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  test("renders user table with correct data", () => {
+  test("renders separate admin and regular user tables", () => {
     render(<UserManagement />);
 
-    // Check if table headers are present
-    expect(screen.getByText("Username")).toBeInTheDocument();
-    expect(screen.getByText("Email")).toBeInTheDocument();
-    expect(screen.getByText("Mobile Number")).toBeInTheDocument();
-    expect(screen.getByText("User Role")).toBeInTheDocument();
+    expect(screen.getByText("Administrators")).toBeInTheDocument();
+    expect(screen.getByText("Regular Users")).toBeInTheDocument();
 
-    // Check if user data is displayed
-    expect(screen.getByText("testuser1")).toBeInTheDocument();
-    expect(screen.getByText("test1@example.com")).toBeInTheDocument();
-    expect(screen.getByText("1234567890")).toBeInTheDocument();
+    // Check if admin users are in admin section
+    const adminTable = screen.getAllByRole("table")[0];
+    expect(within(adminTable).getByText("adminuser1")).toBeInTheDocument();
+    expect(within(adminTable).getByText("adminuser2")).toBeInTheDocument();
+
+    // Check if regular users are in regular users section
+    const userTable = screen.getAllByRole("table")[1];
+    expect(within(userTable).getByText("regularuser1")).toBeInTheDocument();
   });
 
-  test("search functionality filters users correctly", async () => {
+  test("admin search functionality filters admin users correctly", async () => {
     render(<UserManagement />);
 
-    const searchInput = screen.getByPlaceholderText("Search User");
-    await userEvent.type(searchInput, "testuser1");
+    const adminSearchInput = screen.getByPlaceholderText(
+      "Search Administrators"
+    );
+    await userEvent.type(adminSearchInput, "admin1");
 
-    expect(screen.getByText("testuser1")).toBeInTheDocument();
-    expect(screen.queryByText("testuser2")).not.toBeInTheDocument();
+    const adminTable = screen.getAllByRole("table")[0];
+    expect(within(adminTable).getByText("adminuser1")).toBeInTheDocument();
+    expect(
+      within(adminTable).queryByText("adminuser2")
+    ).not.toBeInTheDocument();
+  });
+
+  test("user search functionality filters regular users correctly", async () => {
+    render(<UserManagement />);
+
+    const userSearchInput = screen.getByPlaceholderText("Search Users");
+    await userEvent.type(userSearchInput, "regularuser1");
+
+    const userTable = screen.getAllByRole("table")[1];
+    expect(within(userTable).getByText("regularuser1")).toBeInTheDocument();
   });
 
   test("shows error toast when error occurs", () => {
@@ -115,35 +140,57 @@ describe("UserManagement", () => {
   test("handles user deletion", async () => {
     render(<UserManagement />);
 
-    // Find and click delete button for first user
-    const deleteButtons = screen.getAllByTestId("delete-icon");
-    fireEvent.click(deleteButtons[0].parentElement);
+    const deleteButton = within(screen.getAllByRole("table")[0]).getAllByTestId(
+      "delete-icon"
+    )[0];
+    fireEvent.click(deleteButton);
 
-    // Check if confirmation modal appears
+    // Check for the exact confirmation message
     expect(
-      screen.getByText(/Are you sure you want to delete/)
+      screen.getByText(
+        'Are you sure you want to delete the user "adminuser1"? This action cannot be undone.'
+      )
     ).toBeInTheDocument();
 
-    // Confirm deletion
     const confirmButton = screen.getByRole("button", { name: /confirm/i });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockDeleteUser).toHaveBeenCalledWith("1");
+    });
+
+    await waitFor(() => {
       expect(mockFetchUsers).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        "User deleted successfully!",
+        expect.any(Object)
+      );
     });
   });
 
   test("handles edit user click", async () => {
     render(<UserManagement />);
 
-    // Find and click edit button for first user
-    const editButtons = screen.getAllByTestId("edit-icon");
-    fireEvent.click(editButtons[0].parentElement);
+    // First verify the EditUserModal is not initially visible
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    const editButton = within(screen.getAllByRole("table")[0]).getAllByTestId(
+      "edit-icon"
+    )[0];
+    fireEvent.click(editButton);
 
     await waitFor(() => {
       expect(mockFetchUserById).toHaveBeenCalledWith("1");
     });
+
+    // Add a small delay to allow the modal to appear
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Now check if the EditUserModal is open
+    expect(screen.getByTestId("edit-user-modal")).toBeInTheDocument();
   });
 
   test("hides action buttons for non-admin users", () => {
@@ -157,58 +204,54 @@ describe("UserManagement", () => {
     expect(screen.queryByTestId("delete-icon")).not.toBeInTheDocument();
   });
 
-  test("shows no users message when user list is empty", () => {
+  test("shows no users message when both user lists are empty", () => {
     useUserContext.mockReturnValue({
       ...useUserContext(),
       users: [],
     });
 
     render(<UserManagement />);
-    expect(screen.getByText("No users found")).toBeInTheDocument();
+    const noUsersMessages = screen.getAllByText("No users found");
+    expect(noUsersMessages).toHaveLength(2); // One for each table
   });
 
-  test("pagination controls are shown and work correctly with more than 5 users", async () => {
-    // Create array of 7 users (more than the usersPerPage limit of 5)
-    const manyUsers = Array.from({ length: 7 }, (_, i) => ({
+  test("pagination controls work correctly for admin users", async () => {
+    const manyAdminUsers = Array.from({ length: 7 }, (_, i) => ({
       _id: String(i),
-      username: `user${i}`,
-      email: `user${i}@example.com`,
+      username: `adminuser${i}`,
+      email: `admin${i}@example.com`,
       mobile: String(i).repeat(10),
-      role: "user",
+      role: "admin",
     }));
 
     useUserContext.mockReturnValue({
       ...useUserContext(),
-      users: manyUsers,
+      users: manyAdminUsers,
     });
 
     render(<UserManagement />);
 
-    // Check if only 5 users are displayed initially (plus header row)
-    const initialRows = screen.getAllByRole("row");
+    const adminTable = screen.getAllByRole("table")[0];
+    const initialRows = within(adminTable).getAllByRole("row");
     expect(initialRows.length).toBe(6); // 5 users + 1 header row
 
-    // Verify first and last visible users
-    expect(screen.getByText("user0")).toBeInTheDocument();
-    expect(screen.getByText("user4")).toBeInTheDocument();
-    expect(screen.queryByText("user5")).not.toBeInTheDocument();
+    expect(screen.getByText("adminuser0")).toBeInTheDocument();
+    expect(screen.getByText("adminuser4")).toBeInTheDocument();
+    expect(screen.queryByText("adminuser5")).not.toBeInTheDocument();
 
-    // Verify pagination component is rendered
-    const pageNumbers = screen.getByText("1");
-    expect(pageNumbers).toBeInTheDocument();
-
-    // Get second page button by role and number
     const page2Button = screen.getByRole("button", { name: "2" });
-    expect(page2Button).toBeInTheDocument();
-
-    // Click to go to second page
     fireEvent.click(page2Button);
 
-    // Verify the users on second page
     await waitFor(() => {
-      expect(screen.queryByText("user0")).not.toBeInTheDocument();
-      expect(screen.getByText("user5")).toBeInTheDocument();
-      expect(screen.getByText("user6")).toBeInTheDocument();
+      expect(screen.queryByText("adminuser0")).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("adminuser5")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("adminuser6")).toBeInTheDocument();
     });
   });
 });
