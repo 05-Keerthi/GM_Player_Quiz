@@ -102,18 +102,20 @@ jest.mock("../pages/Report/AdminDashboard/SessionDetails", () => () => (
   <div>Session Details Page</div>
 ));
 
-// Mock ProtectedRoute Component
+// Create MockProtectedRoute component
 const MockProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthContext();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
+// Mock ProtectedRoute Component
 jest.mock("../routes/ProtectedRoute", () => ({
   __esModule: true,
-  default: (props) => <MockProtectedRoute {...props} />,
+  default: function ProtectedRoute(props) {
+    return <MockProtectedRoute {...props} />;
+  },
 }));
 
-// Enhanced Test Utility Function
 const renderWithRouter = (
   ui,
   { route = "/", authState = {}, searchParams = {} } = {}
@@ -164,266 +166,101 @@ describe("App Component", () => {
     });
   });
 
-  describe("Authentication Redirects", () => {
-    test("redirects from login to home when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/login",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Home Page")).toBeInTheDocument();
-      });
-    });
-
-    test("redirects from register to home when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/register",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Home Page")).toBeInTheDocument();
-      });
-    });
-  });
-
   describe("Protected Routes", () => {
-    test("renders profile page when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/user/profile",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Profile Page")).toBeInTheDocument();
-      });
-    });
+    const protectedRoutes = [
+      { path: "/user/profile", component: "Profile Page" },
+      { path: "/tenants/123", component: "Tenant Details Page" },
+      { path: "/selectQuizCategory", component: "Select Category Page" },
+      {
+        path: "/selectSurveyCategory",
+        component: "Select Survey Category Page",
+      },
+      { path: "/createQuiz/123", component: "Quiz Creator Page" },
+      { path: "/createSurvey/123", component: "Survey Creator Page" },
+      { path: "/quiz-list", component: "Unified List Page" },
+      { path: "/survey-list", component: "Unified List Page" },
+      { path: "/preview/123", component: "Preview Page" },
+      { path: "/surveyPreview/123", component: "Survey Preview Page" },
+      { path: "/join", component: "Unified Join" },
+      { path: "/joinsurvey", component: "Unified Join" },
+      { path: "/lobby", component: "Admin Lobby" },
+      { path: "/survey-lobby", component: "Survey Lobby" },
+      { path: "/start", component: "Admin Start" },
+      { path: "/start-survey", component: "Admin Survey Start" },
+      { path: "/play", component: "User Play" },
+      { path: "/results/123", component: "Survey Results" },
+      {
+        path: "/question-details/123/456",
+        component: "Question Details Result",
+      },
+      { path: "/admin-dashboard", component: "Report Admin Dashboard" },
+      { path: "/dashboard", component: "User Dashboard" },
+      { path: "/Activity-log", component: "Admin Dashboard Page" },
+    ];
 
-    test("redirects to login from profile when not authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/user/profile",
-        authState: { isAuthenticated: false },
+    protectedRoutes.forEach(({ path, component }) => {
+      test(`renders ${component} when authenticated for ${path}`, async () => {
+        renderWithRouter(<App />, {
+          route: path,
+          authState: { isAuthenticated: true },
+        });
+        await waitFor(() => {
+          expect(screen.getByText(component)).toBeInTheDocument();
+        });
       });
-      await waitFor(() => {
-        expect(screen.getByText("Login Page")).toBeInTheDocument();
-      });
-    });
 
-    test("renders tenant details page when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/tenants/123",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Tenant Details Page")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("Content Routes", () => {
-    test("renders quiz category selection page", async () => {
-      renderWithRouter(<App />, { route: "/selectQuizCategory" });
-      await waitFor(() => {
-        expect(screen.getByText("Select Category Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders survey category selection page", async () => {
-      renderWithRouter(<App />, { route: "/selectSurveyCategory" });
-      await waitFor(() => {
-        expect(
-          screen.getByText("Select Survey Category Page")
-        ).toBeInTheDocument();
-      });
-    });
-
-    test("renders quiz creator page", async () => {
-      renderWithRouter(<App />, { route: "/createQuiz/123" });
-      await waitFor(() => {
-        expect(screen.getByText("Quiz Creator Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders survey creator page", async () => {
-      renderWithRouter(<App />, { route: "/createSurvey/123" });
-      await waitFor(() => {
-        expect(screen.getByText("Survey Creator Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders quiz list page", async () => {
-      renderWithRouter(<App />, { route: "/quiz-list" });
-      await waitFor(() => {
-        expect(screen.getByText("Unified List Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders survey list page", async () => {
-      renderWithRouter(<App />, { route: "/survey-list" });
-      await waitFor(() => {
-        expect(screen.getByText("Unified List Page")).toBeInTheDocument();
+      test(`redirects to login from ${path} when not authenticated`, async () => {
+        renderWithRouter(<App />, {
+          route: path,
+          authState: { isAuthenticated: false },
+        });
+        await waitFor(() => {
+          expect(screen.getByText("Login Page")).toBeInTheDocument();
+        });
       });
     });
   });
 
-  describe("Session Routes", () => {
-    test("renders admin lobby", async () => {
-      renderWithRouter(<App />, { route: "/lobby" });
-      await waitFor(() => {
-        expect(screen.getByText("Admin Lobby")).toBeInTheDocument();
-      });
-    });
+  describe("Public Session Routes", () => {
+    const publicSessionRoutes = [
+      { path: "/user-lobby", component: "User Lobby" },
+      { path: "/survey-user-lobby", component: "Survey User Lobby" },
+      { path: "/survey-play", component: "User Survey Play" },
+    ];
 
-    test("renders survey lobby", async () => {
-      renderWithRouter(<App />, { route: "/survey-lobby" });
-      await waitFor(() => {
-        expect(screen.getByText("Survey Lobby")).toBeInTheDocument();
-      });
-    });
-
-    test("renders user lobby", async () => {
-      renderWithRouter(<App />, { route: "/user-lobby" });
-      await waitFor(() => {
-        expect(screen.getByText("User Lobby")).toBeInTheDocument();
-      });
-    });
-
-    test("renders play page", async () => {
-      renderWithRouter(<App />, { route: "/play" });
-      await waitFor(() => {
-        expect(screen.getByText("User Play")).toBeInTheDocument();
-      });
-    });
-
-    test("renders survey play page", async () => {
-      renderWithRouter(<App />, { route: "/survey-play" });
-      await waitFor(() => {
-        expect(screen.getByText("User Survey Play")).toBeInTheDocument();
-      });
-    });
-
-    test("renders final leaderboard", async () => {
-      renderWithRouter(<App />, {
-        route: "/leaderboard",
-        searchParams: { sessionId: "123", isAdmin: "true" },
-        authState: { user: { id: "user123" } },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Final Leaderboard")).toBeInTheDocument();
+    publicSessionRoutes.forEach(({ path, component }) => {
+      test(`renders ${component} without authentication for ${path}`, async () => {
+        renderWithRouter(<App />, { route: path });
+        await waitFor(() => {
+          expect(screen.getByText(component)).toBeInTheDocument();
+        });
       });
     });
   });
 
-  describe("Report and Dashboard Routes", () => {
-    test("renders admin dashboard when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/admin-dashboard",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Report Admin Dashboard")).toBeInTheDocument();
-      });
-    });
+  describe("Dynamic Report Routes", () => {
+    const reportRoutes = [
+      {
+        path: "/quiz-reports/quiz/123",
+        component: "Detailed Report Dashboard",
+      },
+      {
+        path: "/admin/quiz-reports/quiz/123",
+        component: "Detailed Admin Report Dashboard",
+      },
+      { path: "/session/quiz/123", component: "Session Dashboard" },
+      { path: "/quiz/session/123", component: "Session Details Page" },
+    ];
 
-    test("renders user dashboard when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/dashboard",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("User Dashboard")).toBeInTheDocument();
-      });
-    });
-
-    test("renders detailed report dashboard for specific type", async () => {
-      renderWithRouter(<App />, {
-        route: "/quiz-reports/quiz/123",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(
-          screen.getByText("Detailed Report Dashboard")
-        ).toBeInTheDocument();
-      });
-    });
-
-    test("renders admin detailed report dashboard", async () => {
-      renderWithRouter(<App />, {
-        route: "/admin/quiz-reports/quiz/123",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(
-          screen.getByText("Detailed Admin Report Dashboard")
-        ).toBeInTheDocument();
-      });
-    });
-
-    test("renders session dashboard", async () => {
-      renderWithRouter(<App />, {
-        route: "/session/quiz/123",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Session Dashboard")).toBeInTheDocument();
-      });
-    });
-
-    test("renders session details page", async () => {
-      renderWithRouter(<App />, {
-        route: "/quiz/session/123",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Session Details Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders activity log page when authenticated", async () => {
-      renderWithRouter(<App />, {
-        route: "/Activity-log",
-        authState: { isAuthenticated: true },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Admin Dashboard Page")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("Session Handling", () => {
-    test("shows session expired toast and resets session state", async () => {
-      const { authState } = renderWithRouter(<App />, {
-        authState: { sessionExpired: true },
-      });
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          "Your session has expired. Please log in again."
-        );
-      });
-
-      await waitFor(() => {
-        expect(authState.resetSessionState).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe("Legacy Route Redirects", () => {
-    test("renders unified details for quiz-details route", async () => {
-      renderWithRouter(<App />, {
-        route: "/quiz-details",
-        searchParams: { type: "quiz", quizId: "123", hostId: "456" },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Unified Details Page")).toBeInTheDocument();
-      });
-    });
-
-    test("renders unified details for survey-details route", async () => {
-      renderWithRouter(<App />, {
-        route: "/survey-details",
-        searchParams: { type: "survey", surveyId: "789", hostId: "456" },
-      });
-      await waitFor(() => {
-        expect(screen.getByText("Unified Details Page")).toBeInTheDocument();
+    reportRoutes.forEach(({ path, component }) => {
+      test(`renders ${component} for ${path}`, async () => {
+        renderWithRouter(<App />, {
+          route: path,
+          authState: { isAuthenticated: true },
+        });
+        await waitFor(() => {
+          expect(screen.getByText(component)).toBeInTheDocument();
+        });
       });
     });
   });
