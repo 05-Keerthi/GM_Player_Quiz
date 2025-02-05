@@ -182,7 +182,6 @@ describe("App Component", () => {
       { path: "/preview/123", component: "Preview Page" },
       { path: "/surveyPreview/123", component: "Survey Preview Page" },
       { path: "/join", component: "Unified Join" },
-      { path: "/joinsurvey", component: "Unified Join" },
       { path: "/lobby", component: "Admin Lobby" },
       { path: "/survey-lobby", component: "Survey Lobby" },
       { path: "/start", component: "Admin Start" },
@@ -226,6 +225,7 @@ describe("App Component", () => {
       { path: "/user-lobby", component: "User Lobby" },
       { path: "/survey-user-lobby", component: "Survey User Lobby" },
       { path: "/survey-play", component: "User Survey Play" },
+      { path: "/joinsurvey", component: "Unified Join" }, // Added joinsurvey to public routes
     ];
 
     publicSessionRoutes.forEach(({ path, component }) => {
@@ -235,9 +235,19 @@ describe("App Component", () => {
           expect(screen.getByText(component)).toBeInTheDocument();
         });
       });
+
+      // Add test to verify that the route remains accessible even when authenticated
+      test(`renders ${component} with authentication for ${path}`, async () => {
+        renderWithRouter(<App />, {
+          route: path,
+          authState: { isAuthenticated: true },
+        });
+        await waitFor(() => {
+          expect(screen.getByText(component)).toBeInTheDocument();
+        });
+      });
     });
   });
-
   describe("Dynamic Report Routes", () => {
     const reportRoutes = [
       {
