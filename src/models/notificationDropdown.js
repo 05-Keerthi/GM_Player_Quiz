@@ -12,6 +12,9 @@ const NotificationDropdown = () => {
   const { user } = useAuthContext();
   const [socket, setSocket] = useState(null);
 
+  // State to track screen width
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   // Regular notification context
   const {
     notifications: regularNotifications,
@@ -29,6 +32,16 @@ const NotificationDropdown = () => {
     getNotificationsByUserId: getSurveyNotifications,
     markAsRead: markSurveyAsRead,
   } = useSurveyNotificationContext();
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Initialize socket connection
   useEffect(() => {
@@ -237,17 +250,38 @@ const NotificationDropdown = () => {
       </div>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
+        <div
+          className={`
+            ${isMobile ? "fixed inset-x-0 mx-4 top-20" : "absolute right-0"}
+            mt-2 bg-white rounded-lg shadow-xl z-50 border border-gray-200
+            ${isMobile ? "w-auto" : "w-80"}
+          `}
+        >
           <div className="p-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Notifications
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Notifications
+              </h3>
+              {isMobile && (
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div
+            className={`overflow-y-auto ${
+              isMobile ? "max-h-[70vh]" : "max-h-96"
+            }`}
+          >
+            {/* Existing notification content */}
             {regularLoading || surveyLoading ? (
               <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" data-testid="loading-spinner"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
             ) : regularError || surveyError ? (
               <div className="p-4 text-center text-red-500">
