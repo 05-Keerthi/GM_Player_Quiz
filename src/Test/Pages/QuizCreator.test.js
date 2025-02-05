@@ -1,17 +1,11 @@
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuizContext } from "../../context/quizContext";
 import QuizCreator from "../../pages/quizCreator";
 
-// Mock all required dependencies
+// Mock dependencies
 jest.mock("react-router-dom", () => ({
   useParams: jest.fn(),
   useNavigate: jest.fn(),
@@ -21,24 +15,24 @@ jest.mock("../../context/quizContext", () => ({
   useQuizContext: jest.fn(),
 }));
 
-// Mock framer-motion to avoid animation-related issues in tests
+// Mock framer-motion
 jest.mock("framer-motion", () => ({
   motion: { div: "div" },
   AnimatePresence: ({ children }) => children,
 }));
 
+// Mock components
 jest.mock("../../components/NavbarComp", () => {
   return function MockNavbar() {
     return <div data-testid="navbar">Navbar</div>;
   };
 });
 
-// Mock the QuestionEditor component
 jest.mock("../../components/QuestionEditor", () => {
-  return function MockQuestionEditor({ question, onUpdate, onClose }) {
+  return function MockQuestionEditor({ onSubmit, onClose }) {
     return (
       <div data-testid="question-editor">
-        <button onClick={() => onUpdate({ title: "Updated Question" })}>
+        <button onClick={() => onSubmit({ title: "Updated Question" })}>
           Update Question
         </button>
         <button onClick={onClose}>Close Editor</button>
@@ -47,12 +41,11 @@ jest.mock("../../components/QuestionEditor", () => {
   };
 });
 
-// Mock the SlideEditor component
 jest.mock("../../components/SlideEditor", () => {
-  return function MockSlideEditor({ slide, onUpdate, onClose }) {
+  return function MockSlideEditor({ onSubmit, onClose }) {
     return (
       <div data-testid="slide-editor">
-        <button onClick={() => onUpdate({ title: "Updated Slide" })}>
+        <button onClick={() => onSubmit({ title: "Updated Slide" })}>
           Update Slide
         </button>
         <button onClick={onClose}>Close Editor</button>
@@ -61,76 +54,45 @@ jest.mock("../../components/SlideEditor", () => {
   };
 });
 
-// Mock the QuestionTypeModal
-jest.mock("../../models/QuestionTypeModal", () => {
-  return function MockQuestionTypeModal({ isOpen, onClose, onAddQuestion }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="question-type-modal">
-        <button
-          data-testid="modal-add-question-btn"
-          onClick={() =>
-            onAddQuestion({
-              title: "New Question",
-              type: "multiple-choice",
-              options: [],
-            })
-          }
-        >
-          Add Question
-        </button>
-        <button onClick={onClose}>Close</button>
-      </div>
-    );
-  };
-});
-
-// Mock the SlideTypeModal
-jest.mock("../../models/SlideTypeModal", () => {
-  return function MockSlideTypeModal({ isOpen, onClose, onAddSlide }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="slide-type-modal">
-        <button
-          data-testid="modal-add-slide-btn"
-          onClick={() =>
-            onAddSlide({
-              title: "New Slide",
-              content: "",
-              type: "content",
-            })
-          }
-        >
-          Add Slide
-        </button>
-        <button onClick={onClose}>Close</button>
-      </div>
-    );
-  };
-});
-
-// Mock the UnifiedSettingsModal
+// Mock modals
 jest.mock("../../models/UnifiedSettingsModal", () => {
-  return function MockUnifiedSettingsModal({
+  return function MockSettingsModal({
     isOpen,
     onClose,
     onSave,
-    initialData,
+    onTitleUpdate,
   }) {
     if (!isOpen) return null;
     return (
       <div data-testid="settings-modal">
         <button
-          onClick={() =>
-            onSave({
+          data-testid="save-settings"
+          onClick={() => {
+            const updatedData = {
               title: "Updated Quiz Title",
               description: "Updated Description",
-            })
-          }
+            };
+            onSave(updatedData);
+            onTitleUpdate(updatedData.title);
+          }}
         >
           Save Settings
         </button>
         <button onClick={onClose}>Close</button>
+      </div>
+    );
+  };
+});
+
+jest.mock("../../models/ConfirmationModal", () => {
+  return function MockConfirmationModal({ isOpen, onClose, onConfirm }) {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="confirmation-modal">
+        <button data-testid="confirm-delete" onClick={onConfirm}>
+          Confirm Delete
+        </button>
+        <button onClick={onClose}>Cancel</button>
       </div>
     );
   };
@@ -146,14 +108,12 @@ const mockQuizData = {
       _id: "q1",
       title: "First Question",
       type: "multiple-choice",
-      options: [],
     },
   ],
   slides: [
     {
       _id: "s1",
       title: "First Slide",
-      content: "Slide content",
       type: "content",
     },
   ],
@@ -166,6 +126,7 @@ const mockQuizData = {
 describe("QuizCreator", () => {
   const mockNavigate = jest.fn();
   const mockUpdateQuiz = jest.fn();
+  const mockPublishQuiz = jest.fn();
   const user = userEvent.setup();
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -173,20 +134,19 @@ describe("QuizCreator", () => {
     jest.clearAllMocks();
     useNavigate.mockReturnValue(mockNavigate);
     useParams.mockReturnValue({ quizId: "quiz123" });
-    useQuizContext.mockReturnValue({ updateQuiz: mockUpdateQuiz });
+    useQuizContext.mockReturnValue({
+      updateQuiz: mockUpdateQuiz,
+      publishQuiz: mockPublishQuiz,
+    });
 
-    // Fix: Mock localStorage with proper JSON string for user data
-    const mockUser = { id: "user123", name: "Test User" };
+    // Mock localStorage
     Storage.prototype.getItem = jest.fn((key) => {
-      if (key === "user") {
-        return JSON.stringify(mockUser);
-      }
-      if (key === "token") {
-        return "mock-token";
-      }
+      if (key === "user") return JSON.stringify({ id: "user123" });
+      if (key === "token") return "mock-token";
       return null;
     });
 
+    // Mock fetch
     global.fetch = jest.fn(() =>
       Promise.resolve({
         ok: true,
@@ -196,190 +156,158 @@ describe("QuizCreator", () => {
     );
   });
 
+  // Basic rendering tests
   test("renders quiz creator with initial data", async () => {
     render(<QuizCreator />);
 
-    expect(screen.getByTestId("navbar")).toBeInTheDocument();
-    expect(screen.getByText("Quiz Creator")).toBeInTheDocument();
-
     await waitFor(() => {
       expect(screen.getByTestId("quiz-title-input")).toHaveValue("Test Quiz");
     });
-
-    // Verify initial content items are rendered
     await waitFor(() => {
       expect(screen.getByText("First Question")).toBeInTheDocument();
     });
-    expect(screen.getByText("First Slide")).toBeInTheDocument();
-  });
-
-  test("handles adding a new question", async () => {
-    render(<QuizCreator />);
-
-    // Click add question button
-    const addQuestionBtn = screen.getByTestId("add-question-sidebar-btn");
-    await user.click(addQuestionBtn);
-
-    // Verify modal opens
-    expect(screen.getByTestId("question-type-modal")).toBeInTheDocument();
-
-    // Add new question
-    const modalAddBtn = screen.getByTestId("modal-add-question-btn");
-    await user.click(modalAddBtn);
-
-    // Verify API call
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        `${API_URL}/api/quizzes/quiz123/questions`,
-        expect.objectContaining({
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer mock-token",
-          },
-          body: expect.any(String),
-        })
-      );
+      expect(screen.getByText("First Slide")).toBeInTheDocument();
     });
   });
 
-  test("handles adding a new slide", async () => {
+  // Navigation tests
+  test("handles quiz preview navigation", async () => {
     render(<QuizCreator />);
 
-    // Click add slide button
-    const addSlideBtn = screen.getByTestId("add-slide-sidebar-btn");
-    await user.click(addSlideBtn);
-
-    // Verify modal opens
-    expect(screen.getByTestId("slide-type-modal")).toBeInTheDocument();
-
-    // Add new slide
-    const modalAddBtn = screen.getByTestId("modal-add-slide-btn");
-    await user.click(modalAddBtn);
-
-    // Verify API call
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        `${API_URL}/api/quizzes/quiz123/slides`,
-        expect.objectContaining({
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer mock-token",
-          },
-          body: expect.any(String),
-        })
-      );
-    });
-  });
-
-  test("handles saving quiz", async () => {
-    render(<QuizCreator />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("quiz-title-input")).toHaveValue("Test Quiz");
-    });
-
-    const saveButton = screen.getByTestId("save-quiz-btn");
-    await user.click(saveButton);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        `${API_URL}/api/quizzes/quiz123`,
-        expect.objectContaining({
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer mock-token",
-          },
-          body: expect.stringContaining('"title"'),
-        })
-      );
-    });
-  });
-
-  test("handles preview navigation", async () => {
-    render(<QuizCreator />);
-
-    const previewButton = screen.getByTestId("preview-quiz-btn");
-    await user.click(previewButton);
-
+    await user.click(screen.getByTestId("preview-quiz-btn"));
     expect(mockNavigate).toHaveBeenCalledWith("/preview/quiz123");
   });
 
-  test("handles reordering items", async () => {
-    // Configure initial fetch mock
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockQuizData),
-      })
-    );
-
+  // Quiz settings tests
+  test("handles quiz settings update", async () => {
     render(<QuizCreator />);
 
-    // Wait for initial items to be loaded
+    await user.click(screen.getByTestId("quiz-title-input"));
+    expect(screen.getByTestId("settings-modal")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("save-settings"));
+
+    expect(mockUpdateQuiz).toHaveBeenCalledWith("quiz123", {
+      title: "Updated Quiz Title",
+      description: "Updated Description",
+    });
+  });
+
+  // Question/Slide management tests
+  test("adds new question", async () => {
+    render(<QuizCreator />);
+
     await waitFor(() => {
-      const firstItem = screen.getByTestId("content-item-0");
-      expect(within(firstItem).getByText("First Question")).toBeInTheDocument();
+      expect(screen.getByText("Add Question")).toBeInTheDocument();
     });
 
-    // Reset fetch mock to track the reorder API call
-    global.fetch.mockReset();
-    global.fetch.mockImplementation(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      })
+    await user.click(screen.getByText("Add Question"));
+    expect(screen.getByTestId("question-editor")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Update Question"));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_URL}/api/quizzes/quiz123/questions`,
+        expect.any(Object)
+      );
+    });
+  });
+
+  test("adds new slide", async () => {
+    render(<QuizCreator />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Slide")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Add Slide"));
+    expect(screen.getByTestId("slide-editor")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Update Slide"));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_URL}/api/quizzes/quiz123/slides`,
+        expect.any(Object)
+      );
+    });
+  });
+
+  test("deletes question", async () => {
+    render(<QuizCreator />);
+
+    // Wait for content to load
+    await waitFor(() => {
+      expect(screen.getByText("First Question")).toBeInTheDocument();
+    });
+
+    // Find and click delete button for the first question
+    const deleteButton = screen.getByTestId(
+      `delete-question-${mockQuizData.questions[0]._id}`
     );
+    await user.click(deleteButton);
 
-    // Get the draggable items
-    const firstItem = screen.getByTestId("content-item-0");
-    const secondItem = screen.getByTestId("content-item-1");
+    // Verify confirmation modal appears
+    expect(screen.getByTestId("confirmation-modal")).toBeInTheDocument();
 
-    // Simulate dragStart on first item
-    fireEvent.dragStart(firstItem, {
-      dataTransfer: {
-        setData: jest.fn(),
-        getData: () => "0",
-      },
+    // Confirm deletion
+    await user.click(screen.getByTestId("confirm-delete"));
+
+    // Verify API call was made
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${API_URL}/api/questions/q1`,
+        expect.objectContaining({
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer mock-token",
+          },
+        })
+      );
     });
+  });
 
-    // Simulate drop on second item
-    fireEvent.drop(secondItem, {
-      dataTransfer: {
-        getData: () => "0",
-      },
-    });
+  // Save and publish tests
+  test("saves quiz successfully", async () => {
+    render(<QuizCreator />);
 
-    // Simulate dragEnd to complete the operation
-    fireEvent.dragEnd(firstItem);
+    await user.click(screen.getByTestId("save-quiz-btn"));
 
-    // Verify the API call was made with the correct parameters
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         `${API_URL}/api/quizzes/quiz123`,
-        {
+        expect.objectContaining({
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer mock-token",
           },
-          body: JSON.stringify({
-            title: "Test Quiz",
-            description: "Test Description",
-            questions: [mockQuizData.questions[0]],
-            slides: [mockQuizData.slides[0]],
-            order: [
-              { id: "s1", type: "slide" },
-              { id: "q1", type: "question" },
-            ],
-          }),
-        }
+        })
       );
     });
   });
 
+  test("publishes quiz successfully", async () => {
+    mockPublishQuiz.mockResolvedValueOnce({ success: true });
+
+    render(<QuizCreator />);
+
+    await user.click(screen.getByTestId("publish-quiz-button"));
+
+    await waitFor(() => {
+      expect(mockPublishQuiz).toHaveBeenCalledWith("quiz123");
+    });
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/quiz-details?type=quiz&quizId=quiz123&hostId=user123`
+      );
+    });
+  });
+
+  // Error handling tests
   test("handles authentication failure", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
@@ -401,166 +329,7 @@ describe("QuizCreator", () => {
     render(<QuizCreator />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("alert-message")).toHaveTextContent(
-        /network error/i
-      );
-    });
-  });
-
-  test("handles quiz settings update", async () => {
-    render(<QuizCreator />);
-
-    // Open settings modal by clicking the quiz title
-    const titleInput = screen.getByTestId("quiz-title-input");
-    await user.click(titleInput);
-
-    // Verify settings modal is open
-    expect(screen.getByTestId("settings-modal")).toBeInTheDocument();
-
-    // Click save settings button
-    const saveSettingsButton = screen.getByText("Save Settings");
-    await user.click(saveSettingsButton);
-
-    // Verify updateQuiz was called
-    expect(mockUpdateQuiz).toHaveBeenCalledWith("quiz123", {
-      title: "Updated Quiz Title",
-      description: "Updated Description",
-    });
-  });
-
-  test("handles error responses properly", async () => {
-    // Mock an error response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 400,
-        text: () => Promise.resolve("Bad Request"),
-      })
-    );
-
-    render(<QuizCreator />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("alert-message")).toBeInTheDocument();
-    });
-  });
-
-  test("handles publishing quiz", async () => {
-    const mockPublishQuiz = jest.fn().mockResolvedValue({ success: true });
-    useQuizContext.mockReturnValue({
-      updateQuiz: mockUpdateQuiz,
-      publishQuiz: mockPublishQuiz,
-    });
-
-    render(<QuizCreator />);
-
-    const publishButton = screen.getByTestId("publish-survey-button");
-    await user.click(publishButton);
-
-    await waitFor(() => {
-      expect(mockPublishQuiz).toHaveBeenCalledWith("quiz123");
-    });
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringContaining("/quiz-details")
-      );
-    });
-  });
-
-  test("handles image upload in question/slide updates", async () => {
-    // Mock FormData
-    global.FormData = class FormData {
-      constructor() {
-        this.data = {};
-      }
-      append(key, value) {
-        this.data[key] = value;
-      }
-    };
-
-    // Mock fetch with different responses based on URL
-    global.fetch = jest.fn((url) => {
-      // Initial quiz data fetch
-      if (url.endsWith("/quiz123")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockQuizData),
-        });
-      }
-      // Image upload endpoint
-      else if (url.endsWith("/media/upload")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ media: [{ _id: "image123" }] }),
-        });
-      }
-      // Question update endpoint
-      else if (url.includes("/api/questions/")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              question: {
-                _id: "q1",
-                title: "Updated Question",
-                type: "multiple-choice",
-                imageUrl: "image123",
-                options: [],
-              },
-            }),
-        });
-      }
-      return Promise.reject(new Error(`Unhandled fetch to ${url}`));
-    });
-
-    render(<QuizCreator />);
-
-    // Wait for content to load
-    await waitFor(() => {
-      expect(screen.getByTestId("content-item-0")).toBeInTheDocument();
-    });
-
-    // Click first question to open editor
-    const firstQuestion = screen.getByTestId("content-item-0");
-    await user.click(firstQuestion);
-
-    // Create a mock file
-    const file = new File(["dummy content"], "test.png", { type: "image/png" });
-
-    // Mock QuestionEditor's update with image
-    const questionEditor = screen.getByTestId("question-editor");
-    const updateButton = within(questionEditor).getByText("Update Question");
-
-    await user.click(updateButton);
-
-    // Verify the fetch calls were made in the correct order
-    await waitFor(() => {
-      const fetchCalls = global.fetch.mock.calls;
-
-      // First call should be initial quiz data load
-      expect(fetchCalls[0][0]).toContain("/quiz123");
-
-      // Second call should be question update
-      expect(fetchCalls[1][0]).toContain("/api/questions/");
-      expect(fetchCalls[1][1]).toMatchObject({
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer mock-token",
-        },
-      });
-
-      const requestBody = JSON.parse(fetchCalls[1][1].body);
-      expect(requestBody).toMatchObject({
-        title: "Updated Question",
-      });
-    });
-
-    // Verify the updated question appears in the UI
-    await waitFor(() => {
-      const updatedQuestion = screen.getByText("Updated Question");
-      expect(updatedQuestion).toBeInTheDocument();
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
   });
 });

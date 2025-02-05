@@ -693,7 +693,9 @@ const QuizCreator = () => {
                               setDeleteType(item.type);
                               setShowDeleteModal(true);
                             }}
+                            data-testid={`delete-${item.type}-${item.id}`}
                             className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+                            aria-label={`Delete ${item.type}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
