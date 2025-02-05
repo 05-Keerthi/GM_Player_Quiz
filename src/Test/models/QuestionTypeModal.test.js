@@ -1,221 +1,138 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import QuestionTypeModal from '../../models/QuestionTypeModal';
-import { useParams } from 'react-router-dom';
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QuestionTypeModal } from "../../models/QuestionTypeModal";
 
-// Mock react-router-dom
-jest.mock('react-router-dom', () => ({
-  useParams: jest.fn()
-}));
-
-// Mock environment variables
-process.env.REACT_APP_API_URL = 'http://test-api.com';
-
-describe('QuestionTypeModal', () => {
+describe("QuestionTypeModal", () => {
   const mockOnClose = jest.fn();
-  const mockOnAddQuestion = jest.fn();
-  const mockQuizId = 'quiz123';
+  const mockOnTypeSelect = jest.fn();
 
   beforeEach(() => {
-    useParams.mockReturnValue({ quizId: mockQuizId });
-    localStorage.setItem('token', 'mock-token');
     jest.clearAllMocks();
   });
 
-  const renderModal = () => {
+  const renderModal = (props = {}) => {
     return render(
-      <QuestionTypeModal 
+      <QuestionTypeModal
         isOpen={true}
         onClose={mockOnClose}
-        onAddQuestion={mockOnAddQuestion}
+        onTypeSelect={mockOnTypeSelect}
+        {...props}
       />
     );
   };
 
-  describe('Initial Render', () => {
-    it('renders question type selection screen initially', () => {
+  describe("Initial Render", () => {
+    it("renders question type selection screen when isOpen is true", () => {
       renderModal();
-      const heading = screen.getByRole('heading', { name: 'Select Question Type' });
-      expect(heading).toBeInTheDocument();
-      expect(screen.getByText('Multiple Choice')).toBeInTheDocument();
-      expect(screen.getByText('True/False')).toBeInTheDocument();
-      expect(screen.getByText('Open Ended')).toBeInTheDocument();
+
+      // Check heading
+      expect(screen.getByText("Select Question Type")).toBeInTheDocument();
+
+      // Check all question types are present
+      expect(screen.getByText("Multiple Choice")).toBeInTheDocument();
+      expect(screen.getByText("Multiple Select")).toBeInTheDocument();
+      expect(screen.getByText("True/False")).toBeInTheDocument();
+      expect(screen.getByText("Open Ended")).toBeInTheDocument();
+      expect(screen.getByText("Poll")).toBeInTheDocument();
+
+      // Check descriptions
+      expect(
+        screen.getByText("One correct answer from multiple options")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Multiple correct answers can be selected")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Simple true or false question")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Free text response question")
+      ).toBeInTheDocument();
+      expect(screen.getByText("Poll response question")).toBeInTheDocument();
     });
 
-    it('does not render when isOpen is false', () => {
+    it("does not render when isOpen is false", () => {
       render(
-        <QuestionTypeModal 
+        <QuestionTypeModal
           isOpen={false}
           onClose={mockOnClose}
-          onAddQuestion={mockOnAddQuestion}
+          onTypeSelect={mockOnTypeSelect}
         />
       );
-      expect(screen.queryByRole('heading', { name: 'Select Question Type' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Select Question Type")
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders close button", () => {
+      renderModal();
+      const closeButton = screen.getByRole("button", { name: /x/i });
+      expect(closeButton).toBeInTheDocument();
     });
   });
 
-  describe('Question Type Selection', () => {
-    it('moves to question creation screen when type is selected', async () => {
-        renderModal();
-        await userEvent.click(screen.getByText('Multiple Choice'));
-      
-        const heading = screen.getByRole('heading', { name: 'Create Question' });
-        expect(heading).toBeInTheDocument();
-      
-        // Ensure the question input field is available before interacting with it
-        await waitFor(() => screen.getByPlaceholderText('Enter your question here...'));
-        expect(screen.getByPlaceholderText('Enter your question here...')).toBeInTheDocument();
+  describe("Interactions", () => {
+    it("calls onClose when clicking the close button", async () => {
+      renderModal();
+      const closeButton = screen.getByRole("button", { name: /x/i });
+      await userEvent.click(closeButton);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onClose when clicking the overlay", async () => {
+      renderModal();
+      const overlay = screen.getByTestId("modal-overlay");
+      await userEvent.click(overlay);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onTypeSelect with correct type ID when selecting Multiple Choice", async () => {
+      renderModal();
+      const multipleChoiceButton = screen.getByRole("button", {
+        name: /Multiple Choice/i,
       });
-      
-    it('initializes correct number of options for multiple choice', async () => {
+      await userEvent.click(multipleChoiceButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("multiple_choice");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onTypeSelect with correct type ID when selecting Multiple Select", async () => {
       renderModal();
-      await userEvent.click(screen.getByText('Multiple Choice'));
-      const options = screen.getAllByPlaceholderText(/Option \d/);
-      expect(options).toHaveLength(2);
-    });
-
-    it('initializes true/false options correctly', async () => {
-      renderModal();
-      await userEvent.click(screen.getByText('True/False'));
-      const inputs = screen.getAllByRole('textbox');
-      expect(inputs[1]).toHaveValue('True');
-      expect(inputs[2]).toHaveValue('False');
-    });
-  });
-
-  describe('Question Creation Form', () => {
-    beforeEach(async () => {
-      renderModal();
-      await userEvent.click(screen.getByText('Multiple Choice'));
-    });
-
-    it('allows adding new options for multiple choice', async () => {
-      const addButton = screen.getByRole('button', { name: 'Add Option' });
-      await userEvent.click(addButton);
-      const options = screen.getAllByPlaceholderText(/Option \d/);
-      expect(options).toHaveLength(3);
-    });
-
-    it('allows removing options', async () => {
-        // Add a new option to make sure there are more than two options
-        await userEvent.click(screen.getByRole('button', { name: 'Add Option' }));
-      
-        // Debug the current DOM state to see if the remove button is rendered
-        screen.debug();
-      
-        // Wait for the "Remove Option" buttons to be available
-        await waitFor(() => screen.getAllByRole('button', { name: /removeOption/i }));
-      
-        // Click the first remove button
-        const deleteButtons = screen.getAllByRole('button', { name: /removeOption/i });
-        const deleteButton = deleteButtons[0];
-        await userEvent.click(deleteButton);
-      
-        // Check the number of options
-        const options = screen.getAllByPlaceholderText(/Option \d/);
-        expect(options).toHaveLength(2);
+      const multipleSelectButton = screen.getByRole("button", {
+        name: /Multiple Select/i,
       });
-      
-      
-
-    it('updates question title', async () => {
-      const titleInput = screen.getByPlaceholderText('Enter your question here...');
-      await userEvent.type(titleInput, 'Test Question');
-      expect(titleInput).toHaveValue('Test Question');
+      await userEvent.click(multipleSelectButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("multiple_select");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('updates option text', async () => {
-      const options = screen.getAllByPlaceholderText(/Option \d/);
-      await userEvent.type(options[0], 'Option One');
-      expect(options[0]).toHaveValue('Option One');
-    });
-
-    it('handles correct answer selection', async () => {
-      const radioButtons = screen.getAllByRole('radio');
-      await userEvent.click(radioButtons[0]);
-      expect(radioButtons[0]).toBeChecked();
-      expect(radioButtons[1]).not.toBeChecked();
-    });
-  });
-
-  describe('Image Upload', () => {
-    beforeEach(async () => {
+    it("calls onTypeSelect with correct type ID when selecting True/False", async () => {
       renderModal();
-      await userEvent.click(screen.getByText('Multiple Choice'));
-    });
-
-    it('handles image upload successfully', async () => {
-      const file = new File(['test'], 'test.png', { type: 'image/png' });
-      const uploadInput = screen.getByLabelText(/Upload Image/i);
-
-      global.fetch = jest.fn().mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            media: [{ _id: 'media123', filename: 'test.png' }]
-          })
-        })
-      );
-
-      await userEvent.upload(uploadInput, file);
-
-      await waitFor(() => {
-        expect(screen.getByAltText('Question')).toBeInTheDocument();
+      const trueFalseButton = screen.getByRole("button", {
+        name: /True\/False/i,
       });
+      await userEvent.click(trueFalseButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("true_false");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('handles image upload error', async () => {
-      const file = new File(['test'], 'test.png', { type: 'image/png' });
-      const uploadInput = screen.getByLabelText(/Upload Image/i);
-
-      global.fetch = jest.fn().mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: false
-        })
-      );
-
-      await userEvent.upload(uploadInput, file);
-
-      await waitFor(() => {
-        expect(screen.getByText('Failed to upload image')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Form Submission', () => {
-    beforeEach(async () => {
+    it("calls onTypeSelect with correct type ID when selecting Open Ended", async () => {
       renderModal();
-      await userEvent.click(screen.getByText('Multiple Choice'));
+      const openEndedButton = screen.getByRole("button", {
+        name: /Open Ended/i,
+      });
+      await userEvent.click(openEndedButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("open_ended");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('submits form with valid data', async () => {
-      // Fill in required fields
-      await userEvent.type(screen.getByPlaceholderText('Enter your question here...'), 'Test Question');
-      const options = screen.getAllByPlaceholderText(/Option \d/);
-      await userEvent.type(options[0], 'Option One');
-      await userEvent.type(options[1], 'Option Two');
-      await userEvent.click(screen.getAllByRole('radio')[0]);
-
-      // Submit form
-      const submitButton = screen.getByRole('button', { name: 'Create Question' });
-      await userEvent.click(submitButton);
-
-      expect(mockOnAddQuestion).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Test Question',
-        type: 'multiple_choice',
-        options: expect.arrayContaining([
-          expect.objectContaining({ text: 'Option One', isCorrect: true }),
-          expect.objectContaining({ text: 'Option Two', isCorrect: false })
-        ])
-      }));
-    });
-
-    it('validates required fields', async () => {
-      const submitButton = screen.getByRole('button', { name: 'Create Question' });
-      await userEvent.click(submitButton);
-      // Verify that the submit button remains disabled when required fields are empty
-      expect(submitButton).toBeDisabled();
+    it("calls onTypeSelect with correct type ID when selecting Poll", async () => {
+      renderModal();
+      const pollButton = screen.getByRole("button", { name: /Poll/i });
+      await userEvent.click(pollButton);
+      expect(mockOnTypeSelect).toHaveBeenCalledWith("poll");
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -1,6 +1,12 @@
-import React from 'react';
-import { X, CheckSquare, ToggleLeft, MessageSquare, BarChart2 } from 'lucide-react';
-import { motion,  } from 'framer-motion';
+import React from "react";
+import {
+  X,
+  CheckSquare,
+  ToggleLeft,
+  MessageSquare,
+  BarChart2,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
 // Question Type Selection Modal
 export const QuestionTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
@@ -41,7 +47,11 @@ export const QuestionTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50"
+        data-testid="modal-overlay"
+        onClick={onClose}
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -49,7 +59,9 @@ export const QuestionTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
         className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 relative z-50"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Select Question Type</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Select Question Type
+          </h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -82,4 +94,3 @@ export const QuestionTypeModal = ({ isOpen, onClose, onTypeSelect }) => {
     </div>
   );
 };
-
