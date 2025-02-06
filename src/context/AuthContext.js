@@ -212,12 +212,21 @@ export const AuthProvider = ({ children }) => {
 
       const { user, token, refresh_token } = response.data;
 
-      localStorage.setItem("user", JSON.stringify(user));
+      // Ensure user object has id property
+      const normalizedUser = {
+        ...user,
+        id: user._id || user.id, // Handle both _id and id cases
+      };
+
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
       localStorage.setItem("token", token);
       localStorage.setItem("refresh_token", refresh_token);
 
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      dispatch({ type: ACTIONS.REGISTER, payload: { user, token } });
+      dispatch({
+        type: ACTIONS.REGISTER,
+        payload: { user: normalizedUser, token },
+      });
       return response.data;
     } catch (error) {
       const errorMessage =

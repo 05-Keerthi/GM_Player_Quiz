@@ -77,7 +77,6 @@ const RegisterPage = () => {
     return isValid;
   };
 
-  // Inside RegisterPage.js
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -87,17 +86,25 @@ const RegisterPage = () => {
           username,
           email,
           password,
-          mobile: mobile, // Make sure this is just the number without any formatting
+          mobile: mobile,
         };
 
-        await register(userData);
+        const response = await register(userData);
 
-        toast.success("Registration successful! Redirecting to login...", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        // Ensure we have a valid user object with ID before redirecting
+        if (response.user && (response.user._id || response.user.id)) {
+          toast.success("Registration successful!", {
+            position: "top-right",
+            autoClose: 3000,
+          });
 
-        navigate("/");
+          // Optional: Small delay to ensure state is updated
+          setTimeout(() => {
+            navigate("/");
+          }, 100);
+        } else {
+          throw new Error("Invalid user data received");
+        }
       } catch (error) {
         // Clear all previous errors first
         setEmailError("");
@@ -125,6 +132,7 @@ const RegisterPage = () => {
       }
     }
   };
+
 
   return (
     <div className="min-h-screen relative flex items-center justify-center bg-gray-100 p-4">
