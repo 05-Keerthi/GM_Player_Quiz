@@ -65,7 +65,16 @@ const LoginPage = () => {
 
     if (isValid) {
       try {
+        // Pass rememberMe flag to login function
         await login(email, password, rememberMe);
+
+        // Store email in cookie if remember me is checked
+        if (rememberMe) {
+          Cookies.set("rememberedEmail", email, { expires: 1 }); // 1 day expiration
+        } else {
+          Cookies.remove("rememberedEmail");
+        }
+
         navigate("/");
       } catch (error) {
         const errorResponse = error.response?.data;

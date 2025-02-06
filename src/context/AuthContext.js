@@ -3,6 +3,7 @@ import React, { createContext, useReducer, useEffect, useContext } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { ACTIONS, authReducer, initialState } from "../reducers/authReducer";
+import Cookies from "js-cookie";
 
 const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
 
@@ -20,9 +21,15 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   const clearAuthData = () => {
+    // Clear localStorage
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("refresh_token");
+
+    // Clear cookies
+    Cookies.remove("auth_refresh_token");
+    Cookies.remove("rememberedEmail");
+
     delete api.defaults.headers.common["Authorization"];
     dispatch({ type: ACTIONS.LOGOUT });
     navigate("/login");
@@ -33,17 +40,57 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const token = localStorage.getItem("token");
-        const user = JSON.parse(localStorage.getItem("user"));
+        // Check for refresh token in cookie first
+        const refreshToken = Cookies.get("auth_refresh_token");
 
-        if (token && user) {
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
+        if (refreshToken) {
+          try {
+            // Attempt to get new token using refresh token
+            const response = await axios.post(
+              `${BASE_URL}/auth/refresh-token`,
+              { refresh_token: refreshToken }
+            );
+
+            const {
+              token: newToken,
+              user: refreshedUser,
+              refresh_token: newRefreshToken,
+            } = response.data;
+
+            // Update storage
+            localStorage.setItem("user", JSON.stringify(refreshedUser));
+            localStorage.setItem("token", newToken);
+
+            // Update refresh token cookie
+            Cookies.set("auth_refresh_token", newRefreshToken, {
+              expires: 1,
+              secure: true,
+              sameSite: "strict",
+            });
+
+            api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+            dispatch({
+              type: ACTIONS.LOGIN,
+              payload: { user: refreshedUser, token: newToken },
+            });
+          } catch (refreshError) {
+            console.error("Token refresh failed:", refreshError);
+            clearAuthData();
+          }
         } else {
-          dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+          // Check localStorage for session-based auth
+          const token = localStorage.getItem("token");
+          const user = JSON.parse(localStorage.getItem("user"));
+
+          if (token && user) {
+            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+            dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
+          }
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
+        clearAuthData();
+      } finally {
         dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     };
@@ -103,15 +150,30 @@ export const AuthProvider = ({ children }) => {
     return () => api.interceptors.response.eject(interceptor);
   }, [navigate]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       const response = await api.post("/auth/login", { email, password });
       const { user, token, refresh_token } = response.data;
 
+      // Always store current token and user in localStorage (session-based)
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", token);
-      localStorage.setItem("refresh_token", refresh_token);
+
+      // Handle refresh token based on remember me preference
+      if (rememberMe) {
+        // Store refresh token in cookie with 24-hour expiration
+        Cookies.set("auth_refresh_token", refresh_token, {
+          expires: 1,
+          secure: true,
+          sameSite: "strict",
+        });
+      } else {
+        // Store refresh token in localStorage for session only
+        localStorage.setItem("refresh_token", refresh_token);
+        // Remove any existing cookie
+        Cookies.remove("auth_refresh_token");
+      }
 
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       dispatch({ type: ACTIONS.LOGIN, payload: { user, token } });
