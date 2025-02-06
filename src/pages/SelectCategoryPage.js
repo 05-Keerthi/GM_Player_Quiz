@@ -29,7 +29,7 @@ const SelectCategoryPage = () => {
   // Load categories on mount
   useEffect(() => {
     getAllCategories();
-  }, []); // Add getAllCategories to dependency array
+  }, []);
 
   // Filter categories when search query or categories change
   useEffect(() => {
@@ -99,6 +99,9 @@ const SelectCategoryPage = () => {
   const handleConfirmDelete = async () => {
     try {
       await deleteCategory(selectedCategoryId);
+      setSelectedCategories((prev) =>
+        prev.filter((id) => id !== selectedCategoryId)
+      );
       toast.success("Category deleted successfully!");
       setShowDeleteModal(false);
       setSelectedCategoryId(null);
@@ -118,14 +121,30 @@ const SelectCategoryPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               Select Categories
             </h1>
-            <button
-              data-testid="create-category-button"
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              Create Category
-            </button>
+            <div className="flex justify-between items-center gap-2">
+              <button
+                data-testid="create-quiz-button"
+                onClick={handleCreateQuiz}
+                disabled={selectedCategories.length === 0}
+                className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white
+              ${
+                selectedCategories.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-green-500 hover:bg-green-600"
+              }`}
+              >
+                <Plus className="h-5 w-5" />
+                Create Quiz ({selectedCategories.length})
+              </button>
+              <button
+                data-testid="create-category-button"
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                Create Category
+              </button>
+            </div>
           </div>
 
           {/* Search Bar - Centered with max-width */}
@@ -225,24 +244,6 @@ const SelectCategoryPage = () => {
               )}
             </>
           )}
-        </div>
-
-        {/* Create Quiz Button */}
-        <div className="fixed bottom-8 right-8">
-          <button
-            data-testid="create-quiz-button"
-            onClick={handleCreateQuiz}
-            disabled={selectedCategories.length === 0}
-            className={`px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-white
-              ${
-                selectedCategories.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600"
-              }`}
-          >
-            <Plus className="h-5 w-5" />
-            Create Quiz ({selectedCategories.length})
-          </button>
         </div>
       </div>
 

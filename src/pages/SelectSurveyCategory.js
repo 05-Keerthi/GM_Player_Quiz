@@ -35,19 +35,17 @@ const SelectSurveyCategory = () => {
 
   // Filter categories when search query or categories change
   useEffect(() => {
-      if (categories) {
-        console.log("Categories:", categories);
-        console.log("Search Query:", searchQuery);
-        const filtered = categories.filter((category) =>
-          category?.name
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase().trim())
-        );
-        console.log("Filtered Categories:", filtered);
-        setFilteredCategories(filtered);
-        setCurrentPage(1);
-      }
-    }, [categories, searchQuery]);
+    if (categories) {
+      console.log("Categories:", categories);
+      console.log("Search Query:", searchQuery);
+      const filtered = categories.filter((category) =>
+        category?.name?.toLowerCase().includes(searchQuery.toLowerCase().trim())
+      );
+      console.log("Filtered Categories:", filtered);
+      setFilteredCategories(filtered);
+      setCurrentPage(1);
+    }
+  }, [categories, searchQuery]);
 
   const { currentItems, totalPages } = paginateData(
     filteredCategories,
@@ -105,7 +103,9 @@ const SelectSurveyCategory = () => {
       await deleteCategory(selectedCategoryId);
       toast.success("Category deleted successfully!");
       setShowDeleteModal(false);
-      setSelectedCategoryId(null);
+      setSelectedCategories((prev) =>
+        prev.filter((id) => id !== selectedCategoryId)
+      );
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete category");
     }
@@ -123,14 +123,32 @@ const SelectSurveyCategory = () => {
               Select {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"}{" "}
               Categories
             </h1>
-            <button
-              data-testid="create-category-button"
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              Create Category
-            </button>
+
+            <div className="flex justify-between items-center gap-2">
+              <button
+                data-testid="create-survey-button"
+                onClick={handleCreateSurvey}
+                disabled={selectedCategories.length === 0}
+                className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white
+              ${
+                selectedCategories.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-green-500 hover:bg-green-600"
+              }`}
+              >
+                <Plus className="h-5 w-5" />
+                Create {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"} (
+                {selectedCategories.length})
+              </button>
+              <button
+                data-testid="create-category-button"
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                Create Category
+              </button>
+            </div>
           </div>
 
           {/* Search Bar - Centered with max-width */}
@@ -230,25 +248,6 @@ const SelectSurveyCategory = () => {
               )}
             </>
           )}
-        </div>
-
-        {/* Create Survey Button */}
-        <div className="fixed bottom-8 right-8">
-          <button
-            data-testid="create-survey-button"
-            onClick={handleCreateSurvey}
-            disabled={selectedCategories.length === 0}
-            className={`px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-white
-              ${
-                selectedCategories.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600"
-              }`}
-          >
-            <Plus className="h-5 w-5" />
-            Create {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"} (
-            {selectedCategories.length})
-          </button>
         </div>
       </div>
 
