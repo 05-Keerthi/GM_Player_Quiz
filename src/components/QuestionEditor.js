@@ -168,9 +168,15 @@ const QuestionEditor = ({ initialQuestion = null, onSubmit, onClose }) => {
       return false;
     }
 
-    if (formData.type === "open_ended" && !formData.correctAnswer.trim()) {
-      setError("Correct answer is required for open-ended questions");
-      return false;
+    if (formData.type === "open_ended") {
+      if (
+        formData.correctAnswer === null ||
+        formData.correctAnswer === undefined ||
+        formData.correctAnswer === ""
+      ) {
+        setError("Correct answer is required for open-ended questions");
+        return false;
+      }
     }
 
     if (formData.type !== "open_ended") {
@@ -187,6 +193,7 @@ const QuestionEditor = ({ initialQuestion = null, onSubmit, onClose }) => {
   const handleSubmit = () => {
     if (validateForm()) {
       onSubmit(formData);
+      setError(null);
     }
   };
 
