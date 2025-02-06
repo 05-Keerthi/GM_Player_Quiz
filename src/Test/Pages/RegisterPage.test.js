@@ -153,7 +153,18 @@ describe("RegisterPage", () => {
     test("handles successful registration", async () => {
       renderRegisterPage();
       await fillForm();
-      mockRegister.mockResolvedValueOnce({});
+
+      // Mock successful registration response with proper user object
+      mockRegister.mockResolvedValueOnce({
+        user: {
+          _id: "123", // Include _id to match backend response
+          username: "testuser",
+          email: "test@example.com",
+          mobile: "+911234567890",
+        },
+        token: "mock-token",
+        refresh_token: "mock-refresh-token",
+      });
 
       await user.click(screen.getByRole("button", { name: /register/i }));
 
@@ -162,10 +173,17 @@ describe("RegisterPage", () => {
       });
 
       expect(toast.success).toHaveBeenCalledWith(
-        "Registration successful! Redirecting to login...",
+        "Registration successful!",
         expect.any(Object)
       );
-      expect(mockNavigate).toHaveBeenCalledWith("/");
+
+      // Wait for the setTimeout to complete
+      await waitFor(
+        () => {
+          expect(mockNavigate).toHaveBeenCalledWith("/");
+        },
+        { timeout: 200 }
+      ); // Increased timeout to account for setTimeout
     });
 
     test("handles registration errors", async () => {

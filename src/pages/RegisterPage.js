@@ -133,7 +133,6 @@ const RegisterPage = () => {
     }
   };
 
-
   return (
     <div className="min-h-screen relative flex items-center justify-center bg-gray-100 p-4">
       {/* Background Image */}
