@@ -141,7 +141,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
-      const response = await api.post("/auth/register", userData);
+      const response = await api.post("/auth/register", {
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        mobile: userData.mobile,
+      });
+
       const { user, token, refresh_token } = response.data;
 
       localStorage.setItem("user", JSON.stringify(user));
@@ -152,11 +158,19 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: ACTIONS.REGISTER, payload: { user, token } });
       return response.data;
     } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Registration failed";
+      const errorField = error.response?.data?.field || "general";
+
       dispatch({
         type: ACTIONS.SET_ERROR,
-        payload: error.response?.data?.message || "Registration failed",
+        payload: { message: errorMessage, field: errorField },
       });
-      throw error;
+
+      throw {
+        message: errorMessage,
+        field: errorField,
+      };
     }
   };
 

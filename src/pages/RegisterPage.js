@@ -77,19 +77,26 @@ const RegisterPage = () => {
     return isValid;
   };
 
+  // Inside RegisterPage.js
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
       try {
-        await register(username, email, mobile, password);
+        const userData = {
+          username,
+          email,
+          password,
+          mobile: mobile, // Make sure this is just the number without any formatting
+        };
 
-        // Show success toast
+        await register(userData);
+
         toast.success("Registration successful! Redirecting to login...", {
           position: "top-right",
           autoClose: 3000,
         });
-        
+
         navigate("/");
       } catch (error) {
         // Clear all previous errors first
@@ -110,11 +117,10 @@ const RegisterPage = () => {
           case "mobile":
             setMobileError(error.message);
             break;
-          case "general":
-            setGeneralError(error.message);
-            break;
           default:
-            setGeneralError("An unexpected error occurred. Please try again.");
+            setGeneralError(
+              error.message || "An unexpected error occurred. Please try again."
+            );
         }
       }
     }

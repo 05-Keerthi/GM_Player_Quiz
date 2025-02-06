@@ -87,9 +87,8 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText(/remember me/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
     expect(screen.getByText(/forgot password/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/don't have an account\? register/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText("Don't have an account?")).toBeInTheDocument();
+    expect(screen.getByText("Register")).toBeInTheDocument();
   });
 
   test("toggles password visibility when eye icon is clicked", async () => {
@@ -235,7 +234,7 @@ describe("LoginPage", () => {
 
   test("navigates to register page", async () => {
     render(<LoginPage />);
-    await user.click(screen.getByText(/don't have an account\? register/i));
+    await user.click(screen.getByText("Register"));
     expect(mockNavigate).toHaveBeenCalledWith("/register");
   });
 });

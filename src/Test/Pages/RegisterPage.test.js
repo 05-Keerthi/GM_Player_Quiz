@@ -2,7 +2,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import  RegisterPage  from "../../pages/RegisterPage";
+import RegisterPage from "../../pages/RegisterPage";
 import { useAuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -48,7 +48,7 @@ describe("RegisterPage", () => {
   const validFormData = {
     username: "testuser",
     email: "test@example.com",
-    phone: "+911234567890",
+    mobile: "+911234567890",
     password: "TestPass123!",
   };
 
@@ -65,7 +65,7 @@ describe("RegisterPage", () => {
   const fillForm = async (data = validFormData) => {
     await user.type(screen.getByLabelText(/username/i), data.username);
     await user.type(screen.getByLabelText(/email/i), data.email);
-    await user.type(screen.getByTestId("phone-input"), data.phone);
+    await user.type(screen.getByTestId("phone-input"), data.mobile);
     await user.type(screen.getByLabelText(/password/i), data.password);
   };
 
@@ -158,12 +158,7 @@ describe("RegisterPage", () => {
       await user.click(screen.getByRole("button", { name: /register/i }));
 
       await waitFor(() => {
-        expect(mockRegister).toHaveBeenCalledWith(
-          validFormData.username,
-          validFormData.email,
-          validFormData.phone,
-          validFormData.password
-        );
+        expect(mockRegister).toHaveBeenCalledWith(validFormData);
       });
 
       expect(toast.success).toHaveBeenCalledWith(
