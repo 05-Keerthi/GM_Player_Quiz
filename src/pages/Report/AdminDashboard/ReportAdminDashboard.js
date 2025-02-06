@@ -19,7 +19,15 @@ import { useNavigate } from "react-router-dom";
 
 const ReportAdminDashboard = () => {
   const navigate = useNavigate();
-  const [overallData, setOverallData] = useState(null);
+  const [overallData, setOverallData] = useState({
+    overview: {
+      totalUsers: 0,
+      totalQuizzes: 0,
+      totalSurveys: 0,
+      activeSessions: 0,
+    },
+    userTrend: [],
+  });
   const [quizzesData, setQuizzesData] = useState([]);
   const [surveysData, setSurveysData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,10 +36,11 @@ const ReportAdminDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token"); // Get the token from localStorage
+        const token = localStorage.getItem("token");
 
         if (!token) {
           throw new Error("Authentication token not found");
@@ -49,9 +58,19 @@ const ReportAdminDashboard = () => {
           }),
         ]);
 
-        setOverallData(overall.data);
-        setQuizzesData(quizzes.data);
-        setSurveysData(surveys.data);
+        setOverallData(
+          overall.data || {
+            overview: {
+              totalUsers: 0,
+              totalQuizzes: 0,
+              totalSurveys: 0,
+              activeSessions: 0,
+            },
+            userTrend: [],
+          }
+        );
+        setQuizzesData(quizzes.data || []);
+        setSurveysData(surveys.data || []);
       } catch (err) {
         setError(
           err.response?.data?.message || "Failed to fetch dashboard data"
@@ -65,33 +84,54 @@ const ReportAdminDashboard = () => {
     fetchData();
   }, []);
 
-  const quizPaginatedData = paginateData(
-    quizzesData,
-    currentPage,
-    itemsPerPage
-  );
-  const surveyPaginatedData = paginateData(
-    surveysData,
-    currentPage,
-    itemsPerPage
-  );
-
   // Reset current page when switching tabs
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab]);
 
-  if (loading)
+  const quizPaginatedData = paginateData(
+    quizzesData || [],
+    currentPage,
+    itemsPerPage
+  );
+  const surveyPaginatedData = paginateData(
+    surveysData || [],
+    currentPage,
+    itemsPerPage
+  );
+
+  const quizChart = (quizzesData || []).map((quiz) => ({
+    name:
+      quiz.quizTitle?.length > 20
+        ? quiz.quizTitle.substring(0, 20) + "..."
+        : quiz.quizTitle || "Untitled",
+    attempts: quiz.totalAttempts || 0,
+    participants: quiz.participantCount || 0,
+  }));
+
+  const surveyChart = (surveysData || []).map((survey) => ({
+    name:
+      survey.surveyTitle?.length > 20
+        ? survey.surveyTitle.substring(0, 20) + "..."
+        : survey.surveyTitle || "Untitled",
+    responses: survey.totalResponses || 0,
+    participants: survey.participantCount || 0,
+    avgQuestions: survey.averageQuestionsAttempted || 0,
+  }));
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <div className="text-red-500 p-4 text-center font-semibold">{error}</div>
     );
+  }
 
   const StatCard = ({ title, value, icon: Icon, trend }) => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -105,25 +145,6 @@ const ReportAdminDashboard = () => {
       </div>
     </div>
   );
-
-  const quizChart = quizzesData.map((quiz) => ({
-    name:
-      quiz.quizTitle.length > 20
-        ? quiz.quizTitle.substring(0, 20) + "..."
-        : quiz.quizTitle,
-    attempts: quiz.totalAttempts,
-    participants: quiz.participantCount,
-  }));
-
-  const surveyChart = surveysData.map((survey) => ({
-    name:
-      survey.surveyTitle.length > 20
-        ? survey.surveyTitle.substring(0, 20) + "..."
-        : survey.surveyTitle,
-    responses: survey.totalResponses,
-    participants: survey.participantCount,
-    avgQuestions: survey.averageQuestionsAttempted,
-  }));
 
   return (
     <>
