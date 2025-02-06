@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 import Navbar from "../components/NavbarComp";
 import { useAuthContext } from "../context/AuthContext";
 import { useUserContext } from "../context/userContext";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
 const ProfilePage = () => {
   const { isAuthenticated, user, logout } = useAuthContext();
@@ -19,7 +21,9 @@ const ProfilePage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   // Error states
   const [updateError, setUpdateError] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
@@ -299,47 +303,76 @@ const ProfilePage = () => {
                 <label htmlFor="oldPassword" className="block font-medium mb-2">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  id="oldPassword"
-                  value={oldPassword}
-                  onChange={(e) => {
-                    setOldPassword(e.target.value);
-                    setPasswordError(null);
-                    // Remove error styling when user starts typing
-                    e.target.classList.remove("border-red-500");
-                  }}
-                  className={`border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none 
-            ${
-              passwordError === "Old password is incorrect."
-                ? "border-red-500"
-                : ""
-            }`}
-                  required
-                  aria-label="current password"
-                />
+                <div className="relative">
+                  <input
+                    type={showOldPassword ? "text" : "password"}
+                    id="oldPassword"
+                    value={oldPassword}
+                    onChange={(e) => {
+                      setOldPassword(e.target.value);
+                      setPasswordError(null);
+                      e.target.classList.remove("border-red-500");
+                    }}
+                    className={`border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none 
+                      ${
+                        passwordError === "Old password is incorrect."
+                          ? "border-red-500"
+                          : ""
+                      }`}
+                    required
+                    aria-label="current password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600"
+                    data-testid="toggle-current-password"
+                  >
+                    <FontAwesomeIcon
+                      icon={showOldPassword ? faEyeSlash : faEye}
+                      className="h-4 w-4"
+                      data-testid="current-password-icon"
+                    />
+                  </button>
+                </div>
                 {passwordError === "Old password is incorrect." && (
                   <p className="mt-1 text-red-500 text-sm">{passwordError}</p>
                 )}
               </div>
+
               <div>
                 <label htmlFor="newPassword" className="block font-medium mb-2">
                   New Password
                 </label>
-                <input
-                  type="password"
-                  id="newPassword"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  required
-                  minLength={8}
-                  aria-label="New Password"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    id="newPassword"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                    minLength={8}
+                    aria-label="New Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600"
+                    data-testid="toggle-new-password"
+                  >
+                    <FontAwesomeIcon
+                      icon={showNewPassword ? faEyeSlash : faEye}
+                      className="h-4 w-4"
+                      data-testid="new-password-icon"
+                    />
+                  </button>
+                </div>
               </div>
+
               <div>
                 <label
                   htmlFor="confirmPassword"
@@ -347,19 +380,33 @@ const ProfilePage = () => {
                 >
                   Confirm New Password
                 </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  required
-                  minLength={8}
-                  aria-label="Confirm New Password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    className="border rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                    minLength={8}
+                    aria-label="Confirm New Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600"
+                    data-testid="toggle-confirm-password"
+                  >
+                    <FontAwesomeIcon
+                      icon={showConfirmPassword ? faEyeSlash : faEye}
+                      className="h-4 w-4"
+                      data-testid="confirm-password-icon"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 
