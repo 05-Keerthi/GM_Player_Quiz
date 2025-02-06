@@ -96,6 +96,7 @@ const login = async (req, res) => {
       activityType: "login",
       details: {
         username: existingUser.username,
+        mobile:existingUser.mobile,
         email: existingUser.email,
         role: existingUser.role,
         tenantId: existingUser.tenantId?._id,
