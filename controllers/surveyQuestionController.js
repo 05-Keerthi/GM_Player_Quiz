@@ -2,6 +2,8 @@ const SurveyQuestion = require("../models/surveyQuestion");
 const Media = require("../models/Media");
 const SurveyQuiz = require("../models/surveyQuiz");
 const mongoose = require("mongoose");
+const { getFileUrl } = require("../utils/urlHelper");
+
 exports.createSurveyQuestion = async (req, res) => {
   const { surveyquizId } = req.params;
   const {
@@ -14,7 +16,6 @@ exports.createSurveyQuestion = async (req, res) => {
     answerOptions,
   } = req.body;
 
-  // Validate required fields
   if (
     !title ||
     !description ||
@@ -29,35 +30,26 @@ exports.createSurveyQuestion = async (req, res) => {
   let fullImageUrl = null;
 
   try {
-    // Validate if the survey quiz exists
     const surveyQuiz = await SurveyQuiz.findById(surveyquizId);
     if (!surveyQuiz) {
       return res.status(404).json({ message: "Survey quiz not found" });
     }
 
-    // If imageUrl is provided, fetch the image and construct the full URL
     if (imageUrl) {
       const image = await Media.findById(imageUrl);
       if (!image) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      // Base URL for constructing the full image path
-      const baseUrl =
-        process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
-      // Construct the full image URL
-      const encodedImagePath = encodeURIComponent(image.path.split("\\").pop());
-      fullImageUrl = `${baseUrl}${encodedImagePath}`;
+      const filename = image.path.split(/[\/\\]/).pop();
+      fullImageUrl = getFileUrl(filename);
     }
 
-    // Format answer options (extracting text if needed)
     const formattedAnswerOptions = answerOptions.map((option) => ({
       optionText: option.optionText,
       color: option.color || "#ffffff",
     }));
 
-    // Create a new survey question
     const newSurveyQuestion = new SurveyQuestion({
       title,
       description,
@@ -69,14 +61,11 @@ exports.createSurveyQuestion = async (req, res) => {
       surveyQuiz: surveyquizId,
     });
 
-    // Save the new question to the database
     const savedQuestion = await newSurveyQuestion.save();
 
-    // Add the question to the survey quiz
     surveyQuiz.questions.push(savedQuestion._id);
     await surveyQuiz.save();
 
-    // Include the full image URL in the response
     const responseQuestion = {
       ...savedQuestion.toObject(),
       imageUrl: fullImageUrl || savedQuestion.imageUrl,
@@ -93,59 +82,44 @@ exports.createSurveyQuestion = async (req, res) => {
   }
 };
 
-// Controller to get all questions for a specific survey quiz
 exports.getSurveyQuestions = async (req, res) => {
   const { surveyquizId } = req.params;
 
   try {
-    // Find the survey quiz by ID
     const surveyQuiz = await SurveyQuiz.findById(surveyquizId);
     if (!surveyQuiz) {
       return res.status(404).json({ message: "Survey quiz not found" });
     }
 
-    // Retrieve all survey questions associated with this quiz
     const surveyQuestions = await SurveyQuestion.find({
       surveyQuiz: surveyquizId,
     });
 
-    // If no questions are found
     if (surveyQuestions.length === 0) {
       return res
         .status(404)
         .json({ message: "No survey questions found for this quiz" });
     }
 
-    // Base URL for constructing the full image path
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
-    // Loop through all survey questions and include the full image URL if an image exists
     const responseQuestions = await Promise.all(
       surveyQuestions.map(async (question) => {
         let fullImageUrl = null;
 
         if (question.imageUrl) {
-          // Fetch the image document by ID (using Media model)
           const image = await Media.findById(question.imageUrl);
           if (image) {
-            // Construct the full image URL
-            const encodedImagePath = encodeURIComponent(
-              image.path.split("\\").pop()
-            );
-            fullImageUrl = `${baseUrl}${encodedImagePath}`;
+            const filename = image.path.split(/[\/\\]/).pop();
+            fullImageUrl = getFileUrl(filename);
           }
         }
 
-        // Return the survey question with the full image URL
         return {
           ...question.toObject(),
-          imageUrl: fullImageUrl || question.imageUrl, 
+          imageUrl: fullImageUrl || question.imageUrl,
         };
       })
     );
 
-    // Return the survey questions with full image URLs
     res.status(200).json({
       success: true,
       message: "Survey questions retrieved successfully",
@@ -157,41 +131,29 @@ exports.getSurveyQuestions = async (req, res) => {
   }
 };
 
-// Controller to get a specific question by surveyQuestionId
 exports.getSurveyQuestionById = async (req, res) => {
   const { surveyquizId, surveyquestionId } = req.params;
 
   try {
-    // Find the survey question by ID and ensure it's associated with the given survey quiz ID
     const surveyQuestion = await SurveyQuestion.findOne({
       _id: surveyquestionId,
       surveyQuiz: surveyquizId,
     });
 
-    // If the survey question is not found
     if (!surveyQuestion) {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
-    // Base URL for constructing the full image path
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
     let fullImageUrl = null;
 
-    // If the question has an image URL, fetch the image details from Media model
     if (surveyQuestion.imageUrl) {
       const image = await Media.findById(surveyQuestion.imageUrl);
       if (image) {
-        // Construct the full image URL
-        const encodedImagePath = encodeURIComponent(
-          image.path.split("\\").pop()
-        );
-        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = image.path.split(/[\/\\]/).pop();
+        fullImageUrl = getFileUrl(filename);
       }
     }
 
-    // Return the survey question with the full image URL (if available)
     const responseQuestion = {
       ...surveyQuestion.toObject(),
       imageUrl: fullImageUrl || surveyQuestion.imageUrl,
@@ -208,7 +170,6 @@ exports.getSurveyQuestionById = async (req, res) => {
   }
 };
 
-// Controller to update a survey question by its surveyQuestionId
 exports.updateSurveyQuestionById = async (req, res) => {
   const { surveyquizId, surveyquestionId } = req.params;
   const {
@@ -231,7 +192,6 @@ exports.updateSurveyQuestionById = async (req, res) => {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
-    // Update basic fields if provided
     if (title) surveyQuestion.title = title;
     if (description) surveyQuestion.description = description;
     if (dimension) surveyQuestion.dimension = dimension;
@@ -239,15 +199,14 @@ exports.updateSurveyQuestionById = async (req, res) => {
     if (timer) surveyQuestion.timer = timer;
     if (answerOptions) surveyQuestion.answerOptions = answerOptions;
 
-    // Handle imageUrl - explicitly check if it's null or a value
     if (imageUrl === null) {
-      // Remove image association
       surveyQuestion.imageUrl = null;
     } else if (imageUrl) {
-      // Existing image URL handling
-      if (imageUrl.startsWith("http")) {
+      if (imageUrl.includes("/")) {
         const filename = decodeURIComponent(imageUrl.split("/").pop());
-        const media = await Media.findOne({ filename: filename });
+        const media = await Media.findOne({
+          path: { $regex: new RegExp(filename + "$") },
+        });
 
         if (!media) {
           return res
@@ -270,17 +229,12 @@ exports.updateSurveyQuestionById = async (req, res) => {
 
     await surveyQuestion.save();
 
-    // Prepare response with full URL if image exists
     let fullImageUrl = null;
     if (surveyQuestion.imageUrl) {
       const media = await Media.findById(surveyQuestion.imageUrl);
       if (media) {
-        const baseUrl =
-          process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-        const encodedImagePath = encodeURIComponent(
-          media.path.split("\\").pop()
-        );
-        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = media.path.split(/[\/\\]/).pop();
+        fullImageUrl = getFileUrl(filename);
       }
     }
 
@@ -303,23 +257,19 @@ exports.updateSurveyQuestionById = async (req, res) => {
   }
 };
 
-// Controller to delete a survey question by its surveyQuestionId
 exports.deleteSurveyQuestionById = async (req, res) => {
   const { surveyquizId, surveyquestionId } = req.params;
 
   try {
-    // Find the survey question by ID and ensure it's associated with the provided surveyquizId
     const surveyQuestion = await SurveyQuestion.findOne({
       _id: surveyquestionId,
       surveyQuiz: surveyquizId,
     });
 
-    // If the survey question is not found
     if (!surveyQuestion) {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
-    // Delete the survey question using deleteOne method
     await SurveyQuestion.deleteOne({ _id: surveyquestionId });
 
     res.status(200).json({
