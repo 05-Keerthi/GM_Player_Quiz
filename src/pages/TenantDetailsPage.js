@@ -213,16 +213,18 @@ const TenantDetailsPage = () => {
                       </h3>
                       <div className="space-y-4">
                         <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="text-sm text-gray-500">
-                            Mobile Numbers
+                          <p className="text-sm text-gray-500 mb-2">
+                            Mobile Numbers :
                           </p>
                           <div className="space-y-1">
                             {tenant.mobileNumber?.map((number, index) => (
                               <p
                                 key={index}
                                 data-testid={`tenant-mobile-${index}`}
+                                className="flex items-center text-gray-600"
                               >
-                                {number}
+                                <span className="mr-2 text-lg">📱</span>
+                                <span>{number}</span>
                               </p>
                             ))}
                             {(!tenant.mobileNumber ||
@@ -235,15 +237,22 @@ const TenantDetailsPage = () => {
                         </div>
                         <div className="bg-gray-50 p-4 rounded-lg">
                           <p className="text-sm text-gray-500">
-                            Email Addresses
+                            Email Addresses :
                           </p>
                           <div className="space-y-1">
                             {tenant.email?.map((email, index) => (
                               <p
                                 key={index}
                                 data-testid={`tenant-email-${index}`}
+                                className="flex items-center text-gray-600"
                               >
-                                {email}
+                                <span className="mr-2 text-lg">📧</span>
+                                <a
+                                  href={`mailto:${email}`}
+                                  className="text-[#2929FF] hover:text-[#4949FF] hover:underline"
+                                >
+                                  {email}
+                                </a>
                               </p>
                             ))}
                             {(!tenant.email || tenant.email.length === 0) && (
