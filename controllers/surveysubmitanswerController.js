@@ -2,14 +2,15 @@ const SurveyAnswer = require("../models/surveyanswer");
 const SurveySession = require("../models/surveysession");
 const SurveyQuestion = require("../models/surveyQuestion");
 const Media = require("../models/Media");
+const { getFileUrl } = require("../utils/urlHelper");
 
+// submitSurveyAnswer remains unchanged as it doesn't handle image URLs
 exports.submitSurveyAnswer = async (req, res) => {
   const { sessionId, questionId } = req.params;
   const { answer, timeTaken } = req.body;
   const userId = req.user?._id || req.body.guestUserId;
 
   try {
-    // Verify the session exists and is in progress
     const session = await SurveySession.findById(sessionId);
 
     if (!session) {
@@ -22,14 +23,12 @@ exports.submitSurveyAnswer = async (req, res) => {
         .json({ message: "Survey session is not in progress" });
     }
 
-    // Verify the question exists
     const question = await SurveyQuestion.findById(questionId);
 
     if (!question) {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
-    // Check if the user has already answered this question in this session
     const existingAnswer = await SurveyAnswer.findOne({
       surveyQuestion: questionId,
       surveyPlayers: userId,
@@ -40,14 +39,12 @@ exports.submitSurveyAnswer = async (req, res) => {
     let message;
 
     if (existingAnswer) {
-      // Update existing answer
       existingAnswer.surveyAnswer = answer;
       existingAnswer.timeTaken = timeTaken;
       existingAnswer.updatedAt = new Date();
       surveyAnswer = await existingAnswer.save();
       message = "Answer updated successfully";
     } else {
-      // Create new answer
       surveyAnswer = new SurveyAnswer({
         surveyQuestion: questionId,
         surveyPlayers: userId,
@@ -59,7 +56,6 @@ exports.submitSurveyAnswer = async (req, res) => {
       message = "Answer submitted successfully";
     }
 
-    // Emit the 'survey-submit-answer' event to notify other clients
     const io = req.app.get("socketio");
     io.emit("survey-submit-answer", {
       sessionId,
@@ -70,7 +66,6 @@ exports.submitSurveyAnswer = async (req, res) => {
       isUpdate: !!existingAnswer,
     });
 
-    // Respond with a success message
     res.status(200).json({
       message,
       surveyAnswer,
@@ -85,17 +80,15 @@ exports.getAllAnswersForSession = async (req, res) => {
   const { sessionId } = req.params;
 
   try {
-    // Verify the session exists
     const session = await SurveySession.findById(sessionId).populate({
       path: "surveyQuiz",
-      select: "title description type category", // Add any other survey fields you need
+      select: "title description type category",
     });
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
     }
 
-    // Retrieve all answers for the session
     const answers = await SurveyAnswer.find({ surveySession: sessionId })
       .populate({
         path: "surveyQuestion",
@@ -103,7 +96,7 @@ exports.getAllAnswersForSession = async (req, res) => {
           path: "imageUrl",
           model: "Media",
         },
-      }) // Populate all details of surveyQuestion including imageUrl
+      })
       .populate("surveyPlayers", "username email")
       .sort({ createdAt: 1 });
 
@@ -113,8 +106,6 @@ exports.getAllAnswersForSession = async (req, res) => {
         .json({ message: "No answers found for this session" });
     }
 
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
     const questionsMap = {};
     const userAnswers = {};
     const groupedAnswersByQuestion = {};
@@ -122,43 +113,37 @@ exports.getAllAnswersForSession = async (req, res) => {
     answers.forEach((answer) => {
       const question = answer.surveyQuestion.toObject();
 
-      // Format the image URL if available
-      if (question.imageUrl) {
-        const encodedImagePath = encodeURIComponent(
-          question.imageUrl.path.split("\\").pop()
-        );
-        question.imageUrl = `${baseUrl}${encodedImagePath}`;
+      // Format the image URL using getFileUrl utility
+      if (question.imageUrl && question.imageUrl.path) {
+        const filename = question.imageUrl.path.split(/[\/\\]/).pop();
+        question.imageUrl = getFileUrl(filename);
       }
 
-      // Add question to the map if not already added
       if (!questionsMap[question._id]) {
         questionsMap[question._id] = question;
       }
 
-      // Group answers by question
       if (!groupedAnswersByQuestion[question._id]) {
         groupedAnswersByQuestion[question._id] = {};
       }
 
       const option = answer.surveyAnswer;
-      if (option.trim() === "") return; 
+      if (option.trim() === "") return;
 
       if (!groupedAnswersByQuestion[question._id][option]) {
         groupedAnswersByQuestion[question._id][option] = {
-        count: 0,
-        users: [],
-       };
-    }
+          count: 0,
+          users: [],
+        };
+      }
 
-     groupedAnswersByQuestion[question._id][option].count += 1;
-     groupedAnswersByQuestion[question._id][option].users.push({
-      username: answer.surveyPlayers.username,
-      email: answer.surveyPlayers.email,
-      timeTaken: answer.timeTaken,
-    });
+      groupedAnswersByQuestion[question._id][option].count += 1;
+      groupedAnswersByQuestion[question._id][option].users.push({
+        username: answer.surveyPlayers.username,
+        email: answer.surveyPlayers.email,
+        timeTaken: answer.timeTaken,
+      });
 
-
-      // Add user and their answer to the userAnswers map
       const userId = answer.surveyPlayers._id.toString();
       if (!userAnswers[userId]) {
         userAnswers[userId] = {
@@ -178,7 +163,6 @@ exports.getAllAnswersForSession = async (req, res) => {
       });
     });
 
-    // Construct the response object
     res.status(200).json({
       message: "Answers retrieved successfully",
       surveyDetails: {
@@ -207,39 +191,25 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
   const { sessionId, questionId } = req.params;
 
   try {
-    // Verify the session exists
     const session = await SurveySession.findById(sessionId);
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
     }
 
-    // Find the survey question
-    const surveyQuestion = await SurveyQuestion.findById(questionId).populate(
-      "surveyQuiz",
-      "title description"
-    );
+    const surveyQuestion = await SurveyQuestion.findById(questionId)
+      .populate("surveyQuiz", "title description")
+      .populate("imageUrl", "path");
 
     if (!surveyQuestion) {
       return res.status(404).json({ message: "Survey question not found" });
     }
 
-    // Base URL for constructing the full image path
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-    let fullImageUrl = null;
-
-    // If the question has an image URL, fetch the image details from Media model
-    if (surveyQuestion.imageUrl) {
-      const image = await Media.findById(surveyQuestion.imageUrl);
-      if (image) {
-        const encodedImagePath = encodeURIComponent(
-          image.path.split("\\").pop()
-        );
-        fullImageUrl = `${baseUrl}${encodedImagePath}`;
-      }
+    let imageUrl = null;
+    if (surveyQuestion.imageUrl && surveyQuestion.imageUrl.path) {
+      const filename = surveyQuestion.imageUrl.path.split(/[\/\\]/).pop();
+      imageUrl = getFileUrl(filename);
     }
 
-    // Retrieve all answers for the specific question in the session
     const answers = await SurveyAnswer.find({
       surveySession: sessionId,
       surveyQuestion: questionId,
@@ -253,7 +223,6 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
         .json({ message: "No answers found for this question in the session" });
     }
 
-    // Group answers by the option clicked and count how many users selected each option
     const groupedAnswers = answers.reduce((acc, answer) => {
       const option = answer.surveyAnswer;
       if (!acc[option]) {
@@ -268,10 +237,9 @@ exports.getAnswersForSpecificQuestion = async (req, res) => {
       return acc;
     }, {});
 
-    // Include the question details in the response
     const questionDetails = {
       ...surveyQuestion.toObject(),
-      imageUrl: fullImageUrl || surveyQuestion.imageUrl,
+      imageUrl: imageUrl,
       answerOptions: surveyQuestion.answerOptions.map((opt) => ({
         optionText: opt.optionText,
         color: opt.color,
