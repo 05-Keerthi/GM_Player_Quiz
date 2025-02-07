@@ -1,16 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
+import { useUserContext } from "../context/userContext";
 import ProfileDropdown from "../models/ProfileDropDown";
 import NotificationDropdown from "../models/notificationDropdown";
 import DefaultLogo from "../assets/GMI-Logo.png";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuthContext();
-  const [logoSrc, setLogoSrc] = useState(
-    user?.tenantId?.customLogo || DefaultLogo || user?.tenantId?.logo
-  );
+  const { isAuthenticated, user: authUser, logout } = useAuthContext();
+  const { fetchUserById, currentUser } = useUserContext();
+
+  // Local state for UI elements
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [logoSrc, setLogoSrc] = useState(DefaultLogo);
+
+  // Fetch user data when auth state changes
+  useEffect(() => {
+    let isMounted = true;
+
+    const getUserData = async () => {
+      if (!isAuthenticated || !(authUser?._id || authUser?.id)) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        await fetchUserById(authUser._id || authUser.id);
+      } catch (err) {
+        if (isMounted) {
+          console.error("Error fetching user data:", err);
+          setError(err.message || "Failed to load user data");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    getUserData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, authUser?.id]);
+
+  // Update logo source when user data changes
+  useEffect(() => {
+    if (currentUser?.tenantId) {
+      setLogoSrc(
+        currentUser.tenantId.customLogo ||
+          currentUser.tenantId.logo ||
+          DefaultLogo
+      );
+    } else {
+      setLogoSrc(DefaultLogo);
+    }
+  }, [currentUser]);
 
   const handleLogoError = () => {
     setLogoSrc(DefaultLogo);
@@ -27,11 +77,15 @@ const Navbar = () => {
   return (
     <>
       {/* Fixed navbar wrapper */}
-      <div className="h-20 w-full" /> {/* Spacer to prevent content overlap */}
+      <div className="h-20 w-full" />
       <div
         data-testid="navbar"
         className="fixed top-0 left-0 right-0 border-b-4 p-2 z-50"
-        style={{ backgroundColor: user?.tenantId?.primaryColor || "#2929FF" }}
+        style={{
+          backgroundColor: currentUser?.tenantId?.primaryColor || "#2929FF",
+          opacity: isLoading ? 0.8 : 1,
+          transition: "opacity 0.3s ease-in-out",
+        }}
       >
         <div className="flex items-center h-12 p-3 gap-4 justify-between">
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -41,7 +95,7 @@ const Navbar = () => {
             >
               <img
                 src={logoSrc}
-                alt={user?.tenantId?.name || "GMI"}
+                alt={currentUser?.tenantId?.name || "GMI"}
                 className="h-full w-full object-cover"
                 onError={handleLogoError}
               />
@@ -50,20 +104,20 @@ const Navbar = () => {
               <h1
                 className="text-lg font-semibold"
                 style={{
-                  color: user?.tenantId?.secondaryColor || "#FFFFFF",
-                  fontFamily: user?.tenantId?.fontFamily || "Arial",
+                  color: currentUser?.tenantId?.secondaryColor || "#FFFFFF",
+                  fontFamily: currentUser?.tenantId?.fontFamily || "Arial",
                 }}
               >
-                Welcome to {user?.tenantId?.name || "GM Play"}..!
+                Welcome to {currentUser?.tenantId?.name || "GM Play"}..!
               </h1>
               <p
                 className="text-sm"
                 style={{
-                  color: user?.tenantId?.secondaryColor || "#FFFFFF",
-                  fontFamily: user?.tenantId?.fontFamily || "Arial",
+                  color: currentUser?.tenantId?.secondaryColor || "#FFFFFF",
+                  fontFamily: currentUser?.tenantId?.fontFamily || "Arial",
                 }}
               >
-                Engage, learn, and have fun
+                {error ? "Error loading data" : "Engage, learn, and have fun"}
               </p>
             </div>
           </div>
@@ -71,7 +125,11 @@ const Navbar = () => {
             {isAuthenticated ? (
               <>
                 <NotificationDropdown />
-                <ProfileDropdown user={user} onLogout={logout} />
+                <ProfileDropdown
+                  user={currentUser}
+                  onLogout={logout}
+                  isLoading={isLoading}
+                />
               </>
             ) : (
               <button
