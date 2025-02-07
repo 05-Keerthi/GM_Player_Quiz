@@ -9,6 +9,7 @@ const Answer = require("../models/answer");
 const SurveyAnswer = require("../models/surveyanswer");
 const mongoose = require("mongoose");
 const Media = require("../models/Media");
+const { getFileUrl } = require("../utils/urlHelper");
 
 // Get list of all quizzes participated
 const getParticipatedQuizzesAndSurveys = async (req, res) => {
@@ -417,10 +418,6 @@ const getSessionResponses = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.user._id;
 
-    // Base URL for constructing the full image path
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
     const answers = await Answer.aggregate([
       {
         $match: {
@@ -454,17 +451,15 @@ const getSessionResponses = async (req, res) => {
       { $sort: { createdAt: 1 } },
     ]);
 
-    // If you need to verify image existence or get additional image metadata
+    // Process images using getFileUrl utility
     const answersWithImages = await Promise.all(
       answers.map(async (answer) => {
         if (answer.originalImageUrl) {
           try {
             const image = await Media.findById(answer.originalImageUrl);
-            if (image) {
-              const encodedImagePath = encodeURIComponent(
-                image.path.split("\\").pop()
-              );
-              answer.imageUrl = `${baseUrl}${encodedImagePath}`;
+            if (image && image.path) {
+              const filename = image.path.split(/[\/\\]/).pop();
+              answer.imageUrl = getFileUrl(filename);
             } else {
               answer.imageUrl = null;
             }
@@ -484,7 +479,6 @@ const getSessionResponses = async (req, res) => {
       user: userId,
     }).select("score timeTaken correctAnswers incorrectAnswers");
 
-    // Get session details
     const session = await Session.findById(sessionId)
       .populate("quiz", "title description")
       .populate("host", "username email")
@@ -505,10 +499,6 @@ const getSurveyResponses = async (req, res) => {
   try {
     const { surveySessionId } = req.params;
     const userId = req.user._id;
-
-    // Base URL for constructing the full image path
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
     const answers = await SurveyAnswer.aggregate([
       {
@@ -540,17 +530,15 @@ const getSurveyResponses = async (req, res) => {
       { $sort: { createdAt: 1 } },
     ]);
 
-    // If you need to verify image existence or get additional image metadata
+    // Process images using getFileUrl utility
     const answersWithImages = await Promise.all(
       answers.map(async (answer) => {
         if (answer.originalImageUrl) {
           try {
             const image = await Media.findById(answer.originalImageUrl);
-            if (image) {
-              const encodedImagePath = encodeURIComponent(
-                image.path.split("\\").pop()
-              );
-              answer.imageUrl = `${baseUrl}${encodedImagePath}`;
+            if (image && image.path) {
+              const filename = image.path.split(/[\/\\]/).pop();
+              answer.imageUrl = getFileUrl(filename);
             } else {
               answer.imageUrl = null;
             }
@@ -570,7 +558,6 @@ const getSurveyResponses = async (req, res) => {
       user: userId,
     }).select("questionsAttempted questionsSkipped timeTaken");
 
-    // Get session details
     const session = await SurveySession.findById(surveySessionId)
       .populate("surveyQuiz", "title type")
       .populate("surveyHost", "username email")
@@ -579,7 +566,7 @@ const getSurveyResponses = async (req, res) => {
     res.json({
       sessionDetails: session,
       summary: sessionReport || {},
-      answers:answersWithImages,
+      answers: answersWithImages,
     });
   } catch (error) {
     console.error("Error fetching survey responses:", error);
@@ -937,7 +924,7 @@ const getQuizSessionAnalytics = async (req, res) => {
           averageTimeTaken: { $avg: "$timeTaken" },
           responses: {
             $push: {
-              answer: "$answer", 
+              answer: "$answer",
               isCorrect: "$isCorrect",
               username: { $ifNull: ["$userDetails.username", "Anonymous"] },
               email: "$userDetails.email",
@@ -1317,7 +1304,9 @@ const getSurveySessionAnalytics = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching survey session analytics:", error);
-    res.status(500).json({ message: "Error fetching survey session analytics" });
+    res
+      .status(500)
+      .json({ message: "Error fetching survey session analytics" });
   }
 };
 
