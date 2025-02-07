@@ -35,7 +35,47 @@ export const TenantProvider = ({ children }) => {
     createTenant: async (tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
-        const { data: newTenant } = await api.post("/tenants", tenantData, {
+        // Validate required fields
+        const requiredFields = [
+          "name",
+          "customDomain",
+          "mobileNumber",
+          "email",
+        ];
+        const missingFields = requiredFields.filter(
+          (field) => !tenantData[field]
+        );
+
+        if (missingFields.length > 0) {
+          throw {
+            response: {
+              data: {
+                message: "Validation Error",
+                errors: missingFields.map((field) => ({
+                  field,
+                  message: `${field} is required`,
+                })),
+              },
+            },
+          };
+        }
+
+        // Handle FormData if logo is being uploaded
+        let dataToSend;
+        if (tenantData instanceof FormData) {
+          // FormData already contains the file and other data
+          dataToSend = tenantData;
+        } else {
+          // Clean array fields
+          const cleanedData = {
+            ...tenantData,
+            mobileNumber: tenantData.mobileNumber.filter((num) => num.trim()),
+            email: tenantData.email.filter((email) => email.trim()),
+          };
+          dataToSend = cleanedData;
+        }
+
+        const { data: newTenant } = await api.post("/tenants", dataToSend, {
           headers: {
             "Content-Type":
               tenantData instanceof FormData
@@ -43,6 +83,7 @@ export const TenantProvider = ({ children }) => {
                 : "application/json",
           },
         });
+
         dispatch({ type: ACTIONS.ADD_TENANT, payload: newTenant });
         return newTenant;
       } catch (error) {
@@ -60,9 +101,74 @@ export const TenantProvider = ({ children }) => {
     updateTenant: async (id, tenantData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true });
       try {
+        // If using FormData, extract fields for validation
+        let dataToValidate = tenantData;
+        if (tenantData instanceof FormData) {
+          dataToValidate = {
+            name: tenantData.get("name"),
+            customDomain: tenantData.get("customDomain"),
+            mobileNumber: tenantData.getAll("mobileNumber"),
+            email: tenantData.getAll("email"),
+          };
+        }
+
+        // Validate required fields if they are being updated
+        const requiredFields = [
+          "name",
+          "customDomain",
+          "mobileNumber",
+          "email",
+        ];
+        const updatedFields = Object.keys(dataToValidate);
+        const invalidFields = [];
+
+        requiredFields.forEach((field) => {
+          if (updatedFields.includes(field)) {
+            if (
+              !dataToValidate[field] ||
+              (Array.isArray(dataToValidate[field]) &&
+                dataToValidate[field].filter((item) => item.trim()).length ===
+                  0)
+            ) {
+              invalidFields.push(field);
+            }
+          }
+        });
+
+        if (invalidFields.length > 0) {
+          throw {
+            response: {
+              data: {
+                message: "Validation Error",
+                errors: invalidFields.map((field) => ({
+                  field,
+                  message: `${field} cannot be empty`,
+                })),
+              },
+            },
+          };
+        }
+
+        // If not FormData, clean the data
+        let dataToSend = tenantData;
+        if (!(tenantData instanceof FormData)) {
+          const cleanedData = { ...tenantData };
+          if (tenantData.mobileNumber) {
+            cleanedData.mobileNumber = tenantData.mobileNumber.filter((num) =>
+              num.trim()
+            );
+          }
+          if (tenantData.email) {
+            cleanedData.email = tenantData.email.filter((email) =>
+              email.trim()
+            );
+          }
+          dataToSend = cleanedData;
+        }
+
         const { data: updatedTenant } = await api.put(
           `/tenants/${id}`,
-          tenantData,
+          dataToSend,
           {
             headers: {
               "Content-Type":
@@ -72,6 +178,7 @@ export const TenantProvider = ({ children }) => {
             },
           }
         );
+
         dispatch({ type: ACTIONS.UPDATE_TENANT, payload: updatedTenant });
         return updatedTenant;
       } catch (error) {

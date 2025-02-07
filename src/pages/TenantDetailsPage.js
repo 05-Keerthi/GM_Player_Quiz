@@ -172,7 +172,7 @@ const TenantDetailsPage = () => {
                         Company Details
                       </h3>
                       <div className="space-y-2">
-                        <div>
+                        <div className="bg-gray-50 p-4 rounded-lg">
                           <p className="text-sm text-gray-500">Description</p>
                           <div
                             className="relative"
@@ -212,7 +212,7 @@ const TenantDetailsPage = () => {
                         Contact Information
                       </h3>
                       <div className="space-y-4">
-                        <div>
+                        <div className="bg-gray-50 p-4 rounded-lg">
                           <p className="text-sm text-gray-500">
                             Mobile Numbers
                           </p>
@@ -233,7 +233,7 @@ const TenantDetailsPage = () => {
                             )}
                           </div>
                         </div>
-                        <div>
+                        <div className="bg-gray-50 p-4 rounded-lg">
                           <p className="text-sm text-gray-500">
                             Email Addresses
                           </p>

@@ -10,13 +10,14 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
   const [formData, setFormData] = useState({
     name: "",
     customDomain: "",
-    theme: "",
-    primaryColor: "#000000",
-    secondaryColor: "#000000",
-    fontFamily: "",
-    logo: "",
     mobileNumber: [""],
     email: [""],
+    theme: "",
+    primaryColor: "#2929FF",
+    secondaryColor: "#FFFFFF",
+    fontFamily: "",
+    logo: "", // URL for external logo
+    customLogo: "", // For uploaded logo
     description: "",
   });
 
@@ -30,27 +31,30 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
       setFormData({
         name: tenant.name || "",
         customDomain: tenant.customDomain || "",
+        mobileNumber: tenant.mobileNumber?.length ? tenant.mobileNumber : [""],
+        email: tenant.email?.length ? tenant.email : [""],
         theme: tenant.theme || "",
         primaryColor: tenant.primaryColor || "#2929FF",
         secondaryColor: tenant.secondaryColor || "#FFFFFF",
         fontFamily: tenant.fontFamily || "",
-        logo: tenant.logo || tenant.customLogo || "",
-        mobileNumber: tenant.mobileNumber?.length ? tenant.mobileNumber : [""],
-        email: tenant.email?.length ? tenant.email : [""],
+        logo: tenant.logo || "",
+        customLogo: tenant.customLogo || "",
         description: tenant.description || "",
       });
-      setPreviewUrl(tenant.logo || tenant.customLogo || "");
+      // Set preview URL to customLogo first (if exists), then fall back to logo
+      setPreviewUrl(tenant.customLogo || tenant.logo || "");
     } else {
       setFormData({
         name: "",
         customDomain: "",
+        mobileNumber: [""],
+        email: [""],
         theme: "",
         primaryColor: "#2929FF",
         secondaryColor: "#FFFFFF",
         fontFamily: "",
         logo: "",
-        mobileNumber: [""],
-        email: [""],
+        customLogo: "",
         description: "",
       });
       setPreviewUrl("");
@@ -87,9 +91,20 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
       setSelectedFile(file);
       const fileUrl = URL.createObjectURL(file);
       setPreviewUrl(fileUrl);
-      setFormData((prev) => ({ ...prev, logo: "" }));
+      // Clear both logo and customLogo when a new file is selected
+      setFormData((prev) => ({ ...prev, logo: "", customLogo: "" }));
       setErrors((prev) => ({ ...prev, logo: "" }));
     }
+  };
+
+  const clearLogo = () => {
+    setPreviewUrl("");
+    setSelectedFile(null);
+    setFormData((prev) => ({
+      ...prev,
+      logo: "",
+      customLogo: "",
+    }));
   };
 
   const handleArrayFieldChange = (index, value, fieldName) => {
@@ -101,6 +116,7 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
         [fieldName]: newArray,
       };
     });
+    setErrors((prev) => ({ ...prev, [fieldName]: "" }));
   };
 
   const addArrayField = (fieldName) => {
@@ -120,11 +136,9 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Validate required fields
+  const validateForm = () => {
     const newErrors = {};
+    // Validate required fields only
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
     }
@@ -132,8 +146,26 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
       newErrors.customDomain = "Custom domain is required";
     }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const validMobileNumbers = formData.mobileNumber.filter((num) =>
+      num.trim()
+    );
+    if (validMobileNumbers.length === 0) {
+      newErrors.mobileNumber = "At least one mobile number is required";
+    }
+
+    const validEmails = formData.email.filter((email) => email.trim());
+    if (validEmails.length === 0) {
+      newErrors.email = "At least one email is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
       return;
     }
 
@@ -142,33 +174,25 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
     try {
       const submitData = new FormData();
 
-      // Add all form fields to FormData
+      // Add all fields to FormData
       Object.keys(formData).forEach((key) => {
         if (key === "mobileNumber" || key === "email") {
           // Handle arrays
-          const filteredArray = formData[key].filter((item) => item.trim());
-          filteredArray.forEach((item) => {
-            submitData.append(key, item);
-          });
+          formData[key]
+            .filter((item) => item.trim())
+            .forEach((item) => submitData.append(key, item.trim()));
         } else if (key !== "logo" && formData[key] !== "") {
           // Add other fields
           submitData.append(key, formData[key]);
         }
       });
 
-      // Handle logo upload
+      // Handle logo
       if (selectedFile) {
         submitData.append("customLogo", selectedFile);
       } else if (formData.logo) {
         submitData.append("logo", formData.logo);
       }
-
-      console.log("Form data being sent:", {
-        name: submitData.get("name"),
-        customDomain: submitData.get("customDomain"),
-        customLogo: submitData.get("customLogo"),
-        logo: submitData.get("logo"),
-      });
 
       let updatedTenant;
       if (isEditing) {
@@ -182,10 +206,9 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
       if (onUpdate) {
         onUpdate(updatedTenant);
       }
-
       onClose();
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("Error:", error);
       if (error.response?.data?.errors) {
         const fieldErrors = error.response.data.errors.reduce((acc, err) => {
           acc[err.field] = err.message;
@@ -211,320 +234,355 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
         <h2 className="text-lg font-bold mb-4">
           {isEditing ? "Edit Tenant" : "Create New Tenant"}
         </h2>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Required Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-2">
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="name"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-2 ${
-                  errors.name ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-                placeholder="Enter tenant name"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-              )}
+          {/* Required Fields Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Required Information
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name Field */}
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`w-full border rounded-lg px-4 py-2 ${
+                    errors.name ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Enter tenant name"
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                )}
+              </div>
+
+              {/* Custom Domain Field */}
+              <div>
+                <label
+                  htmlFor="customDomain"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Custom Domain <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="customDomain"
+                  type="text"
+                  name="customDomain"
+                  value={formData.customDomain}
+                  onChange={handleChange}
+                  className={`w-full border rounded-lg px-4 py-2 ${
+                    errors.customDomain ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="e.g., tenant.example.com"
+                />
+                {errors.customDomain && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.customDomain}
+                  </p>
+                )}
+              </div>
             </div>
 
+            {/* Mobile Numbers */}
             <div>
-              <label
-                htmlFor="customDomain"
-                className="block text-sm font-medium mb-2"
-              >
-                Custom Domain <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium mb-2">
+                Mobile Numbers <span className="text-red-500">*</span>
               </label>
-              <input
-                id="customDomain"
-                type="text"
-                name="customDomain"
-                value={formData.customDomain}
-                onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-2 ${
-                  errors.customDomain ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-                placeholder="e.g., tenant.example.com"
-              />
-              {errors.customDomain && (
+              {formData.mobileNumber.map((number, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="tel"
+                    value={number}
+                    onChange={(e) =>
+                      handleArrayFieldChange(
+                        index,
+                        e.target.value,
+                        "mobileNumber"
+                      )
+                    }
+                    className={`flex-1 border rounded-lg px-4 py-2 ${
+                      errors.mobileNumber ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="Enter mobile number"
+                  />
+                  {formData.mobileNumber.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeArrayField(index, "mobileNumber")}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addArrayField("mobileNumber")}
+                className="text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1"
+              >
+                <Plus size={16} />
+                Add another number
+              </button>
+              {errors.mobileNumber && (
                 <p className="mt-1 text-sm text-red-500">
-                  {errors.customDomain}
+                  {errors.mobileNumber}
                 </p>
               )}
             </div>
+
+            {/* Email Addresses */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Email Addresses <span className="text-red-500">*</span>
+              </label>
+              {formData.email.map((email, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) =>
+                      handleArrayFieldChange(index, e.target.value, "email")
+                    }
+                    className={`flex-1 border rounded-lg px-4 py-2 ${
+                      errors.email ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="Enter email address"
+                  />
+                  {formData.email.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeArrayField(index, "email")}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addArrayField("email")}
+                className="text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1"
+              >
+                <Plus size={16} />
+                Add another email
+              </button>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+              )}
+            </div>
           </div>
 
-          {/* Logo Section */}
+          {/* Optional Fields Section */}
           <div className="space-y-4">
-            <label className="block text-sm font-medium">Logo</label>
+            <h3 className="text-sm font-semibold text-gray-700">
+              Additional Information
+            </h3>
 
-            {/* Logo Preview */}
-            {(previewUrl || formData.logo || formData.customLogo) && (
-              <div className="relative inline-block">
-                <img
-                  src={previewUrl || formData.logo || formData.customLogo}
-                  alt="Logo preview"
-                  className="w-24 h-24 object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewUrl("");
-                    setSelectedFile(null);
-                    setFormData((prev) => ({ ...prev, logo: "" }));
-                  }}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
-
-            {/* Logo Input Options */}
+            {/* Logo Section */}
             <div className="space-y-4">
-              {/* URL Input */}
+              <label className="block text-sm font-medium">Logo</label>
+
+              {/* Logo Preview */}
+              {(previewUrl || formData.customLogo || formData.logo) && (
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl || formData.customLogo || formData.logo}
+                    alt="Logo preview"
+                    className="w-24 h-24 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearLogo}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Logo Input Options */}
+              <div className="space-y-4">
+                {/* URL Input */}
+                <div>
+                  <label
+                    htmlFor="logo-url"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Logo URL
+                  </label>
+                  <input
+                    id="logo-url"
+                    type="url"
+                    name="logo"
+                    value={formData.logo}
+                    onChange={(e) => {
+                      handleChange(e);
+                      if (e.target.value) {
+                        setSelectedFile(null);
+                        setPreviewUrl("");
+                        setFormData((prev) => ({ ...prev, customLogo: "" }));
+                      }
+                    }}
+                    placeholder="Enter logo URL"
+                    className="w-full border rounded-lg px-4 py-2 border-gray-300"
+                    disabled={!!selectedFile || !!formData.customLogo}
+                  />
+                  {selectedFile && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      URL input is disabled while using file upload
+                    </p>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">OR</span>
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                <div>
+                  <label
+                    htmlFor="logo-upload"
+                    className={`flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 ${
+                      formData.logo ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <Upload className="w-5 h-5 mr-2" />
+                    <span>Upload Logo</span>
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      disabled={!!formData.logo}
+                    />
+                  </label>
+                  {formData.logo ? (
+                    <p className="text-sm text-gray-500 mt-1">
+                      File upload is disabled while using URL
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Max file size: 5MB. Supported formats: PNG, JPG, JPEG
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium mb-2"
+              >
+                Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 border-gray-300"
+                rows="3"
+                placeholder="Enter tenant description"
+              />
+            </div>
+
+            {/* Theme and Font */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
-                  htmlFor="logo-url"
+                  htmlFor="theme"
                   className="block text-sm font-medium mb-2"
                 >
-                  Logo URL
+                  Theme
                 </label>
-                <input
-                  id="logo-url"
-                  type="url"
-                  name="logo"
-                  value={formData.logo}
+                <select
+                  id="theme"
+                  name="theme"
+                  value={formData.theme}
                   onChange={handleChange}
-                  placeholder="Enter logo URL"
                   className="w-full border rounded-lg px-4 py-2 border-gray-300"
-                  disabled={!!selectedFile}
-                />
-                {selectedFile && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    URL input is disabled while using file upload
-                  </p>
-                )}
+                >
+                  <option value="">Select Theme</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
               </div>
 
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">OR</span>
-                </div>
-              </div>
-
-              {/* File Upload */}
               <div>
                 <label
-                  htmlFor="logo-upload"
-                  className={`flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 ${
-                    formData.logo ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  htmlFor="fontFamily"
+                  className="block text-sm font-medium mb-2"
                 >
-                  <Upload className="w-5 h-5 mr-2" />
-                  <span>Upload Logo</span>
-                  <input
-                    id="logo-upload"
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    disabled={!!formData.logo}
-                  />
+                  Font Family
                 </label>
-                {formData.logo ? (
-                  <p className="text-sm text-gray-500 mt-1">
-                    File upload is disabled while using URL
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Max file size: 5MB. Supported formats: PNG, JPG, JPEG
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Description field */}
-          <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium mb-2"
-            >
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2 border-gray-300"
-              rows="3"
-              placeholder="Enter tenant description"
-            />
-          </div>
-
-          {/* Mobile Numbers */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Mobile Numbers
-            </label>
-            {formData.mobileNumber.map((number, index) => (
-              <div key={index} className="flex gap-2 mb-2">
                 <input
-                  type="tel"
-                  value={number}
-                  onChange={(e) =>
-                    handleArrayFieldChange(
-                      index,
-                      e.target.value,
-                      "mobileNumber"
-                    )
-                  }
-                  className="flex-1 border rounded-lg px-4 py-2 border-gray-300"
-                  placeholder="Enter mobile number"
+                  id="fontFamily"
+                  type="text"
+                  name="fontFamily"
+                  value={formData.fontFamily}
+                  onChange={handleChange}
+                  className="w-full border rounded-lg px-4 py-2 border-gray-300"
+                  placeholder="e.g., Arial, sans-serif"
                 />
-                {formData.mobileNumber.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayField(index, "mobileNumber")}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                  >
-                    <X size={20} />
-                  </button>
-                )}
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addArrayField("mobileNumber")}
-              className="text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1"
-            >
-              <Plus size={16} />
-              Add another number
-            </button>
-          </div>
+            </div>
 
-          {/* Email Addresses */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Email Addresses
-            </label>
-            {formData.email.map((email, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+            {/* Colors */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="primaryColor"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Primary Color
+                </label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) =>
-                    handleArrayFieldChange(index, e.target.value, "email")
-                  }
-                  className="flex-1 border rounded-lg px-4 py-2 border-gray-300"
-                  placeholder="Enter email address"
+                  id="primaryColor"
+                  type="color"
+                  name="primaryColor"
+                  value={formData.primaryColor}
+                  onChange={handleChange}
+                  className="w-full h-10"
                 />
-                {formData.email.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayField(index, "email")}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                  >
-                    <X size={20} />
-                  </button>
-                )}
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addArrayField("email")}
-              className="text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1"
-            >
-              <Plus size={16} />
-              Add another email
-            </button>
-          </div>
-
-          {/* Theme Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="theme" className="block text-sm font-medium mb-2">
-                Theme
-              </label>
-              <select
-                id="theme"
-                name="theme"
-                value={formData.theme}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 border-gray-300"
-              >
-                <option value="">Select Theme</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="fontFamily"
-                className="block text-sm font-medium mb-2"
-              >
-                Font Family
-              </label>
-              <input
-                id="fontFamily"
-                type="text"
-                name="fontFamily"
-                value={formData.fontFamily}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 border-gray-300"
-                placeholder="e.g., Arial, sans-serif"
-              />
-            </div>
-          </div>
-
-          {/* Color Selection */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="primaryColor"
-                className="block text-sm font-medium mb-2"
-              >
-                Primary Color
-              </label>
-              <input
-                id="primaryColor"
-                type="color"
-                name="primaryColor"
-                value={formData.primaryColor}
-                onChange={handleChange}
-                className="w-full h-10"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="secondaryColor"
-                className="block text-sm font-medium mb-2"
-              >
-                Font Color
-              </label>
-              <input
-                id="secondaryColor"
-                type="color"
-                name="secondaryColor"
-                value={formData.secondaryColor}
-                onChange={handleChange}
-                className="w-full h-10"
-              />
+              <div>
+                <label
+                  htmlFor="secondaryColor"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Secondary Color
+                </label>
+                <input
+                  id="secondaryColor"
+                  type="color"
+                  name="secondaryColor"
+                  value={formData.secondaryColor}
+                  onChange={handleChange}
+                  className="w-full h-10"
+                />
+              </div>
             </div>
           </div>
 
@@ -533,7 +591,7 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               disabled={loading}
             >
               Cancel
@@ -542,9 +600,7 @@ const TenantModal = ({ isOpen, onClose, tenant = null, onUpdate }) => {
               type="submit"
               disabled={loading}
               className={`px-4 py-2 text-white rounded-lg flex items-center ${
-                loading
-                  ? "bg-blue-400 cursor-not-allowed"
-                  : "bg-blue-500 hover:bg-blue-600"
+                loading ? "bg-blue-400" : "bg-blue-500 hover:bg-blue-600"
               }`}
             >
               {loading ? (
