@@ -10,17 +10,16 @@ const Report = require("../models/Report");
 const Answer = require("../models/answer");
 const Leaderboard = require("../models/leaderBoard");
 const ActivityLog = require("../models/ActivityLog");
-
-
+const { getFileUrl } = require("../utils/urlHelper");
 
 const updateExpiredWaitingSessions = async (sessionId) => {
   const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
-  
+
   try {
     const session = await Session.findOne({
       _id: sessionId,
       status: "waiting",
-      createdAt: { $lt: eightHoursAgo }
+      createdAt: { $lt: eightHoursAgo },
     });
 
     if (session) {
@@ -42,7 +41,8 @@ exports.createSession = async (req, res) => {
   try {
     // Generate a random alphanumeric join code (6 characters: mix of letters and numbers)
     const generateJoinCode = (length = 6) => {
-      const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const characters =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
       let joinCode = "";
       for (let i = 0; i < length; i++) {
         const randomIndex = crypto.randomInt(0, characters.length);
@@ -81,7 +81,7 @@ exports.createSession = async (req, res) => {
         const io = req.app.get("socketio");
         io.emit("session-expired", {
           sessionId: savedSession._id,
-          status: "completed"
+          status: "completed",
         });
       }
     }, 8 * 60 * 60 * 1000); // 8 hours
@@ -130,7 +130,7 @@ exports.joinSession = async (req, res) => {
         select: "title description categories slides questions order",
         populate: {
           path: "categories",
-          select: "name description", 
+          select: "name description",
         },
       });
 
@@ -144,7 +144,6 @@ exports.joinSession = async (req, res) => {
         .status(400)
         .json({ message: "Session is not open for joining" });
     }
-
 
     // Get user details
     const user = await User.findById(userId).select("username email");
@@ -165,7 +164,7 @@ exports.joinSession = async (req, res) => {
         select: "title description categories slides questions order",
         populate: {
           path: "categories",
-          select: "name description", 
+          select: "name description",
         },
       });
 
@@ -214,29 +213,21 @@ exports.startSession = async (req, res) => {
     session.startTime = Date.now();
     await session.save();
 
-    // Transform questions to include full image URLs
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
+    // Transform questions and slides to include full image URLs using getFileUrl utility
     const processedQuestions = questions.map((question) => {
       const questionObj = question.toObject();
       if (questionObj.imageUrl && questionObj.imageUrl.path) {
-        const encodedImagePath = encodeURIComponent(
-          questionObj.imageUrl.path.split("\\").pop()
-        );
-        questionObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = questionObj.imageUrl.path.split(/[\/\\]/).pop();
+        questionObj.imageUrl = getFileUrl(filename);
       }
       return questionObj;
     });
 
-    // Transform slides to include full image URLs
     const processedSlides = slides.map((slide) => {
       const slideObj = slide.toObject();
       if (slideObj.imageUrl && slideObj.imageUrl.path) {
-        const encodedImagePath = encodeURIComponent(
-          slideObj.imageUrl.path.split("\\").pop()
-        );
-        slideObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = slideObj.imageUrl.path.split(/[\/\\]/).pop();
+        slideObj.imageUrl = getFileUrl(filename);
       }
       return slideObj;
     });
@@ -323,16 +314,11 @@ exports.nextQuestion = async (req, res) => {
     session.currentQuestion = nextItem._id;
     await session.save();
 
-    // Process the image URL
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    // Process the image URL using getFileUrl utility
     const itemToSend = nextItem.toObject();
-
     if (itemToSend.imageUrl && itemToSend.imageUrl.path) {
-      const encodedImagePath = encodeURIComponent(
-        itemToSend.imageUrl.path.split("\\").pop()
-      );
-      itemToSend.imageUrl = `${baseUrl}${encodedImagePath}`;
+      const filename = itemToSend.imageUrl.path.split(/[\/\\]/).pop();
+      itemToSend.imageUrl = getFileUrl(filename);
     }
 
     // Emit the next item
@@ -341,7 +327,7 @@ exports.nextQuestion = async (req, res) => {
       type: quiz.order[nextIndex].type,
       item: itemToSend,
       isLastItem: nextIndex === quiz.order.length - 1,
-      progress: `${nextIndex + 1}/${totalItems}`
+      progress: `${nextIndex + 1}/${totalItems}`,
     });
 
     res.status(200).json({
@@ -349,14 +335,13 @@ exports.nextQuestion = async (req, res) => {
       type: quiz.order[nextIndex].type,
       item: itemToSend,
       isLastItem: nextIndex === quiz.order.length - 1,
-      progress: `${nextIndex + 1}/${totalItems}`
+      progress: `${nextIndex + 1}/${totalItems}`,
     });
   } catch (error) {
     console.error("Next question error:", error);
     res.status(500).json({ message: "Error retrieving the next item", error });
   }
 };
-
 
 exports.endSession = async (req, res) => {
   const { joinCode, sessionId } = req.params;
@@ -377,8 +362,11 @@ exports.endSession = async (req, res) => {
     session.endTime = Date.now();
     await session.save();
 
-    const { title: quizTitle, description: quizDescription, questions } =
-      session.quiz;
+    const {
+      title: quizTitle,
+      description: quizDescription,
+      questions,
+    } = session.quiz;
     const totalQuestions = questions.length; // Total questions in the quiz
 
     // Fetch all leaderboard scores for this session
@@ -414,28 +402,29 @@ exports.endSession = async (req, res) => {
       });
 
       // Calculate correct and incorrect answers
-const correctAnswers = userAnswers.filter((ans) => ans.isCorrect).length;
+      const correctAnswers = userAnswers.filter((ans) => ans.isCorrect).length;
 
-// Fetch unanswered questions (not submitted by the user)
-const unansweredQuestions = questions.filter(
-  (q) => !userAnswers.some((a) => a.question.toString() === q._id.toString())
-);
+      // Fetch unanswered questions (not submitted by the user)
+      const unansweredQuestions = questions.filter(
+        (q) =>
+          !userAnswers.some((a) => a.question.toString() === q._id.toString())
+      );
 
-// Include unanswered questions in incorrect answers
-const incorrectAnswers = totalQuestions - correctAnswers;
+      // Include unanswered questions in incorrect answers
+      const incorrectAnswers = totalQuestions - correctAnswers;
 
-// Persist unanswered questions in the database
-await Promise.all(
-  unansweredQuestions.map(async (question) => {
-    await Answer.create({
-      session: sessionId,
-      user: userId,
-      question: question._id,
-      isCorrect: false,
-      answer: null, // No answer provided
-    });
-  })
-);
+      // Persist unanswered questions in the database
+      await Promise.all(
+        unansweredQuestions.map(async (question) => {
+          await Answer.create({
+            session: sessionId,
+            user: userId,
+            question: question._id,
+            isCorrect: false,
+            answer: null, // No answer provided
+          });
+        })
+      );
 
 
       // Save report

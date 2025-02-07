@@ -7,20 +7,19 @@ const SurveyQuestion = require("../models/surveyQuestion");
 const SurveyQuiz = require("../models/surveyQuiz");
 const SurveySlide = require("../models/surveySlide");
 const Media = require("../models/Media");
-const ActivityLog = require('../models/ActivityLog');
+const ActivityLog = require("../models/ActivityLog");
 const Report = require("../models/Report");
 const SurveyAnswer = require("../models/surveyanswer");
-
-
+const { getFileUrl } = require("../utils/urlHelper");
 
 const updateExpiredWaitingSessions = async (sessionId) => {
-  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); 
-  
+  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+
   try {
     const session = await SurveySession.findOne({
       _id: sessionId,
       surveyStatus: "waiting",
-      createdAt: { $lt: eightHoursAgo }
+      createdAt: { $lt: eightHoursAgo },
     });
 
     if (session) {
@@ -36,14 +35,15 @@ const updateExpiredWaitingSessions = async (sessionId) => {
 };
 
 exports.createSurveySession = async (req, res) => {
-  const { surveyQuizId } = req.params; 
-  const surveyHostId = req.user._id; 
+  const { surveyQuizId } = req.params;
+  const surveyHostId = req.user._id;
 
   try {
     // Generate a random join code
     const generateRandomCode = (length = 6) => {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let code = '';
+      const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let code = "";
       for (let i = 0; i < length; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
@@ -75,19 +75,20 @@ exports.createSurveySession = async (req, res) => {
     savedSurveySession.surveyQrData = joinUrl;
     await savedSurveySession.save();
 
-     // Set up a timeout to check and update the session status after 8 hours
-     setTimeout(async () => {
-      const wasUpdated = await updateExpiredWaitingSessions(savedSurveySession._id);
+    // Set up a timeout to check and update the session status after 8 hours
+    setTimeout(async () => {
+      const wasUpdated = await updateExpiredWaitingSessions(
+        savedSurveySession._id
+      );
       if (wasUpdated) {
         // Emit socket event for status change
         const io = req.app.get("socketio");
         io.emit("survey-session-expired", {
           sessionId: savedSurveySession._id,
-          status: "completed"
+          status: "completed",
         });
       }
     }, 8 * 60 * 60 * 1000); // 8 hours
-
 
     // Populate the survey session with details
     const populatedSurveySession = await SurveySession.findById(
@@ -139,10 +140,10 @@ exports.joinSurveySession = async (req, res) => {
       })
       .populate({
         path: "surveyQuiz",
-        select: "title description categories type slides questions order", 
+        select: "title description categories type slides questions order",
         populate: {
           path: "categories",
-          select: "name description", 
+          select: "name description",
         },
       })
       .populate("surveyQuestions")
@@ -245,7 +246,7 @@ exports.joinSurveySession = async (req, res) => {
         select: "title description categories type slides questions order",
         populate: {
           path: "categories",
-          select: "name description", 
+          select: "name description",
         },
       })
       .populate("surveyQuestions")
@@ -279,13 +280,13 @@ exports.joinSurveySession = async (req, res) => {
           isGuest: player.isGuest || false,
         })),
         surveyQuiz: {
-          title: session.surveyQuiz?.title, 
-          description: session.surveyQuiz?.description, 
-          categories: session.surveyQuiz?.categories, 
-          type: session.surveyQuiz?.type, 
-          slides: session.surveyQuiz?.slides, 
-          questions: session.surveyQuiz?.questions, 
-          order: session.surveyQuiz?.order, 
+          title: session.surveyQuiz?.title,
+          description: session.surveyQuiz?.description,
+          categories: session.surveyQuiz?.categories,
+          type: session.surveyQuiz?.type,
+          slides: session.surveyQuiz?.slides,
+          questions: session.surveyQuiz?.questions,
+          order: session.surveyQuiz?.order,
         },
       },
       user: {
@@ -338,29 +339,22 @@ exports.startSurveySession = async (req, res) => {
     session.startTime = Date.now();
     await session.save();
 
-    // Transform questions to include full image URLs
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-
+    // Transform questions to include full image URLs using getFileUrl utility
     const processedQuestions = questions.map((question) => {
       const questionObj = question.toObject();
       if (questionObj.imageUrl && questionObj.imageUrl.path) {
-        const encodedImagePath = encodeURIComponent(
-          questionObj.imageUrl.path.split("\\").pop()
-        );
-        questionObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = questionObj.imageUrl.path.split(/[\/\\]/).pop();
+        questionObj.imageUrl = getFileUrl(filename);
       }
       return questionObj;
     });
 
-    // Transform slides to include full image URLs
+    // Transform slides to include full image URLs using getFileUrl utility
     const processedSlides = slides.map((slide) => {
       const slideObj = slide.toObject();
       if (slideObj.imageUrl && slideObj.imageUrl.path) {
-        const encodedImagePath = encodeURIComponent(
-          slideObj.imageUrl.path.split("\\").pop()
-        );
-        slideObj.imageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = slideObj.imageUrl.path.split(/[\/\\]/).pop();
+        slideObj.imageUrl = getFileUrl(filename);
       }
       return slideObj;
     });
@@ -391,7 +385,6 @@ exports.nextSurveyQuestion = async (req, res) => {
   const { joinCode, sessionId } = req.params;
 
   try {
-    // Find the survey session
     const session = await SurveySession.findOne({
       surveyJoinCode: joinCode,
       _id: sessionId,
@@ -410,7 +403,6 @@ exports.nextSurveyQuestion = async (req, res) => {
         .json({ message: "Survey session is not in progress" });
     }
 
-    // Retrieve the quiz associated with the session
     const quiz = await SurveyQuiz.findById(session.surveyQuiz)
       .populate({
         path: "questions",
@@ -425,7 +417,6 @@ exports.nextSurveyQuestion = async (req, res) => {
       return res.status(404).json({ message: "Survey quiz not found" });
     }
 
-    // Get the current index and determine the next item
     const currentIndex = session.surveyCurrentQuestion
       ? quiz.order.findIndex(
           (item) =>
@@ -453,20 +444,15 @@ exports.nextSurveyQuestion = async (req, res) => {
         .json({ message: "Next item not found in the quiz" });
     }
 
-    // Update session with the current content item
+    // Update session with current question
     session.surveyCurrentQuestion = nextItem._id;
     await session.save();
 
-    // Process the image URL
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    // Process the image URL using getFileUrl utility
     const itemToSend = nextItem.toObject();
-
     if (itemToSend.imageUrl && itemToSend.imageUrl.path) {
-      const encodedImagePath = encodeURIComponent(
-        itemToSend.imageUrl.path.split("\\").pop()
-      );
-      itemToSend.imageUrl = `${baseUrl}${encodedImagePath}`;
+      const filename = itemToSend.imageUrl.path.split(/[\/\\]/).pop();
+      itemToSend.imageUrl = getFileUrl(filename);
     }
 
     // Emit the next item
@@ -503,7 +489,7 @@ exports.endSurveySession = async (req, res) => {
       .populate("surveyPlayers", "username email _id mobile")
       .populate("surveyHost", "username email _id mobile")
       .populate("surveyQuiz", "title description")
-      .populate("surveyQuestions"); 
+      .populate("surveyQuestions");
 
     if (!session) {
       return res.status(404).json({ message: "Survey session not found" });
@@ -528,9 +514,11 @@ exports.endSurveySession = async (req, res) => {
 
       // Find skipped questions by comparing submitted answers with all questions
       const skippedQuestions = session.surveyQuestions.filter(
-        (question) => !answers.some(
-          (answer) => answer.surveyQuestion.toString() === question._id.toString()
-        )
+        (question) =>
+          !answers.some(
+            (answer) =>
+              answer.surveyQuestion.toString() === question._id.toString()
+          )
       );
 
       // Create entries for skipped questions
@@ -541,7 +529,7 @@ exports.endSurveySession = async (req, res) => {
             surveyPlayers: player._id,
             surveyQuestion: question._id,
             answer: null, // Indicate no answer was provided
-            skipped: true
+            skipped: true,
           });
         })
       );
@@ -578,7 +566,7 @@ exports.endSurveySession = async (req, res) => {
           questionsAttempted,
           questionsSkipped,
           totalQuestions,
-          completionTime: session.endTime
+          completionTime: session.endTime,
         },
       });
       activityLogs.push(activityLog);
@@ -586,10 +574,10 @@ exports.endSurveySession = async (req, res) => {
 
     // Emit the session end event with complete data
     const io = req.app.get("socketio");
-    io.emit("survey-session-ended", { 
+    io.emit("survey-session-ended", {
       session,
       reports,
-      activityLogs 
+      activityLogs,
     });
 
     // Respond with the session, reports, and activity logs
@@ -597,13 +585,13 @@ exports.endSurveySession = async (req, res) => {
       message: "Survey session ended successfully",
       session,
       reports,
-      activityLogs
+      activityLogs,
     });
   } catch (error) {
     console.error("End survey session error:", error);
-    res.status(500).json({ 
-      message: "Error ending the survey session", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error ending the survey session",
+      error: error.message,
     });
   }
 };
