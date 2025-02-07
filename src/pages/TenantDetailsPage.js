@@ -133,7 +133,7 @@ const TenantDetailsPage = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
                     <img
-                      src={tenant.logo || tenant.customLogo}
+                      src={tenant.customLogo || tenant.logo}
                       alt={tenant.name}
                       className="w-16 h-16 rounded-lg object-cover"
                       data-testid="tenant-logo"
