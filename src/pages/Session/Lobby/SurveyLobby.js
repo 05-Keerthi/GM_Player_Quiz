@@ -201,14 +201,14 @@ const SurveyLobby = () => {
   const renderSurveyPlayers = () => (
     <div className="space-y-6">
       <div className="bg-indigo-600 text-white p-4 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row items-center justify-between">
+          <div className="flex items-center gap-2 mb-4 md:mb-0">
             <Users className="w-6 h-6" />
             <span className="text-xl font-semibold" data-testid="players-count">
               Players ({surveyPlayers?.length || 0})
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
             <button
               onClick={() => setInviteModalOpen(true)}
               className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
@@ -219,7 +219,7 @@ const SurveyLobby = () => {
               onClick={handleStartSession}
               disabled={loading || !surveyPlayers?.length}
               data-testid="start-button"
-              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ const SurveyLobby = () => {
       )}
 
       <div className="bg-white rounded-lg p-6 shadow-lg">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {surveyPlayers.map((participant) => (
             <PlayerCard
               key={participant._id || participant.id || "unknown"}
@@ -262,16 +262,16 @@ const SurveyLobby = () => {
       <div className="pt-16 p-4">
         <div className="max-w-3xl mx-auto">
           {!showPin ? (
-            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+            <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
                 <h1
-                  className="text-4xl font-bold text-gray-800 mb-8"
+                  className="text-3xl sm:text-4xl font-bold text-gray-800 mb-8"
                   data-testid="loading-title"
                 >
                   Setting up session
                 </h1>
                 <div
-                  className="flex items-center gap-2 text-xl text-gray-600"
+                  className="flex items-center gap-2 text-lg sm:text-xl text-gray-600"
                   data-testid="loading-status"
                 >
                   <Loader2 className="w-6 h-6 animate-spin" />
@@ -282,8 +282,8 @@ const SurveyLobby = () => {
           ) : (
             <div className="space-y-8">
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
+                <div className="flex flex-col md:flex-row items-center justify-between">
+                  <div className="flex flex-col mb-4 md:mb-0">
                     <h2
                       className="text-xl text-gray-700"
                       data-testid="join-text"
@@ -295,7 +295,7 @@ const SurveyLobby = () => {
                     </p>
                   </div>
 
-                  <div className="text-center px-8">
+                  <div className="text-center px-8 mb-4 md:mb-0">
                     <p
                       className="text-xl text-gray-600"
                       data-testid="pin-label"
@@ -310,7 +310,7 @@ const SurveyLobby = () => {
                     </h1>
                   </div>
 
-                  <div className="w-32 h-32">
+                  <div className="w-32 h-32 md:w-24 md:h-24">
                     <img
                       src={sessionData?.surveyQrCodeImageUrl}
                       alt="QR Code"
