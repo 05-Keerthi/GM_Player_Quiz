@@ -6,29 +6,40 @@ const { getLogoUrl } = require("../utils/urlHelper");
 
 const createTenant = async (req, res) => {
   try {
-    // Check if custom domain exists if provided
-    if (req.body.customDomain) {
-      const existingTenant = await Tenant.findOne({
-        customDomain: req.body.customDomain,
+    // Validate required fields
+    const requiredFields = ["name", "customDomain", "mobileNumber", "email"];
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: "Validation Error",
+        errors: missingFields.map((field) => ({
+          field,
+          message: `${field} is required`,
+        })),
       });
-      if (existingTenant) {
-        return res.status(400).json({
-          message: "Validation Error",
-          errors: [
-            { field: "customDomain", message: "Custom domain already exists" },
-          ],
-        });
-      }
     }
 
-    // Handle customLogo upload if provided
+    // Check if custom domain exists
+    const existingTenant = await Tenant.findOne({
+      customDomain: req.body.customDomain,
+    });
+
+    if (existingTenant) {
+      return res.status(400).json({
+        message: "Validation Error",
+        errors: [
+          { field: "customDomain", message: "Custom domain already exists" },
+        ],
+      });
+    }
+
+    // Handle logo upload if provided
     let customLogoPath = null;
     if (req.file) {
-      // Use getLogoUrl from urlHelper
       customLogoPath = getLogoUrl(req.file.filename);
     }
 
-    // Prepare tenant data
     const tenantData = {
       ...req.body,
       customLogo: customLogoPath,
@@ -38,7 +49,7 @@ const createTenant = async (req, res) => {
     await newTenant.save();
     res.status(201).json(newTenant);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    handleError(res, error);
   }
 };
 
@@ -280,7 +291,28 @@ const updateTenant = async (req, res) => {
       return res.status(404).json({ message: "Tenant not found" });
     }
 
-    // Check if custom domain exists if provided (excluding current tenant)
+    // Validate required fields if they are being updated
+    const updateFields = Object.keys(req.body);
+    const requiredFields = ["name", "customDomain", "mobileNumber", "email"];
+    const invalidUpdates = [];
+
+    requiredFields.forEach((field) => {
+      if (updateFields.includes(field) && !req.body[field]) {
+        invalidUpdates.push({
+          field,
+          message: `${field} cannot be empty`,
+        });
+      }
+    });
+
+    if (invalidUpdates.length > 0) {
+      return res.status(400).json({
+        message: "Validation Error",
+        errors: invalidUpdates,
+      });
+    }
+
+    // Check if custom domain exists (excluding current tenant)
     if (
       req.body.customDomain &&
       req.body.customDomain !== existingTenant.customDomain
@@ -300,20 +332,17 @@ const updateTenant = async (req, res) => {
       }
     }
 
-    // Handle customLogo upload if provided
-    let customLogoPath = existingTenant.customLogo; // Keep existing logo by default
+    // Handle logo upload if provided
+    let customLogoPath = existingTenant.customLogo;
     if (req.file) {
-      // Use getLogoUrl from urlHelper
       customLogoPath = getLogoUrl(req.file.filename);
     }
 
-    // Prepare update data
     const updateData = {
       ...req.body,
       customLogo: customLogoPath,
     };
 
-    // Update tenant with new data
     const updatedTenant = await Tenant.findByIdAndUpdate(
       tenantId,
       { $set: updateData },
@@ -322,7 +351,7 @@ const updateTenant = async (req, res) => {
 
     res.json(updatedTenant);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    handleError(res, error);
   }
 };
 
