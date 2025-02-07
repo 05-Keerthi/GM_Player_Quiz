@@ -2,14 +2,13 @@ const SurveySlide = require("../models/surveySlide");
 const SurveyQuiz = require("../models/surveyQuiz");
 const Media = require("../models/Media");
 const mongoose = require("mongoose");
+const { getFileUrl } = require("../utils/urlHelper");
 
-// Add a new survey slide
 exports.addSurveySlide = async (req, res) => {
   try {
     const { surveyQuizId } = req.params;
     const { surveyTitle, surveyContent, imageUrl, position } = req.body;
 
-    // Check if the survey quiz exists
     const surveyQuiz = await SurveyQuiz.findById(surveyQuizId);
     if (!surveyQuiz) {
       return res.status(404).json({ message: "Survey Quiz not found" });
@@ -23,14 +22,10 @@ exports.addSurveySlide = async (req, res) => {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const baseUrl =
-        process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-      fullImageUrl = `${baseUrl}${encodeURIComponent(
-        image.path.split("\\").pop()
-      )}`;
+      const filename = image.path.split(/[\/\\]/).pop();
+      fullImageUrl = getFileUrl(filename);
     }
 
-    // Create the survey slide
     const newSurveySlide = new SurveySlide({
       surveyQuiz: surveyQuizId,
       surveyTitle,
@@ -40,12 +35,9 @@ exports.addSurveySlide = async (req, res) => {
     });
 
     await newSurveySlide.save();
-
-    // Add the slide ID to the survey quiz's slides array
     surveyQuiz.slides.push(newSurveySlide._id);
     await surveyQuiz.save();
 
-    // Prepare the response slide object
     const responseSlide = {
       ...newSurveySlide.toObject(),
       imageUrl: fullImageUrl,
@@ -63,7 +55,6 @@ exports.addSurveySlide = async (req, res) => {
   }
 };
 
-// Get all slides for a specific survey quiz
 exports.getSurveySlides = async (req, res) => {
   try {
     const { surveyQuizId } = req.params;
@@ -72,9 +63,6 @@ exports.getSurveySlides = async (req, res) => {
     if (!surveyQuiz) {
       return res.status(404).json({ message: "Survey Quiz not found" });
     }
-
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
     const slides = await SurveySlide.find({ surveyQuiz: surveyQuizId })
       .sort({ position: 1 })
@@ -89,9 +77,8 @@ exports.getSurveySlides = async (req, res) => {
     const slidesWithFullImageUrl = slides.map((slide) => {
       const slideObj = slide.toObject();
       if (slideObj.imageUrl && slideObj.imageUrl.path) {
-        slideObj.imageUrl = `${baseUrl}${encodeURIComponent(
-          slideObj.imageUrl.path.split("\\").pop()
-        )}`;
+        const filename = slideObj.imageUrl.path.split(/[\/\\]/).pop();
+        slideObj.imageUrl = getFileUrl(filename);
       }
       return slideObj;
     });
@@ -103,13 +90,9 @@ exports.getSurveySlides = async (req, res) => {
   }
 };
 
-// Get a specific survey slide
 exports.getSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const baseUrl =
-      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
 
     const slide = await SurveySlide.findById(id).populate("imageUrl", "path");
     if (!slide) {
@@ -118,9 +101,8 @@ exports.getSurveySlide = async (req, res) => {
 
     const slideObj = slide.toObject();
     if (slideObj.imageUrl && slideObj.imageUrl.path) {
-      slideObj.imageUrl = `${baseUrl}${encodeURIComponent(
-        slideObj.imageUrl.path.split("\\").pop()
-      )}`;
+      const filename = slideObj.imageUrl.path.split(/[\/\\]/).pop();
+      slideObj.imageUrl = getFileUrl(filename);
     }
 
     return res.status(200).json({
@@ -145,20 +127,15 @@ exports.updateSurveySlide = async (req, res) => {
       return res.status(404).json({ message: "Survey Slide not found" });
     }
 
-    // Update basic fields if provided
-    if (surveyTitle) slide.surveyTitle = surveyTitle;
-    if (surveyContent) slide.surveyContent = surveyContent;
-    if (position) slide.position = position;
-
     // Handle imageUrl - explicitly check if it's null or a value
     if (imageUrl === null) {
-      // Remove image association
       slide.imageUrl = null;
     } else if (imageUrl) {
-      // Existing image URL handling
-      if (imageUrl.startsWith("http")) {
+      if (imageUrl.includes("/")) {
         const filename = decodeURIComponent(imageUrl.split("/").pop());
-        const media = await Media.findOne({ filename: filename });
+        const media = await Media.findOne({
+          path: { $regex: new RegExp(filename + "$") },
+        });
 
         if (!media) {
           return res
@@ -179,19 +156,19 @@ exports.updateSurveySlide = async (req, res) => {
       }
     }
 
+    // Update other fields
+    if (surveyTitle) slide.surveyTitle = surveyTitle;
+    if (surveyContent) slide.surveyContent = surveyContent;
+    if (position) slide.position = position;
+
     await slide.save();
 
-    // Prepare response with full URL if image exists
     let fullImageUrl = null;
     if (slide.imageUrl) {
       const media = await Media.findById(slide.imageUrl);
       if (media) {
-        const baseUrl =
-          process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
-        const encodedImagePath = encodeURIComponent(
-          media.path.split("\\").pop()
-        );
-        fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        const filename = media.path.split(/[\/\\]/).pop();
+        fullImageUrl = getFileUrl(filename);
       }
     }
 
@@ -212,7 +189,6 @@ exports.updateSurveySlide = async (req, res) => {
   }
 };
 
-// Delete a survey slide
 exports.deleteSurveySlide = async (req, res) => {
   try {
     const { id } = req.params;
