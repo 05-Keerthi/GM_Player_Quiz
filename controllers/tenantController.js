@@ -1,18 +1,22 @@
-const Tenant = require('../models/Tenant');
-const User = require('../models/User');
-const { sendInviteEmail } = require('../services/mailService');
-const crypto = require('crypto');
-
+const Tenant = require("../models/Tenant");
+const User = require("../models/User");
+const { sendInviteEmail } = require("../services/mailService");
+const crypto = require("crypto");
+const { getLogoUrl } = require("../utils/urlHelper");
 
 const createTenant = async (req, res) => {
   try {
     // Check if custom domain exists if provided
     if (req.body.customDomain) {
-      const existingTenant = await Tenant.findOne({ customDomain: req.body.customDomain });
+      const existingTenant = await Tenant.findOne({
+        customDomain: req.body.customDomain,
+      });
       if (existingTenant) {
         return res.status(400).json({
-          message: 'Validation Error',
-          errors: [{ field: 'customDomain', message: 'Custom domain already exists' }]
+          message: "Validation Error",
+          errors: [
+            { field: "customDomain", message: "Custom domain already exists" },
+          ],
         });
       }
     }
@@ -20,15 +24,14 @@ const createTenant = async (req, res) => {
     // Handle customLogo upload if provided
     let customLogoPath = null;
     if (req.file) {
-      const baseUrl = process.env.Logo || `${req.protocol}://${req.get('host')}/Logos/`; // Ensure base URL
-      const encodedLogoPath = encodeURIComponent(req.file.filename); // Encode filename
-      customLogoPath = `${baseUrl}${encodedLogoPath}`;
+      // Use getLogoUrl from urlHelper
+      customLogoPath = getLogoUrl(req.file.filename);
     }
 
     // Prepare tenant data
     const tenantData = {
       ...req.body,
-      customLogo: customLogoPath // Store the full URL of the uploaded logo
+      customLogo: customLogoPath,
     };
 
     const newTenant = new Tenant(tenantData);
@@ -39,22 +42,21 @@ const createTenant = async (req, res) => {
   }
 };
 
-
-
-
 const registerTenantAdmin = async (req, res) => {
   try {
     const tenantId = req.params.id;
 
     // Ensure that the current user is a super admin
-    if (req.user.role !== 'superadmin') {
-      return res.status(403).json({ message: 'Forbidden: Only super admin can create a tenant admin' });
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        message: "Forbidden: Only super admin can create a tenant admin",
+      });
     }
 
     // Check if the tenant ID exists
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
+      return res.status(404).json({ message: "Tenant not found" });
     }
 
     const { username, email, mobile } = req.body;
@@ -65,17 +67,20 @@ const registerTenantAdmin = async (req, res) => {
     if (existingUser) {
       const errors = [];
       if (existingUser.username === username) {
-        errors.push({ field: 'username', message: 'Username already taken' });
+        errors.push({ field: "username", message: "Username already taken" });
       }
       if (existingUser.email === email) {
-        errors.push({ field: 'email', message: 'Email already registered' });
+        errors.push({ field: "email", message: "Email already registered" });
       }
       if (existingUser.mobile === mobile) {
-        errors.push({ field: 'mobile', message: 'Mobile number already registered' });
+        errors.push({
+          field: "mobile",
+          message: "Mobile number already registered",
+        });
       }
 
       return res.status(400).json({
-        message: 'Validation Error',
+        message: "Validation Error",
         errors,
       });
     }
@@ -84,10 +89,10 @@ const registerTenantAdmin = async (req, res) => {
     const newAdmin = new User({
       username: req.body.username,
       email: req.body.email,
-      password: req.body.password, 
+      password: req.body.password,
       mobile: req.body.mobile,
-      role: req.body.role, 
-      tenantId: tenantId, 
+      role: req.body.role,
+      tenantId: tenantId,
     });
 
     await newAdmin.save();
@@ -96,15 +101,17 @@ const registerTenantAdmin = async (req, res) => {
     await sendInviteEmail(
       newAdmin.email,
       tenant.name,
-      `${process.env.FRONTEND_URL}/login`, 
+      `${process.env.FRONTEND_URL}/login`,
       {
         username: newAdmin.username,
         email: newAdmin.email,
-        password: req.body.password, 
+        password: req.body.password,
       }
     );
 
-    res.status(201).json({ message: 'Tenant admin created successfully', user: newAdmin });
+    res
+      .status(201)
+      .json({ message: "Tenant admin created successfully", user: newAdmin });
   } catch (error) {
     handleError(res, error);
   }
@@ -116,25 +123,30 @@ const updateTenantAdmin = async (req, res) => {
     const userId = req.params.userId;
 
     // Ensure that the current user is a super admin or a tenant admin
-    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
-      return res.status(403).json({ message: 'Forbidden: Only super admin or tenant admin can update tenant admin details' });
+    if (req.user.role !== "superadmin" && req.user.role !== "tenant_admin") {
+      return res.status(403).json({
+        message:
+          "Forbidden: Only super admin or tenant admin can update tenant admin details",
+      });
     }
 
     // Check if the tenant ID exists
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
+      return res.status(404).json({ message: "Tenant not found" });
     }
 
     // Check if the user exists
     const user = await User.findOne({ _id: userId, tenantId: tenantId });
     if (!user) {
-      return res.status(404).json({ message: 'User not found for the given tenant' });
+      return res
+        .status(404)
+        .json({ message: "User not found for the given tenant" });
     }
 
     // Update only allowed fields
     const updates = {};
-    const allowedFields = ['username', 'email', 'mobile', 'password', 'role']; 
+    const allowedFields = ["username", "email", "mobile", "password", "role"];
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
@@ -143,14 +155,16 @@ const updateTenantAdmin = async (req, res) => {
 
     // If password is being updated, ensure it is hashed
     if (updates.password) {
-      updates.password = await hashPassword(updates.password); 
+      updates.password = await hashPassword(updates.password);
     }
 
     // Perform the update
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+    });
 
     res.status(200).json({
-      message: 'Tenant admin updated successfully',
+      message: "Tenant admin updated successfully",
       user: updatedUser,
     });
   } catch (error) {
@@ -163,23 +177,28 @@ const getTenantAdmins = async (req, res) => {
     const tenantId = req.params.id;
 
     // SuperAdmin can view all tenant admins; tenantAdmin can view their own
-    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
-      return res
-        .status(403)
-        .json({ message: 'Access denied. You can only view your own tenant users.' });
+    if (req.user.role !== "superadmin" && req.user.role !== "tenant_admin") {
+      return res.status(403).json({
+        message: "Access denied. You can only view your own tenant users.",
+      });
     }
 
     // Find tenant admins for the given tenant ID
-    const tenantAdmins = await User.find({ tenantId: tenantId, role: 'tenant_admin' });
+    const tenantAdmins = await User.find({
+      tenantId: tenantId,
+      role: "tenant_admin",
+    });
 
     if (!tenantAdmins) {
-      return res.status(404).json({ message: 'No tenant admins found for this tenant.' });
+      return res
+        .status(404)
+        .json({ message: "No tenant admins found for this tenant." });
     }
 
     res.status(200).json(tenantAdmins);
   } catch (error) {
-    console.error('Error retrieving tenant admins:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error retrieving tenant admins:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -189,38 +208,46 @@ const deleteTenantAdmin = async (req, res) => {
     const userId = req.params.userId;
 
     // Ensure that the current user is a super admin or tenant admin
-    if (req.user.role !== 'superadmin' && req.user.role !== 'tenant_admin') {
+    if (req.user.role !== "superadmin" && req.user.role !== "tenant_admin") {
       return res.status(403).json({
-        message: 'Forbidden: Only super admin or tenant admin can delete tenant admin details',
+        message:
+          "Forbidden: Only super admin or tenant admin can delete tenant admin details",
       });
     }
 
     // Check if the tenant ID exists
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
+      return res.status(404).json({ message: "Tenant not found" });
     }
 
     // Check if the user exists and belongs to the correct tenant
     const user = await User.findOne({ _id: userId, tenantId: tenantId });
     if (!user) {
-      return res.status(404).json({ message: 'User not found for the given tenant' });
+      return res
+        .status(404)
+        .json({ message: "User not found for the given tenant" });
     }
 
     // If the current user is not a super admin and is trying to delete their own account, prevent it
-    if (req.user.role === 'tenant_admin' && req.user._id.toString() === userId.toString()) {
-      return res.status(400).json({ message: 'Tenant admin cannot delete themselves' });
+    if (
+      req.user.role === "tenant_admin" &&
+      req.user._id.toString() === userId.toString()
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Tenant admin cannot delete themselves" });
     }
 
     // Perform the delete operation
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({
-      message: 'Tenant admin deleted successfully',
+      message: "Tenant admin deleted successfully",
     });
   } catch (error) {
-    console.error('Error deleting tenant admin:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error deleting tenant admin:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -236,7 +263,7 @@ const getAllTenants = async (req, res) => {
 const getTenantById = async (req, res) => {
   try {
     const tenant = await Tenant.findById(req.params.id);
-    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    if (!tenant) return res.status(404).json({ message: "Tenant not found" });
     res.status(200).json(tenant);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -250,20 +277,25 @@ const updateTenant = async (req, res) => {
     // Check if tenant exists
     const existingTenant = await Tenant.findById(tenantId);
     if (!existingTenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
+      return res.status(404).json({ message: "Tenant not found" });
     }
 
     // Check if custom domain exists if provided (excluding current tenant)
-    if (req.body.customDomain && req.body.customDomain !== existingTenant.customDomain) {
+    if (
+      req.body.customDomain &&
+      req.body.customDomain !== existingTenant.customDomain
+    ) {
       const domainExists = await Tenant.findOne({
         customDomain: req.body.customDomain,
-        _id: { $ne: tenantId }
+        _id: { $ne: tenantId },
       });
-      
+
       if (domainExists) {
         return res.status(400).json({
-          message: 'Validation Error',
-          errors: [{ field: 'customDomain', message: 'Custom domain already exists' }]
+          message: "Validation Error",
+          errors: [
+            { field: "customDomain", message: "Custom domain already exists" },
+          ],
         });
       }
     }
@@ -271,15 +303,14 @@ const updateTenant = async (req, res) => {
     // Handle customLogo upload if provided
     let customLogoPath = existingTenant.customLogo; // Keep existing logo by default
     if (req.file) {
-      const baseUrl = process.env.Logo || `${req.protocol}://${req.get('host')}/Logos/`;
-      const encodedLogoPath = encodeURIComponent(req.file.filename);
-      customLogoPath = `${baseUrl}${encodedLogoPath}`;
+      // Use getLogoUrl from urlHelper
+      customLogoPath = getLogoUrl(req.file.filename);
     }
 
     // Prepare update data
     const updateData = {
       ...req.body,
-      customLogo: customLogoPath
+      customLogo: customLogoPath,
     };
 
     // Update tenant with new data
@@ -298,27 +329,28 @@ const updateTenant = async (req, res) => {
 const deleteTenant = async (req, res) => {
   try {
     const deletedTenant = await Tenant.findByIdAndDelete(req.params.id);
-    if (!deletedTenant) return res.status(404).json({ message: 'Tenant not found' });
-    res.status(200).json({ message: 'Tenant deleted successfully' });
+    if (!deletedTenant)
+      return res.status(404).json({ message: "Tenant not found" });
+    res.status(200).json({ message: "Tenant deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 const handleError = (res, error) => {
-  if (error.name === 'ValidationError') {
+  if (error.name === "ValidationError") {
     return res.status(400).json({
-      message: 'Validation Error',
-      errors: Object.values(error.errors).map(err => ({
+      message: "Validation Error",
+      errors: Object.values(error.errors).map((err) => ({
         field: err.path,
-        message: err.message
-      }))
+        message: err.message,
+      })),
     });
   }
-  
-  console.error('Server Error:', error);
+
+  console.error("Server Error:", error);
   return res.status(500).json({
-    message: 'Internal server error'
+    message: "Internal server error",
   });
 };
 
