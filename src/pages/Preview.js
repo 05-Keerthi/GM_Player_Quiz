@@ -20,6 +20,33 @@ const QuizContent = ({ item, inPresentation = false }) => {
   };
 
   const renderOptions = () => {
+    if (item.data.type === "open_ended") {
+      return (
+        <div className="grid gap-4" data-testid="open-ended-answer">
+          <div className="p-4 rounded-lg border-2 bg-white">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 mt-1 rounded-full border-2 border-green-500 text-green-500 flex items-center justify-center">
+                ✓
+              </div>
+              <div>
+                <div className="text-lg" data-testid="correct-answer-text">
+                  {Array.isArray(item.data.correctAnswer)
+                    ? item.data.correctAnswer[0]
+                    : item.data.correctAnswer}
+                </div>
+                <span
+                  className="text-sm font-medium text-green-500"
+                  data-testid="correct-answer-label"
+                >
+                  (Correct Answer)
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const options = item.data.options || item.data.answerOptions;
 
     if (!options) return null;
