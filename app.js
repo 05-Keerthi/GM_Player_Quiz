@@ -26,7 +26,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const surveySlideRoutes = require("./routes/surveySlideRoutes");
 const templateRoutes = require('./routes/templateRoutes');
-
+const agentRoutes = require('./routes/agentRoutes');
 
 const path = require('path');
 
@@ -62,6 +62,7 @@ app.use("/api", surveyNotificationRoutes)
 app.use('/api', subscriptionRoutes);
 app.use('/api', surveySlideRoutes);
 app.use('/api', templateRoutes);
+app.use('/api/agent', agentRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/Logos', express.static(path.join(__dirname, 'Logos')));
