@@ -60,6 +60,90 @@ exports.addQuestion = async (req, res) => {
   }
 };
 
+exports.addMultipleQuestions = async (req, res) => {
+  const { quizId } = req.params;
+  const { questions } = req.body;
+
+  try {
+    // Validate quiz exists
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Validate questions array
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        message: "Please provide an array of questions",
+      });
+    }
+
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    const savedQuestions = [];
+
+    // Process each question
+    for (const questionData of questions) {
+      const { title, type, imageUrl, options, correctAnswer, points, timer } =
+        questionData;
+
+      let fullImageUrl = null;
+      let mediaId = null;
+
+      if (imageUrl) {
+        const image = await Media.findById(imageUrl);
+        if (image) {
+          mediaId = image._id;
+          const encodedImagePath = encodeURIComponent(
+            image.path.split("\\").pop()
+          );
+          fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        }
+      }
+
+      // Format options with defaults
+      const formattedOptions = options.map((opt) => ({
+        text: opt.text,
+        color: opt.color || null,
+        isCorrect: opt.isCorrect || false,
+      }));
+
+      const newQuestion = new Question({
+        quiz: quizId,
+        title,
+        type,
+        imageUrl: mediaId,
+        options: formattedOptions,
+        correctAnswer,
+        points: points || 10,
+        timer: timer || 10,
+      });
+
+      await newQuestion.save();
+      quiz.questions.push(newQuestion._id);
+
+      savedQuestions.push({
+        ...newQuestion.toObject(),
+        imageUrl: fullImageUrl,
+      });
+    }
+
+    await quiz.save();
+
+    res.status(201).json({
+      message: "Questions added successfully",
+      count: savedQuestions.length,
+      questions: savedQuestions,
+    });
+  } catch (error) {
+    console.error("Error adding questions:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 const getMediaIdFromPath = async (imageUrl) => {
   try {
     if (!imageUrl) return null;
