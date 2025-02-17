@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Sparkles, PenTool } from "lucide-react";
 import { useCategoryContext } from "../context/categoryContext";
 import { useQuizContext } from "../context/quizContext";
 import { paginateData, PaginationControls } from "../utils/pagination";
@@ -9,6 +9,88 @@ import CreateCategoryModal from "../models/Category/CreateCategoryModal";
 import EditCategoryModal from "../models/Category/EditCategoryModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import { toast } from "react-toastify";
+import AIQuizGeneratorModal from "../models/AIQuizGeneratorModal";
+
+// New QuizCreationModal Component
+const QuizCreationModal = ({
+  isOpen,
+  onClose,
+  onCreateWithAI,
+  onCreateBlank,
+}) => {
+  if (!isOpen) return null;
+
+  const handleCreateWithAI = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await onCreateWithAI();
+  };
+
+  const handleCreateBlank = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await onCreateBlank();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
+        <h2 className="text-2xl font-bold text-center mb-8">
+          Choose Your Creation Method
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* AI-Powered Creation Card */}
+          <button
+            onClick={handleCreateWithAI}
+            className="group p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 transition-all"
+          >
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="p-4 bg-purple-100 rounded-full group-hover:bg-purple-200">
+                <Sparkles className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold">Create with AI</h3>
+              <p className="text-gray-600">
+                Let AI help you generate questions and content based on your
+                topic
+              </p>
+            </div>
+          </button>
+
+          {/* Blank Canvas Card */}
+          <button
+            onClick={handleCreateBlank}
+            className="group p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 transition-all"
+          >
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="p-4 bg-blue-100 rounded-full group-hover:bg-blue-200">
+                <PenTool className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold">Blank Canvas</h3>
+              <p className="text-gray-600">
+                Start from scratch and create your quiz manually
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
+          className="mt-6 w-full text-gray-600 hover:text-gray-800"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const SelectCategoryPage = () => {
   const navigate = useNavigate();
@@ -18,6 +100,7 @@ const SelectCategoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreationModal, setShowCreationModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredCategories, setFilteredCategories] = useState([]);
   const itemsPerPage = 15;
@@ -25,13 +108,14 @@ const SelectCategoryPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
+  const [showAIGeneratorModal, setShowAIGeneratorModal] = useState(false);
+  const [currentQuizId, setCurrentQuizId] = useState(null);
 
-  // Load categories on mount
   useEffect(() => {
     getAllCategories();
   }, []);
 
-  // Filter categories when search query or categories change
   useEffect(() => {
     if (categories) {
       setFilteredCategories(
@@ -51,7 +135,6 @@ const SelectCategoryPage = () => {
     itemsPerPage
   );
 
-  // Rest of the component remains the same...
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
@@ -65,23 +148,52 @@ const SelectCategoryPage = () => {
     });
   };
 
-  const handleCreateQuiz = async () => {
-    if (selectedCategories.length === 0) return;
-
+  const createNewQuiz = async () => {
     try {
+      setIsCreatingQuiz(true);
       const response = await createQuiz({
         categoryId: selectedCategories,
         status: "draft",
       });
-      navigate(`/createQuiz/${response.quiz._id}`);
+      return response.quiz._id;
     } catch (err) {
       console.error("Failed to create quiz:", err);
+      toast.error("Failed to create quiz");
+      throw err;
+    } finally {
+      setIsCreatingQuiz(false);
+    }
+  };
+
+  const handleCreateQuiz = () => {
+    if (selectedCategories.length === 0) return;
+    setShowCreationModal(true);
+  };
+
+  const handleCreateWithAI = async () => {
+    try {
+      const quizId = await createNewQuiz();
+      setCurrentQuizId(quizId);
+      setShowCreationModal(false);
+      setShowAIGeneratorModal(true);
+    } catch (err) {
+      // Error already handled in createNewQuiz
+    }
+  };
+
+  const handleCreateBlank = async () => {
+    try {
+      const quizId = await createNewQuiz();
+      setShowCreationModal(false);
+      navigate(`/createQuiz/${quizId}`);
+    } catch (err) {
+      // Error already handled in createNewQuiz
     }
   };
 
   const handleCreateModalClose = () => {
     setShowCreateModal(false);
-    getAllCategories(); // Refresh categories after creation
+    getAllCategories();
   };
 
   const handleEdit = (e, categoryId) => {
@@ -114,9 +226,7 @@ const SelectCategoryPage = () => {
     <>
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        {/* Header and Search Bar Container */}
         <div className="flex flex-col gap-6 mb-8">
-          {/* Header */}
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">
               Select Categories
@@ -125,16 +235,25 @@ const SelectCategoryPage = () => {
               <button
                 data-testid="create-quiz-button"
                 onClick={handleCreateQuiz}
-                disabled={selectedCategories.length === 0}
+                disabled={selectedCategories.length === 0 || isCreatingQuiz}
                 className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white
-              ${
-                selectedCategories.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600"
-              }`}
+                ${
+                  selectedCategories.length === 0 || isCreatingQuiz
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600"
+                }`}
               >
-                <Plus className="h-5 w-5" />
-                Create Quiz ({selectedCategories.length})
+                {isCreatingQuiz ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-5 w-5" />
+                    Create Quiz ({selectedCategories.length})
+                  </>
+                )}
               </button>
               <button
                 data-testid="create-category-button"
@@ -147,7 +266,6 @@ const SelectCategoryPage = () => {
             </div>
           </div>
 
-          {/* Search Bar - Centered with max-width */}
           <div className="flex justify-center">
             <div className="relative w-full max-w-md">
               <Search
@@ -166,7 +284,6 @@ const SelectCategoryPage = () => {
           </div>
         </div>
 
-        {/* Categories Grid Container - 80% width and centered */}
         <div className="mx-auto w-4/5">
           {loading ? (
             <div className="text-center py-8">Loading categories...</div>
@@ -234,7 +351,6 @@ const SelectCategoryPage = () => {
                 </div>
               )}
 
-              {/* Pagination Controls */}
               {filteredCategories.length > itemsPerPage && (
                 <PaginationControls
                   currentPage={currentPage}
@@ -270,6 +386,22 @@ const SelectCategoryPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Category"
         message="Are you sure you want to delete this category? This action cannot be undone."
+      />
+
+      <QuizCreationModal
+        isOpen={showCreationModal}
+        onClose={() => setShowCreationModal(false)}
+        onCreateWithAI={handleCreateWithAI}
+        onCreateBlank={handleCreateBlank}
+      />
+
+      <AIQuizGeneratorModal
+        isOpen={showAIGeneratorModal}
+        onClose={() => {
+          setShowAIGeneratorModal(false);
+          navigate(`/createQuiz/${currentQuizId}`);
+        }}
+        quizId={currentQuizId}
       />
     </>
   );
