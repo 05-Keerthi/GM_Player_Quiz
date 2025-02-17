@@ -4,7 +4,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
+const AIQuizGeneratorModal = ({
+  isOpen,
+  onClose,
+  quizId,
+  selectedCategories,
+}) => {
   const navigate = useNavigate();
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,7 +26,10 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
       try {
         setLoading(true);
         const response = await axios.post(
-          "http://localhost:5000/api/agent/topics"
+          "http://localhost:5000/api/agent/topics",
+          {
+            categoryIds: selectedCategories, // Pass category IDs in request body
+          }
         );
         setTopics(response.data.topics);
       } catch (error) {
@@ -35,7 +43,7 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
     if (isOpen) {
       fetchTopics();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedCategories]);
 
   const handleTopicSelect = async (topic) => {
     try {
@@ -45,7 +53,6 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
       const requestBody = {
         topic: {
           title: topic.title,
-          description: topic.description,
         },
         numQuestions: parseInt(quizLength),
       };
@@ -129,7 +136,7 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
         onClose();
       }
       toast.success("Questions added to quiz successfully");
-      navigate(`/createQuiz/${quizId}`);
+      // navigate(`/createQuiz/${quizId}`);
     } catch (error) {
       console.error("Failed to add questions to quiz:", error);
       toast.error(error.message || "Failed to add questions to quiz");
@@ -143,52 +150,80 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
       <div key={index} className="p-4 border rounded-lg mb-4 bg-white">
         <div className="flex items-start gap-3">
           <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-            {question.type === "multiple_choice"
-              ? "Multiple Choice"
-              : "True/False"}
+            {question.type === "multiple_choice" && "Multiple Choice"}
+            {question.type === "true_false" && "True/False"}
+            {question.type === "multiple_select" && "Multiple Select"}
+            {question.type === "poll" && "Poll"}
+            {question.type === "open_ended" && "Open Ended"}
           </span>
         </div>
         <h3 className="font-medium mt-2 mb-3">{question.question}</h3>
-        <div className="space-y-2">
-          {question.options.map((option, optIndex) => (
-            <div
-              key={optIndex}
-              className={`p-3 rounded-lg flex items-center gap-2 transition-all ${
-                option.isCorrect
-                  ? "border-l-4 border-green-500"
-                  : "border-l-4 border-transparent"
-              }`}
-              style={{
-                backgroundColor: `${option.color}15`,
-                borderColor: option.color,
-              }}
-            >
+
+        {/* Render options for multiple choice, true/false, multiple select, and poll questions */}
+        {(question.type === "multiple_choice" ||
+          question.type === "true_false" ||
+          question.type === "multiple_select" ||
+          question.type === "poll") && (
+          <div className="space-y-2">
+            {question.options.map((option, optIndex) => (
               <div
-                className="w-4 h-4 rounded-full flex-shrink-0"
-                style={{ backgroundColor: option.color }}
-              />
-              <span className="flex-grow">{option.text}</span>
-              {option.isCorrect && (
-                <span className="text-green-600 text-sm flex items-center gap-1 flex-shrink-0">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Correct
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+                key={optIndex}
+                className={`p-3 rounded-lg flex items-center gap-2 transition-all ${
+                  option.isCorrect && question.type !== "poll"
+                    ? "border-l-4 border-green-500"
+                    : "border-l-4 border-transparent"
+                }`}
+                style={{
+                  backgroundColor: `${option.color}15`,
+                  borderColor: option.color,
+                }}
+              >
+                {/* Checkbox for multiple select, radio for others */}
+                <div
+                  className={`${
+                    question.type === "multiple_select"
+                      ? "w-4 h-4 rounded"
+                      : "w-4 h-4 rounded-full"
+                  } flex-shrink-0`}
+                  style={{ backgroundColor: option.color }}
+                />
+                <span className="flex-grow">{option.text}</span>
+                {option.isCorrect && question.type !== "poll" && (
+                  <span className="text-green-600 text-sm flex items-center gap-1 flex-shrink-0">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Correct
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Render text area for open-ended questions */}
+        {question.type === "open_ended" && (
+          <div className="mt-2">
+            {question.correctAnswer && (
+              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="text-sm text-green-700 font-medium mb-1">
+                  Correct Answer:
+                </div>
+                <div className="text-green-600">{question.correctAnswer}</div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -315,9 +350,6 @@ const AIQuizGeneratorModal = ({ isOpen, onClose, quizId }) => {
                             <span className="text-sm text-gray-600">Quiz</span>
                           </div>
                           <h3 className="font-medium mb-2">{topic.title}</h3>
-                          <p className="text-sm text-gray-600">
-                            {topic.description}
-                          </p>
                         </div>
                       ))
                     )}

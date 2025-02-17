@@ -402,6 +402,7 @@ const SelectCategoryPage = () => {
           navigate(`/createQuiz/${currentQuizId}`);
         }}
         quizId={currentQuizId}
+        selectedCategories={selectedCategories} // Pass category IDs
       />
     </>
   );
