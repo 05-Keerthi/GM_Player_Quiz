@@ -92,7 +92,7 @@ const generateQuestions = async (req, res) => {
       - multiple_select: 4-6 options, multiple correct answers
       - true_false: exactly 2 options
       - poll: 2-5 options, no correct answer
-      - open_ended: no options, include example answer
+      - open_ended: no options, include correct answer
       
       Return JSON:
       {
@@ -110,7 +110,7 @@ const generateQuestions = async (req, res) => {
                 )}"
               }
             ],
-            "exampleAnswer": "string (only for open_ended type)"
+            "correctAnswer": "string (only for open_ended type)"
           }
         ]
       }
