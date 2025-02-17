@@ -1,4 +1,5 @@
 const { Agent } = require("praisonai");
+const Category = require("../models/category");
 
 const COLOR_PALETTE = [
   "#FF5733",
@@ -14,7 +15,13 @@ const COLOR_PALETTE = [
 ];
 
 const topicAgent = new Agent({
-  instructions: "You suggest topics based on recent events. Return pure JSON.",
+  instructions: `
+    You suggest topics based on recent events and specified categories.
+    When categories are provided, ensure topics are strictly relevant to those categories.
+    When no categories are specified, suggest diverse topics from various fields.
+    Keep topics engaging and suitable for quiz creation.
+    Return pure JSON.
+  `,
   name: "TopicSuggester",
   role: "Topic Suggestion Assistant",
   llm: "gemini-2.0-flash-exp",
@@ -54,18 +61,37 @@ const shuffleArray = (array) => {
 
 const getTopics = async (req, res) => {
   try {
-    const response = await topicAgent.start(`
-      Return 5 topic suggestions as JSON:
+    const { categoryIds = [] } = req.body;
+
+    // Populate category data from database
+    const categories = await Category.find({
+      _id: { $in: categoryIds },
+    }).select("name");
+
+    // Extract category names for the prompt
+    const categoryNames = categories.map((cat) => cat.name);
+
+    let prompt = `Return 5 topic suggestions as JSON:`;
+
+    if (categoryNames.length > 0) {
+      prompt += `
+      Focus on generating topics specifically related to these categories: ${categoryNames.join(
+        ", "
+      )}
+      `;
+    }
+
+    prompt += `
       {
         "topics": [
           {
-            "title": "string",
-            "description": "string"
+            "title": "string"
           }
         ]
       }
-    `);
+    `;
 
+    const response = await topicAgent.start(prompt);
     const topics = cleanResponse(response);
     res.status(200).json(topics);
   } catch (error) {
@@ -73,26 +99,27 @@ const getTopics = async (req, res) => {
   }
 };
 
+// In generateQuestions function, modify the validation and prompt:
 const generateQuestions = async (req, res) => {
   try {
     const { topic, numQuestions = 5 } = req.body;
 
-    if (!topic?.title || !topic?.description) {
+    if (!topic?.title) {
       return res.status(400).json({
-        error: "Topic title and description required",
+        error: "Topic title is required",
       });
     }
 
+    // Update the prompt to enforce correct answer requirements
     const response = await questionAgent.start(`
       Generate ${numQuestions} questions for: ${topic.title}
-      Context: ${topic.description}
       
       Mix different question types:
-      - multiple_choice: exactly 4 options
-      - multiple_select: 4-6 options, multiple correct answers
-      - true_false: exactly 2 options
-      - poll: 2-5 options,
-      - open_ended: no options, include correct answer
+      - multiple_choice: exactly 4 options, exactly 1 correct answer
+      - multiple_select: 4-6 options, at least 1 correct answer but can have multiple
+      - true_false: exactly 2 options, exactly 1 must be correct
+      - poll: 2-5 options, at least 1 option must be marked as correct
+      - open_ended: no options, must include correct answer
       
       Return JSON:
       {
@@ -105,9 +132,7 @@ const generateQuestions = async (req, res) => {
               {
                 "text": "string",
                 "isCorrect": boolean,
-                "color": "Choose a unique color from: ${COLOR_PALETTE.join(
-                  ", "
-                )}"
+                "color": "Choose color from: ${COLOR_PALETTE.join(", ")}"
               }
             ],
             "correctAnswer": "string (only for open_ended type)"
@@ -115,44 +140,55 @@ const generateQuestions = async (req, res) => {
         ]
       }
 
-      Rules for colors:
+      Rules:
       1. Each option in a question must have a different color
       2. Use colors from the provided palette only
       3. For multiple_choice and multiple_select: use 4 different colors
       4. For true_false: use 2 different colors
       5. For poll: use one color per option (2-5 colors)
       6. For open_ended: no colors needed
+      7. Every question type must have at least 1 correct answer
+      8. Multiple choice and true/false must have exactly 1 correct answer
+      9. Multiple select can have multiple correct answers but minimum 1
     `);
 
     let questions = cleanResponse(response);
 
-    // Process questions based on their type
+    // Validate and enforce correct answer requirements
     questions.questions = questions.questions.map((question) => {
       if (question.type === "open_ended") {
         return {
           ...question,
-          options: [], // No options for open-ended questions
+          options: [],
         };
       }
 
-      const shuffledColors = shuffleArray([...COLOR_PALETTE]);
+      // Count correct answers
+      const correctAnswers = question.options.filter(
+        (opt) => opt.isCorrect
+      ).length;
 
-      // Determine number of options based on question type
-      const numOptions =
-        {
-          multiple_choice: 4,
-          true_false: 2,
-          multiple_select: question.options.length || 4,
-          poll: question.options.length || 3,
-        }[question.type] || 4;
+      // Validate based on question type
+      switch (question.type) {
+        case "multiple_choice":
+        case "true_false":
+          if (correctAnswers !== 1) {
+            // Fix by making first option correct and others incorrect
+            question.options = question.options.map((opt, idx) => ({
+              ...opt,
+              isCorrect: idx === 0,
+            }));
+          }
+          break;
 
-      question.options = question.options
-        .slice(0, numOptions)
-        .map((option, index) => ({
-          ...option,
-          color: shuffledColors[index],
-          isCorrect:  option.isCorrect,
-        }));
+        case "multiple_select":
+        case "poll":
+          if (correctAnswers === 0) {
+            // Make first option correct if no correct answers
+            question.options[0].isCorrect = true;
+          }
+          break;
+      }
 
       return question;
     });
