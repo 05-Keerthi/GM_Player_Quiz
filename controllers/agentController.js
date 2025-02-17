@@ -91,7 +91,7 @@ const generateQuestions = async (req, res) => {
       - multiple_choice: exactly 4 options
       - multiple_select: 4-6 options, multiple correct answers
       - true_false: exactly 2 options
-      - poll: 2-5 options, no correct answer
+      - poll: 2-5 options,
       - open_ended: no options, include correct answer
       
       Return JSON:
@@ -104,7 +104,7 @@ const generateQuestions = async (req, res) => {
             "options": [
               {
                 "text": "string",
-                "isCorrect": boolean (except for poll type),
+                "isCorrect": boolean,
                 "color": "Choose a unique color from: ${COLOR_PALETTE.join(
                   ", "
                 )}"
@@ -151,7 +151,7 @@ const generateQuestions = async (req, res) => {
         .map((option, index) => ({
           ...option,
           color: shuffledColors[index],
-          isCorrect: question.type === "poll" ? undefined : option.isCorrect,
+          isCorrect:  option.isCorrect,
         }));
 
       return question;
