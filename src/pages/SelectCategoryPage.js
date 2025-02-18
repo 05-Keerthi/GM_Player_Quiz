@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Edit, Trash2, Sparkles, PenTool } from "lucide-react";
+import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { useCategoryContext } from "../context/categoryContext";
 import { useQuizContext } from "../context/quizContext";
 import { paginateData, PaginationControls } from "../utils/pagination";

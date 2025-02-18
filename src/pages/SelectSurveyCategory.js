@@ -9,6 +9,7 @@ import CreateCategoryModal from "../models/Category/CreateCategoryModal";
 import EditCategoryModal from "../models/Category/EditCategoryModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import { toast } from "react-toastify";
+import SurveyCreationModal from "../models/SurveyCreationModal";
 
 const SelectSurveyCategory = () => {
   const navigate = useNavigate();
@@ -27,6 +28,9 @@ const SelectSurveyCategory = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [showCreationModal, setShowCreationModal] = useState(false);
+  const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
+  const [currentSurveyId, setCurrentSurveyId] = useState(null);
 
   // Load categories on mount
   useEffect(() => {
@@ -66,18 +70,45 @@ const SelectSurveyCategory = () => {
     });
   };
 
-  const handleCreateSurvey = async () => {
-    if (selectedCategories.length === 0) return;
-
+  const createNewSurvey = async () => {
     try {
+      setIsCreatingSurvey(true);
       const response = await createSurvey({
         categoryId: selectedCategories,
         status: "draft",
-        type: surveyType, // Add the survey type
+        type: surveyType,
       });
-      navigate(`/createSurvey/${response.surveyQuiz._id}`);
+      return response.surveyQuiz._id;
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create survey");
+      console.error("Failed to create survey:", err);
+      toast.error("Failed to create survey");
+      throw err;
+    } finally {
+      setIsCreatingSurvey(false);
+    }
+  };
+
+  const handleCreateWithAI = async () => {
+    try {
+      const surveyId = await createNewSurvey();
+      setCurrentSurveyId(surveyId);
+      setShowCreationModal(false);
+      // If you have an AI generator modal, show it here:
+      // setShowAIGeneratorModal(true);
+      // Otherwise, navigate directly:
+      navigate(`/createSurvey/${surveyId}`);
+    } catch (err) {
+      // Error already handled in createNewSurvey
+    }
+  };
+
+  const handleCreateBlank = async () => {
+    try {
+      const surveyId = await createNewSurvey();
+      setShowCreationModal(false);
+      navigate(`/createSurvey/${surveyId}`);
+    } catch (err) {
+      // Error already handled in createNewSurvey
     }
   };
 
@@ -127,18 +158,33 @@ const SelectSurveyCategory = () => {
             <div className="flex justify-between items-center gap-2">
               <button
                 data-testid="create-survey-button"
-                onClick={handleCreateSurvey}
-                disabled={selectedCategories.length === 0}
+                onClick={() => {
+                  if (selectedCategories.length === 0) {
+                    toast.error("Please select at least one category");
+                    return;
+                  }
+                  setShowCreationModal(true);
+                }}
+                disabled={selectedCategories.length === 0 || isCreatingSurvey}
                 className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white
-              ${
-                selectedCategories.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600"
-              }`}
+    ${
+      selectedCategories.length === 0 || isCreatingSurvey
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-green-500 hover:bg-green-600"
+    }`}
               >
-                <Plus className="h-5 w-5" />
-                Create {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"} (
-                {selectedCategories.length})
+                {isCreatingSurvey ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-5 w-5" />
+                    Create {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"} (
+                    {selectedCategories.length})
+                  </>
+                )}
               </button>
               <button
                 data-testid="create-category-button"
@@ -274,6 +320,13 @@ const SelectSurveyCategory = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Category"
         message="Are you sure you want to delete this category? This action cannot be undone."
+      />
+      <SurveyCreationModal
+        isOpen={showCreationModal}
+        onClose={() => setShowCreationModal(false)}
+        onCreateWithAI={handleCreateWithAI}
+        onCreateBlank={handleCreateBlank}
+        surveyType={surveyType}
       />
     </>
   );
