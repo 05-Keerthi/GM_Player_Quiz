@@ -20,6 +20,7 @@ const AIQuizGeneratorModal = ({
   const [quizLength, setQuizLength] = useState("5");
   const [generatedQuestions, setGeneratedQuestions] = useState(null);
   const [showQuestions, setShowQuestions] = useState(false);
+  const [previewMode, setPreviewMode] = useState("questions");
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -28,7 +29,7 @@ const AIQuizGeneratorModal = ({
         const response = await axios.post(
           "http://localhost:5000/api/agent/topics",
           {
-            categoryIds: selectedCategories, // Pass category IDs in request body
+            categoryIds: selectedCategories,
           }
         );
         setTopics(response.data.topics);
@@ -116,30 +117,104 @@ const AIQuizGeneratorModal = ({
   const handleSaveQuestions = async () => {
     try {
       setSavingQuestions(true);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
 
       // Transform the questions to have the question field as title
       const transformedQuestions = generatedQuestions.questions.map(
         (question) => ({
           ...question,
-          title: question.question, // Add title field with question content
+          title: question.question,
         })
       );
 
+      // Get the current quiz data first
+      const quizResponse = await axios.get(
+        `http://localhost:5000/api/quizzes/${quizId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const currentQuiz = quizResponse.data;
+      const currentOrder = currentQuiz.order || [];
+      const currentQuestions = currentQuiz.questions || [];
+      const currentSlides = currentQuiz.slides || [];
+
+      // Add questions
       const response = await axios.post(
         `http://localhost:5000/api/quiz/${quizId}/questions/bulk`,
         {
           questions: transformedQuestions,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
-      if (response.status === 200) {
-        onClose();
-      }
-      toast.success("Questions added to quiz successfully");
-      // navigate(`/createQuiz/${quizId}`);
+      // Add slides
+      const slidesResponse = await axios.post(
+        `http://localhost:5000/api/quiz/${quizId}/slides/bulk`,
+        {
+          slides: generatedQuestions.slides,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // After adding content, prepare updated data
+      const newQuestions = response.data.questions;
+      const newSlides = slidesResponse.data.slides;
+      const updatedQuestions = [...currentQuestions, ...newQuestions];
+      const updatedSlides = [...currentSlides, ...newSlides];
+      const updatedOrder = [
+        ...currentOrder,
+        ...newQuestions.map((question) => ({
+          id: question._id,
+          type: "question",
+        })),
+        ...newSlides.map((slide) => ({
+          id: slide._id,
+          type: "slide",
+        })),
+      ];
+
+      // Update the quiz with new content and order
+      await axios.put(
+        `http://localhost:5000/api/quizzes/${quizId}`,
+        {
+          ...currentQuiz,
+          questions: updatedQuestions,
+          slides: updatedSlides,
+          order: updatedOrder,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success("Content added to quiz successfully");
+      onClose();
     } catch (error) {
-      console.error("Failed to add questions to quiz:", error);
-      toast.error(error.message || "Failed to add questions to quiz");
+      console.error("Failed to add content to quiz:", error);
+      if (error.message === "No authentication token found") {
+        navigate("/login");
+        return;
+      }
+      toast.error(
+        error.response?.data?.message || "Failed to add content to quiz"
+      );
     } finally {
       setSavingQuestions(false);
     }
@@ -159,7 +234,6 @@ const AIQuizGeneratorModal = ({
         </div>
         <h3 className="font-medium mt-2 mb-3">{question.question}</h3>
 
-        {/* Render options for multiple choice, true/false, multiple select, and poll questions */}
         {(question.type === "multiple_choice" ||
           question.type === "true_false" ||
           question.type === "multiple_select" ||
@@ -178,7 +252,6 @@ const AIQuizGeneratorModal = ({
                   borderColor: option.color,
                 }}
               >
-                {/* Checkbox for multiple select, radio for others */}
                 <div
                   className={`${
                     question.type === "multiple_select"
@@ -211,7 +284,6 @@ const AIQuizGeneratorModal = ({
           </div>
         )}
 
-        {/* Render text area for open-ended questions */}
         {question.type === "open_ended" && (
           <div className="mt-2">
             {question.correctAnswer && (
@@ -223,6 +295,30 @@ const AIQuizGeneratorModal = ({
               </div>
             )}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSlidePreview = (slide, index) => {
+    return (
+      <div key={index} className="p-4 border rounded-lg mb-4 bg-white">
+        <div className="flex items-start gap-3">
+          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
+            {slide.type.charAt(0).toUpperCase() + slide.type.slice(1)}
+          </span>
+        </div>
+        <h3 className="font-medium mt-2 mb-3">{slide.title}</h3>
+        {slide.type === "bullet_points" ? (
+          <div className="pl-4">
+            {slide.content.split("\n").map((bullet, i) => (
+              <p key={i} className="mb-1">
+                {bullet}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-700">{slide.content}</p>
         )}
       </div>
     );
@@ -266,23 +362,45 @@ const AIQuizGeneratorModal = ({
           {/* Content Area */}
           <div className="flex-1 p-6 overflow-y-auto border-r">
             {showQuestions ? (
-              // Show Generated Questions
+              // Show Generated Content
               <div className="space-y-4">
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">
-                    Generated Questions
+                    Generated Content
                   </h3>
-                  <p className="text-gray-600">
-                    {generatedQuestions?.questions?.length} questions generated
-                    for this quiz
-                  </p>
+                  <div className="flex gap-4 mb-4">
+                    <button
+                      className={`px-4 py-2 rounded-lg ${
+                        previewMode === "questions"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100"
+                      }`}
+                      onClick={() => setPreviewMode("questions")}
+                    >
+                      Questions ({generatedQuestions?.questions?.length})
+                    </button>
+                    <button
+                      className={`px-4 py-2 rounded-lg ${
+                        previewMode === "slides"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100"
+                      }`}
+                      onClick={() => setPreviewMode("slides")}
+                    >
+                      Slides ({generatedQuestions?.slides?.length})
+                    </button>
+                  </div>
                 </div>
-                {generatedQuestions?.questions.map((question, index) =>
-                  renderQuestionPreview(question, index)
-                )}
+
+                {previewMode === "questions"
+                  ? generatedQuestions?.questions.map((question, index) =>
+                      renderQuestionPreview(question, index)
+                    )
+                  : generatedQuestions?.slides.map((slide, index) =>
+                      renderSlidePreview(slide, index)
+                    )}
               </div>
             ) : (
-              // Show Topic Selection
               <>
                 <div className="flex gap-2 mb-6">
                   <div className="flex-1">
@@ -393,7 +511,7 @@ const AIQuizGeneratorModal = ({
                     </span>
                   </div>
                   <p className="text-sm text-blue-600">
-                    Please wait while we generate your quiz questions...
+                    Please wait while we generate your quiz content...
                   </p>
                 </div>
               )}
@@ -414,7 +532,7 @@ const AIQuizGeneratorModal = ({
                       Saving...
                     </div>
                   ) : (
-                    "Add all questions to quiz"
+                    "Add all content to quiz"
                   )}
                 </button>
               )}
