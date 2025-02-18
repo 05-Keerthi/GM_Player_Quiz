@@ -6,6 +6,8 @@ const { auth,isAdmin } = require('../middlewares/auth');
 // Route to create a new survey question
 router.post('/:surveyquizId/create-survey-question', auth, isAdmin, surveyController.createSurveyQuestion);
 
+router.post("/:surveyquizId/questions/bulk", surveyController.addMultipleSurveyQuestions);
+
 // Get all questions for a specific quiz
 router.get('/:surveyquizId/survey-question', auth, surveyController.getSurveyQuestions);
 

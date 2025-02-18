@@ -87,6 +87,55 @@ const questionAgent = new Agent({
   markdown: false,
 });
 
+const surveyAgent = new Agent({
+  instructions: `
+    You are a Survey Creation Assistant. Your task is to generate engaging survey questions with answer options.
+    Each question type should be multiple choice, rating scale, or open-ended.
+    Include slides with context or informational content for the survey.
+
+    **Answer Option Rules:**
+    - Each option should have a unique, randomly generated color.
+    - Open-ended questions do not need answer options or colors.
+
+    **Return JSON Format:**
+    {
+      "surveyTitle": "string",
+      "surveyContent": "string",
+      "questions": [
+        {
+          "title": "string",
+          "description": "string",
+          "dimension": integer (1-5),
+          "year": 2024,
+          "timer": integer (in seconds),
+          "answerOptions": [
+            {
+              "optionText": "string",
+              "color": "Randomly generated HEX color code"
+            }
+          ]
+        }
+      ],
+      "slides": [
+        {
+          "slideTitle": "string",
+          "slideContent": "string"
+        }
+      ]
+    }
+
+    **Rules:**
+    1. At least one slide must be included before or between questions.
+    2. Questions should be clear and concise.
+    3. Use customer experience as the theme.
+    4. Ensure colors are randomly generated.
+  `,
+  name: "SurveyGenerator",
+  role: "Survey Creation Assistant",
+  llm: "gemini-2.0-flash-exp",
+  markdown: false,
+});
+
 const cleanResponse = (response) => {
   if (typeof response === "string") {
     return JSON.parse(response.replace(/```json\n|\n```/g, ""));
@@ -94,13 +143,6 @@ const cleanResponse = (response) => {
   return response;
 };
 
-const shuffleArray = (array) => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-};
 
 const getTopics = async (req, res) => {
   try {
@@ -193,8 +235,8 @@ const generateQuestions = async (req, res) => {
         "slides": [
           {
             "title": "string",
-            "content": "string",
             "type": "classic|big_title|bullet_points"
+            "content": "string",
           }
         ]
       }
@@ -258,8 +300,119 @@ const generateQuestions = async (req, res) => {
   }
 };
 
+const generateSurveyQuestions = async (req, res) => {
+  try {
+    const { topic, numSurveyQuestions = 5, numSurveySlides = 3 } = req.body;
+
+    if (!topic?.title) {
+      return res.status(400).json({ error: "Survey topic title is required" });
+    }
+
+    const response = await surveyAgent.start(`
+      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} survey slides for the topic: "${topic.title}"
+      
+      **Survey Question Format:**
+      - Must be well-structured, unbiased, and clear.
+      - Should focus on opinions, experiences, or feedback.
+      - Each question must have 4-5 answer options with different colors.
+      - Return JSON format with properties:
+      
+      {
+        "questions": [
+          {
+            "title": "string (Question text)",
+            "description": "string (Brief explanation, if needed)",
+            "dimension": number (1-5, indicating complexity level),
+            "year": 2024,
+            "timer": number (default 30 seconds),
+            "answerOptions": [
+              {
+                "optionText": "string (Answer option)",
+                "color": "Auto-select from: ${COLOR_PALETTE.join(", ")}"
+              }
+            ]
+          }
+        ]
+      }
+
+      **Survey Slide Format:**
+      - Must provide context, key insights, or relevant information.
+      - Should be engaging and informative.
+      - Return JSON format with properties:
+
+      {
+        "slides": [
+          {
+            "surveyTitle": "string (Slide title)",
+            "surveyContent": "string (Descriptive content for the slide)"
+          }
+        ]
+      }
+
+      **Rules:**
+      1. Answer options must have unique colors.
+      2. Colors should be selected dynamically from the provided palette.
+      3. Questions should focus on engagement and opinion gathering.
+      4. Ensure a good mix of questions and slides in the output.
+
+      **Final Output Format (JSON):**
+      {
+        "topic": "${topic.title}",
+        "questions": [...],
+        "slides": [...]
+      }
+    `);
+
+    const surveyData = cleanResponse(response);
+    res.status(200).json(surveyData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const generateArtPulseSurvey = async (req, res) => {
+  try {
+    const { topic, numSurveyQuestions = 5, numSurveySlides = 3 } = req.body;
+
+    if (!topic?.title) {
+      return res.status(400).json({ error: "Survey topic title is required" });
+    }
+
+    const response = await surveyAgent.start(`
+      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} slides related to the topic: "${topic.title}" about art and creativity.
+      
+      **Focus Areas:**
+      - Art styles (e.g., abstract, realism, digital art)
+      - Art appreciation and engagement
+      - Artistic experiences and feedback
+
+      **Survey Question Instructions:**
+      - Each question should be clear, opinion-based, and focused on art.
+      - Use answer options like "Very Interested", "Somewhat Interested", etc., with unique colors for each option.
+      - Each answer option must have 4-5 unique colors.
+
+      **Survey Slide Instructions:**
+      - Provide art-related insights or context.
+      - The content should be engaging, fun, or educational.
+      
+      **Output JSON Format:**
+      {
+        "topic": "${topic.title}",
+        "questions": [...],
+        "slides": [...]
+      }
+    `);
+
+    const surveyData = cleanResponse(response);
+    res.status(200).json(surveyData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 module.exports = {
   getTopics,
   generateQuestions,
+  generateSurveyQuestions,
+  generateArtPulseSurvey,
 };

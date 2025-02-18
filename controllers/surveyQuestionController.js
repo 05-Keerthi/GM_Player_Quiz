@@ -82,6 +82,97 @@ exports.createSurveyQuestion = async (req, res) => {
   }
 };
 
+exports.addMultipleSurveyQuestions = async (req, res) => {
+  const { surveyquizId } = req.params;
+  const { questions } = req.body;
+
+  try {
+    // Validate survey quiz exists
+    const surveyQuiz = await SurveyQuiz.findById(surveyquizId);
+    if (!surveyQuiz) {
+      return res.status(404).json({ message: "Survey quiz not found" });
+    }
+
+    // Validate questions array
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        message: "Please provide an array of survey questions",
+      });
+    }
+
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    const savedSurveyQuestions = [];
+
+    // Process each survey question
+    for (const questionData of questions) {
+      const {
+        title,
+        description,
+        dimension,
+        year,
+        imageUrl,
+        timer,
+        answerOptions,
+      } = questionData;
+
+      let fullImageUrl = null;
+      let mediaId = null;
+
+      if (imageUrl) {
+        const image = await Media.findById(imageUrl);
+        if (image) {
+          mediaId = image._id;
+          const encodedImagePath = encodeURIComponent(
+            image.path.split("\\").pop()
+          );
+          fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        }
+      }
+
+      // Format answer options with defaults
+      const formattedAnswerOptions = answerOptions.map((opt) => ({
+        optionText: opt.optionText,
+        color: opt.color || "#ffffff", // Default color if not provided
+      }));
+
+      const newSurveyQuestion = new SurveyQuestion({
+        title,
+        description,
+        dimension,
+        year,
+        imageUrl: mediaId,
+        timer: timer || 30, // Default timer if not provided
+        answerOptions: formattedAnswerOptions,
+        surveyQuiz: surveyquizId,
+      });
+
+      await newSurveyQuestion.save();
+      surveyQuiz.questions.push(newSurveyQuestion._id);
+
+      savedSurveyQuestions.push({
+        ...newSurveyQuestion.toObject(),
+        imageUrl: fullImageUrl,
+      });
+    }
+
+    await surveyQuiz.save();
+
+    res.status(201).json({
+      message: "Survey questions added successfully",
+      count: savedSurveyQuestions.length,
+      questions: savedSurveyQuestions,
+    });
+  } catch (error) {
+    console.error("Error adding survey questions:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
 exports.getSurveyQuestions = async (req, res) => {
   const { surveyquizId } = req.params;
 
