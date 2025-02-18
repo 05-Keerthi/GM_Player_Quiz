@@ -6,6 +6,8 @@ const slideController = require('../controllers/slideController');
 // Route to add a new slide (admin only)
 router.post('/quizzes/:quizId/slides', auth, isAdmin, slideController.addSlide);
 
+router.post("/quiz/:quizId/slides/bulk", slideController.addMultipleSlides);
+
 // Route to get all slides for a quiz (no admin check, just protection)
 router.get('/quizzes/:quizId/slides', auth, slideController.getSlides);
 

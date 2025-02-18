@@ -23,6 +23,77 @@ const getMediaIdFromPath = async (imageUrl) => {
   }
 };
 
+exports.addMultipleSlides = async (req, res) => {
+  const { quizId } = req.params;
+  const { slides } = req.body;
+
+  try {
+    // Validate quiz exists
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Validate slides array
+    if (!Array.isArray(slides) || slides.length === 0) {
+      return res.status(400).json({
+        message: "Please provide an array of slides",
+      });
+    }
+
+    const savedSlides = [];
+
+    // Process each slide
+    for (const slideData of slides) {
+      const { title, content, type, imageUrl } = slideData;
+
+      let fullImageUrl = null;
+      let mediaId = null;
+
+      if (imageUrl) {
+        const image = await Media.findById(imageUrl);
+        if (image) {
+          mediaId = image._id;
+          const encodedImagePath = encodeURIComponent(
+            image.path.split("\\").pop()
+          );
+          fullImageUrl = `${process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`}${encodedImagePath}`;
+        }
+      }
+
+      const newSlide = new Slide({
+        quiz: quizId,
+        title,
+        content,
+        type,
+        imageUrl: mediaId,
+      });
+
+      await newSlide.save();
+      quiz.slides.push(newSlide._id);
+
+      savedSlides.push({
+        ...newSlide.toObject(),
+        imageUrl: fullImageUrl,
+      });
+    }
+
+    await quiz.save();
+
+    res.status(201).json({
+      message: "Slides added successfully",
+      count: savedSlides.length,
+      slides: savedSlides,
+    });
+  } catch (error) {
+    console.error("Error adding slides:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 exports.addSlide = async (req, res) => {
   try {
     const { quizId } = req.params;
