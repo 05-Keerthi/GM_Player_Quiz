@@ -1,4 +1,4 @@
-// components/QuizCreationModal.jsx
+// QuizCreationModal.js
 import React from "react";
 import { Sparkles, PenTool } from "lucide-react";
 
@@ -10,8 +10,23 @@ const QuizCreationModal = ({
 }) => {
   if (!isOpen) return null;
 
+  const handleCreateWithAI = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await onCreateWithAI();
+  };
+
+  const handleCreateBlank = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await onCreateBlank();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
         <h2 className="text-2xl font-bold text-center mb-8">
           Choose Your Creation Method
@@ -20,7 +35,7 @@ const QuizCreationModal = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* AI-Powered Creation Card */}
           <button
-            onClick={onCreateWithAI}
+            onClick={handleCreateWithAI}
             className="group p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 transition-all"
           >
             <div className="flex flex-col items-center text-center space-y-4">
@@ -37,7 +52,7 @@ const QuizCreationModal = ({
 
           {/* Blank Canvas Card */}
           <button
-            onClick={onCreateBlank}
+            onClick={handleCreateBlank}
             className="group p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 transition-all"
           >
             <div className="flex flex-col items-center text-center space-y-4">
@@ -53,7 +68,11 @@ const QuizCreationModal = ({
         </div>
 
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
           className="mt-6 w-full text-gray-600 hover:text-gray-800"
         >
           Cancel
