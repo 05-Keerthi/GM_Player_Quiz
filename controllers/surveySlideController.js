@@ -55,6 +55,79 @@ exports.addSurveySlide = async (req, res) => {
   }
 };
 
+exports.addMultipleSurveySlides = async (req, res) => {
+  const { surveyQuizId } = req.params;
+  const { slides } = req.body;
+
+  try {
+    // Validate survey quiz exists
+    const surveyQuiz = await SurveyQuiz.findById(surveyQuizId);
+    if (!surveyQuiz) {
+      return res.status(404).json({ message: "Survey quiz not found" });
+    }
+
+    // Validate slides array
+    if (!Array.isArray(slides) || slides.length === 0) {
+      return res.status(400).json({
+        message: "Please provide an array of survey slides",
+      });
+    }
+
+    const baseUrl =
+      process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
+    const savedSurveySlides = [];
+
+    // Process each survey slide
+    for (const slideData of slides) {
+      const { surveyTitle, surveyContent, imageUrl, position } = slideData;
+
+      let fullImageUrl = null;
+      let mediaId = null;
+
+      if (imageUrl) {
+        const image = await Media.findById(imageUrl);
+        if (image) {
+          mediaId = image._id;
+          const encodedImagePath = encodeURIComponent(
+            image.path.split("\\").pop()
+          );
+          fullImageUrl = `${baseUrl}${encodedImagePath}`;
+        }
+      }
+
+      const newSurveySlide = new SurveySlide({
+        surveyQuiz: surveyQuizId,
+        surveyTitle,
+        surveyContent,
+        imageUrl: mediaId,
+        position: position || 0, // Default position if not provided
+      });
+
+      await newSurveySlide.save();
+      surveyQuiz.slides.push(newSurveySlide._id);
+
+      savedSurveySlides.push({
+        ...newSurveySlide.toObject(),
+        imageUrl: fullImageUrl,
+      });
+    }
+
+    await surveyQuiz.save();
+
+    res.status(201).json({
+      message: "Survey slides added successfully",
+      count: savedSurveySlides.length,
+      slides: savedSurveySlides,
+    });
+  } catch (error) {
+    console.error("Error adding survey slides:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 exports.getSurveySlides = async (req, res) => {
   try {
     const { surveyQuizId } = req.params;
