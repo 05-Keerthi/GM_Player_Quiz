@@ -17,7 +17,8 @@ const AIQuizGeneratorModal = ({
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [customTopic, setCustomTopic] = useState("");
-  const [quizLength, setQuizLength] = useState("5");
+  const [questionsLength, setQuestionsLength] = useState("5");
+  const [slidesLength, setSlidesLength] = useState("0");
   const [generatedQuestions, setGeneratedQuestions] = useState(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [previewMode, setPreviewMode] = useState("questions");
@@ -54,8 +55,10 @@ const AIQuizGeneratorModal = ({
       const requestBody = {
         topic: {
           title: topic.title,
+
         },
-        numQuestions: parseInt(quizLength),
+        numQuestions: parseInt(questionsLength),
+        numSlides: parseInt(slidesLength),
       };
 
       const response = await axios.post(
@@ -90,9 +93,9 @@ const AIQuizGeneratorModal = ({
       const requestBody = {
         topic: {
           title: customTopic,
-          description: `Custom generated quiz about ${customTopic}`,
         },
-        numQuestions: parseInt(quizLength),
+        numQuestions: parseInt(questionsLength),
+        numSlides: parseInt(slidesLength),
       };
 
       const response = await axios.post(
@@ -482,26 +485,45 @@ const AIQuizGeneratorModal = ({
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">Quiz length</h3>
+                  <h3 className="font-medium">Questions length</h3>
                   <span className="text-gray-400 hover:text-gray-600 cursor-help">
                     <AlertCircle className="w-4 h-4" />
                   </span>
                 </div>
                 <select
                   className="w-full p-3 border rounded-lg bg-white"
-                  value={quizLength}
-                  onChange={(e) => setQuizLength(e.target.value)}
+                  value={questionsLength}
+                  onChange={(e) => setQuestionsLength(e.target.value)}
                   disabled={generatingQuestions}
                 >
                   <option value="5">5 questions</option>
                   <option value="10">10 questions</option>
                   <option value="15">15 questions</option>
                   <option value="20">20 questions</option>
-                  <option value="25">25 questions</option>
-                  <option value="30">30 questions</option>
+                  
                 </select>
               </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">Slides length</h3>
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <AlertCircle className="w-4 h-4" />
+                  </span>
+                </div>
+                <select
+                  className="w-full p-3 border rounded-lg bg-white"
+                  value={slidesLength}
+                  onChange={(e) => setSlidesLength(e.target.value)}
+                  disabled={generatingQuestions}
+                >
+                  <option value="0">0 slides</option>
+                  <option value="5">5 slides</option>
+                  <option value="10">10 slides</option>
+                  <option value="15">15 slides</option>
+                  <option value="20">20 slides</option>
 
+                </select>
+              </div>
               {generatingQuestions && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-3 mb-2">
