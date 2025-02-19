@@ -302,7 +302,7 @@ const generateQuestions = async (req, res) => {
 
 const generateSurveyQuestions = async (req, res) => {
   try {
-    const { topic, numSurveyQuestions = 5, numSurveySlides = 3 } = req.body;
+    const { topic, numSurveyQuestions = 5, numSurveySlides = 0 } = req.body;
 
     if (!topic?.title) {
       return res.status(400).json({ error: "Survey topic title is required" });
