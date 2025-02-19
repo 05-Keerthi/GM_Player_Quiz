@@ -10,7 +10,7 @@ import EditCategoryModal from "../models/Category/EditCategoryModal";
 import ConfirmationModal from "../models/ConfirmationModal";
 import { toast } from "react-toastify";
 import SurveyCreationModal from "../models/SurveyCreationModal";
-
+import AISurveyGeneratorModal from "../models/AISurveyGeneratorModal";
 const SelectSurveyCategory = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,7 +31,7 @@ const SelectSurveyCategory = () => {
   const [showCreationModal, setShowCreationModal] = useState(false);
   const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
-
+ const [showAIGeneratorModal, setShowAIGeneratorModal] = useState(false);
   // Load categories on mount
   useEffect(() => {
     getAllCategories();
@@ -93,10 +93,9 @@ const SelectSurveyCategory = () => {
       const surveyId = await createNewSurvey();
       setCurrentSurveyId(surveyId);
       setShowCreationModal(false);
-      // If you have an AI generator modal, show it here:
-      // setShowAIGeneratorModal(true);
-      // Otherwise, navigate directly:
-      navigate(`/createSurvey/${surveyId}`);
+      setShowAIGeneratorModal(true);
+
+      
     } catch (err) {
       // Error already handled in createNewSurvey
     }
@@ -309,6 +308,15 @@ const SelectSurveyCategory = () => {
           setSelectedCategoryId(null);
         }}
         categoryId={selectedCategoryId}
+      />
+      {/* AI Survey Generator Modal */}
+
+      <AISurveyGeneratorModal
+        isOpen={showAIGeneratorModal}
+        onClose={() => setShowAIGeneratorModal(false)}
+        surveyId={currentSurveyId}
+        selectedCategories={selectedCategories}
+        surveyType={surveyType}
       />
 
       <ConfirmationModal
