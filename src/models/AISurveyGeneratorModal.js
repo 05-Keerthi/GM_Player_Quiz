@@ -9,6 +9,7 @@ const AISurveyGeneratorModal = ({
   onClose,
   surveyId,
   selectedCategories,
+  surveyType,
 }) => {
   const navigate = useNavigate();
   const [topics, setTopics] = useState([]);
@@ -19,18 +20,24 @@ const AISurveyGeneratorModal = ({
   const [customTopic, setCustomTopic] = useState("");
   const [questionsLength, setQuestionsLength] = useState("5");
   const [slidesLength, setSlidesLength] = useState("0");
-  const [generatedContent, setGeneratedContent] = useState(null);
-  const [showContent, setShowContent] = useState(false);
+  const [generatedQuestions, setGeneratedQuestions] = useState(null);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [previewMode, setPreviewMode] = useState("questions");
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
         setLoading(true);
+        const token = localStorage.getItem("token");
         const response = await axios.post(
           "http://localhost:5000/api/agent/topics",
           {
             categoryIds: selectedCategories,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
         setTopics(response.data.topics);
@@ -51,6 +58,7 @@ const AISurveyGeneratorModal = ({
     try {
       setGeneratingQuestions(true);
       setSelectedTopic(topic);
+      const token = localStorage.getItem("token");
 
       const requestBody = {
         topic: {
@@ -58,17 +66,22 @@ const AISurveyGeneratorModal = ({
         },
         numQuestions: parseInt(questionsLength),
         numSlides: parseInt(slidesLength),
-        type: "survey"
       };
 
-      const response = await axios.post(
-        "http://localhost:5000/api/agent/survey-questions",
-        requestBody
-      );
+      const endpoint =
+        surveyType === "ArtPulse"
+          ? "http://localhost:5000/api/agent/Artpulse-questions"
+          : "http://localhost:5000/api/agent/survey-questions";
 
-      if (response.data.questions) {
-        setGeneratedContent(response.data);
-        setShowContent(true);
+      const response = await axios.post(endpoint, requestBody, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data) {
+        setGeneratedQuestions(response.data);
+        setShowQuestions(true);
       } else {
         throw new Error("No questions received from the generator");
       }
@@ -89,6 +102,7 @@ const AISurveyGeneratorModal = ({
 
     try {
       setGeneratingQuestions(true);
+      const token = localStorage.getItem("token");
 
       const requestBody = {
         topic: {
@@ -96,17 +110,22 @@ const AISurveyGeneratorModal = ({
         },
         numQuestions: parseInt(questionsLength),
         numSlides: parseInt(slidesLength),
-        type: "survey"
       };
 
-      const response = await axios.post(
-        "http://localhost:5000/api/agent/survey-questions",
-        requestBody
-      );
+      const endpoint =
+        surveyType === "ArtPulse"
+          ? "http://localhost:5000/api/agent/Artpulse-questions"
+          : "http://localhost:5000/api/agent/survey-questions";
 
-      if (response.data.questions) {
-        setGeneratedContent(response.data);
-        setShowContent(true);
+      const response = await axios.post(endpoint, requestBody, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data) {
+        setGeneratedQuestions(response.data);
+        setShowQuestions(true);
       } else {
         throw new Error("No questions received from the generator");
       }
@@ -118,7 +137,7 @@ const AISurveyGeneratorModal = ({
     }
   };
 
-  const handleSaveContent = async () => {
+  const handleSaveQuestions = async () => {
     try {
       setSavingQuestions(true);
       const token = localStorage.getItem("token");
@@ -127,25 +146,43 @@ const AISurveyGeneratorModal = ({
         throw new Error("No authentication token found");
       }
 
-      // Get the current survey data
+      const transformedQuestions = generatedQuestions.questions.map(
+        (question) => ({
+          ...question,
+          title: question.title,
+          type: question.type || "multiple_choice",
+          timer: question.timer || 30,
+          dimension: question.dimension || 1,
+          year: question.year || new Date().getFullYear(),
+          answerOptions: question.answerOptions || question.options,
+        })
+      );
+
+      const transformedSlides =
+        generatedQuestions.slides?.map((slide) => ({
+          ...slide,
+          surveyTitle: slide.slideTitle,
+          surveyContent: slide.slideContent,
+        })) || [];
+
       const surveyResponse = await axios.get(
-        `http://localhost:5000/api/surveys/${surveyId}`,
+        `http://localhost:5000/api/survey-quiz/${surveyId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
+
       const currentSurvey = surveyResponse.data;
       const currentOrder = currentSurvey.order || [];
       const currentQuestions = currentSurvey.questions || [];
       const currentSlides = currentSurvey.slides || [];
 
-      // Add questions
       const questionsResponse = await axios.post(
-        `http://localhost:5000/api/surveys/${surveyId}/questions/bulk`,
+        `http://localhost:5000/api/${surveyId}/questions/bulk`,
         {
-          questions: generatedContent.questions,
+          questions: transformedQuestions,
         },
         {
           headers: {
@@ -154,24 +191,27 @@ const AISurveyGeneratorModal = ({
         }
       );
 
-      // Add slides
-      const slidesResponse = await axios.post(
-        `http://localhost:5000/api/surveys/${surveyId}/slides`,
-        {
-          slides: generatedContent.slides,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+      let slidesResponse = null;
+      if (transformedSlides.length > 0) {
+        slidesResponse = await axios.post(
+         `http://localhost:5000/api/${surveyId}/slides/bulk`,
+          {
+            slides: transformedSlides,
           },
-        }
-      );
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
 
-      // Update survey with new content
       const newQuestions = questionsResponse.data.questions;
-      const newSlides = slidesResponse.data.slides;
+      const newSlides = slidesResponse?.data?.slides || [];
+
       const updatedQuestions = [...currentQuestions, ...newQuestions];
       const updatedSlides = [...currentSlides, ...newSlides];
+
       const updatedOrder = [
         ...currentOrder,
         ...newQuestions.map((question) => ({
@@ -184,11 +224,12 @@ const AISurveyGeneratorModal = ({
         })),
       ];
 
-      // Update the survey
       await axios.put(
-        `http://localhost:5000/api/surveys/${surveyId}`,
+        `http://localhost:5000/api/survey-quiz/${surveyId}`,
         {
           ...currentSurvey,
+          title: generatedQuestions.surveyTitle,
+          description: generatedQuestions.surveyContent,
           questions: updatedQuestions,
           slides: updatedSlides,
           order: updatedOrder,
@@ -219,17 +260,44 @@ const AISurveyGeneratorModal = ({
   const renderQuestionPreview = (question, index) => {
     return (
       <div key={index} className="p-4 border rounded-lg mb-4 bg-white">
-        <div className="flex items-start gap-3">
-          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
-            Survey Question
-          </span>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+              Question {index + 1}
+            </span>
+            {question.timer && (
+              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm flex items-center gap-1">
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                {question.timer}s
+              </span>
+            )}
+            {question.dimension && (
+              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
+                Dimension {question.dimension}
+              </span>
+            )}
+          </div>
         </div>
-        <h3 className="font-medium mt-2 mb-3">{question.question}</h3>
-        <div className="space-y-2">
-          {question.options?.map((option, optIndex) => (
+
+        <h3 className="font-medium mt-3 mb-1">{question.title}</h3>
+        {question.description && (
+          <p className="text-gray-600 text-sm mb-3">{question.description}</p>
+        )}
+
+        <div className="space-y-2 mt-4">
+          {question.answerOptions?.map((option, optIndex) => (
             <div
               key={optIndex}
-              className="p-3 rounded-lg flex items-center gap-2 border-l-4 border-transparent"
+              className="p-3 rounded-lg flex items-center gap-2 border-l-4"
               style={{
                 backgroundColor: `${option.color}15`,
                 borderColor: option.color,
@@ -239,7 +307,7 @@ const AISurveyGeneratorModal = ({
                 className="w-4 h-4 rounded-full flex-shrink-0"
                 style={{ backgroundColor: option.color }}
               />
-              <span className="flex-grow">{option.text}</span>
+              <span className="flex-grow">{option.optionText}</span>
             </div>
           ))}
         </div>
@@ -251,22 +319,12 @@ const AISurveyGeneratorModal = ({
     return (
       <div key={index} className="p-4 border rounded-lg mb-4 bg-white">
         <div className="flex items-start gap-3">
-          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
-            {slide.type.charAt(0).toUpperCase() + slide.type.slice(1)}
+          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+            Slide {index + 1}
           </span>
         </div>
-        <h3 className="font-medium mt-2 mb-3">{slide.title}</h3>
-        {slide.type === "bullet_points" ? (
-          <div className="pl-4">
-            {slide.content.split("\n").map((bullet, i) => (
-              <p key={i} className="mb-1">
-                {bullet}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-700">{slide.content}</p>
-        )}
+        <h3 className="font-medium mt-2 mb-2">{slide.slideTitle}</h3>
+        <p className="text-gray-700">{slide.slideContent}</p>
       </div>
     );
   };
@@ -279,9 +337,9 @@ const AISurveyGeneratorModal = ({
         {/* Header */}
         <div className="p-4 border-b flex justify-between items-center">
           <div className="flex items-center gap-4">
-            {showContent ? (
+            {showQuestions ? (
               <button
-                onClick={() => setShowContent(false)}
+                onClick={() => setShowQuestions(false)}
                 className="p-2 hover:bg-gray-100 rounded-full"
               >
                 <ArrowLeft className="w-6 h-6" />
@@ -295,7 +353,9 @@ const AISurveyGeneratorModal = ({
               </button>
             )}
             <h2 className="text-xl font-semibold">
-              {showContent ? generatedContent?.topic : "Generate Survey"}
+              {showQuestions
+                ? generatedQuestions?.surveyTitle
+                : `Generate ${surveyType}`}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -304,17 +364,20 @@ const AISurveyGeneratorModal = ({
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main content area */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Content Area */}
+          {/* Left side content area */}
           <div className="flex-1 p-6 overflow-y-auto border-r">
-            {showContent ? (
-              // Show Generated Content
+            {showQuestions ? (
               <div className="space-y-4">
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium mb-2">
-                    Generated Content
+                  <h3 className="text-xl font-semibold mb-2">
+                    {generatedQuestions.surveyTitle}
                   </h3>
+                  <p className="text-gray-600 mb-4">
+                    {generatedQuestions.surveyContent}
+                  </p>
+
                   <div className="flex gap-4 mb-4">
                     <button
                       className={`px-4 py-2 rounded-lg ${
@@ -324,26 +387,28 @@ const AISurveyGeneratorModal = ({
                       }`}
                       onClick={() => setPreviewMode("questions")}
                     >
-                      Questions ({generatedContent?.questions?.length})
+                      Questions ({generatedQuestions?.questions?.length})
                     </button>
-                    <button
-                      className={`px-4 py-2 rounded-lg ${
-                        previewMode === "slides"
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100"
-                      }`}
-                      onClick={() => setPreviewMode("slides")}
-                    >
-                      Slides ({generatedContent?.slides?.length})
-                    </button>
+                    {generatedQuestions?.slides?.length > 0 && (
+                      <button
+                        className={`px-4 py-2 rounded-lg ${
+                          previewMode === "slides"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100"
+                        }`}
+                        onClick={() => setPreviewMode("slides")}
+                      >
+                        Slides ({generatedQuestions?.slides?.length})
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {previewMode === "questions"
-                  ? generatedContent?.questions.map((question, index) =>
+                  ? generatedQuestions?.questions.map((question, index) =>
                       renderQuestionPreview(question, index)
                     )
-                  : generatedContent?.slides.map((slide, index) =>
+                  : generatedQuestions?.slides?.map((slide, index) =>
                       renderSlidePreview(slide, index)
                     )}
               </div>
@@ -411,8 +476,10 @@ const AISurveyGeneratorModal = ({
                           }
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="p-1 bg-gray-100 rounded">📋</span>
-                            <span className="text-sm text-gray-600">Survey</span>
+                            <span className="p-1 bg-gray-100 rounded">📝</span>
+                            <span className="text-sm text-gray-600">
+                              {surveyType}
+                            </span>
                           </div>
                           <h3 className="font-medium mb-2">{topic.title}</h3>
                         </div>
@@ -424,7 +491,7 @@ const AISurveyGeneratorModal = ({
             )}
           </div>
 
-          {/* Right Side */}
+          {/* Right side settings panel */}
           <div className="w-80 p-6 bg-gray-50">
             <div className="space-y-6">
               <div>
@@ -446,6 +513,7 @@ const AISurveyGeneratorModal = ({
                   <option value="20">20 questions</option>
                 </select>
               </div>
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium">Slides length</h3>
@@ -460,45 +528,72 @@ const AISurveyGeneratorModal = ({
                   disabled={generatingQuestions}
                 >
                   <option value="0">0 slides</option>
+                  <option value="3">3 slides</option>
                   <option value="5">5 slides</option>
                   <option value="10">10 slides</option>
-                  <option value="15">15 slides</option>
-                  <option value="20">20 slides</option>
                 </select>
               </div>
+
               {generatingQuestions && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     <span className="font-medium text-blue-700">
-                      Generating Survey
+                      Generating {surveyType}
                     </span>
                   </div>
                   <p className="text-sm text-blue-600">
-                    Please wait while we generate your survey content...
+                    Please wait while we generate your{" "}
+                    {surveyType.toLowerCase()} content...
                   </p>
                 </div>
               )}
 
-              {showContent && (
-                <button
-                  onClick={handleSaveContent}
-                  disabled={savingQuestions}
-                  className={`w-full px-4 py-3 rounded-lg ${
-                    savingQuestions
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-                >
-                  {savingQuestions ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Saving...
-                    </div>
-                  ) : (
-                    "Add all content to survey"
-                  )}
-                </button>
+              {showQuestions && (
+                <>
+                  <button
+                    onClick={handleSaveQuestions}
+                    disabled={savingQuestions}
+                    className={`w-full px-4 py-3 rounded-lg ${
+                      savingQuestions
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    }`}
+                  >
+                    {savingQuestions ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </div>
+                    ) : (
+                      `Add content to ${surveyType.toLowerCase()}`
+                    )}
+                  </button>
+
+                  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+                    <h4 className="font-medium mb-2">Summary</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex justify-between">
+                        <span>Questions:</span>
+                        <span className="font-medium">
+                          {generatedQuestions?.questions?.length || 0}
+                        </span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Slides:</span>
+                        <span className="font-medium">
+                          {generatedQuestions?.slides?.length || 0}
+                        </span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Topic:</span>
+                        <span className="font-medium">
+                          {selectedTopic?.title || customTopic}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </>
               )}
             </div>
           </div>

@@ -1,3 +1,4 @@
+// In SelectSurveyCategory.js
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
@@ -11,6 +12,7 @@ import ConfirmationModal from "../models/ConfirmationModal";
 import { toast } from "react-toastify";
 import SurveyCreationModal from "../models/SurveyCreationModal";
 import AISurveyGeneratorModal from "../models/AISurveyGeneratorModal";
+
 const SelectSurveyCategory = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,34 +20,32 @@ const SelectSurveyCategory = () => {
   const { categories, getAllCategories, deleteCategory, loading, error } =
     useCategoryContext();
   const { createSurvey } = useSurveyContext();
+
+  // State management
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredCategories, setFilteredCategories] = useState([]);
-  const itemsPerPage = 15;
-
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [showCreationModal, setShowCreationModal] = useState(false);
+  const [showAIGeneratorModal, setShowAIGeneratorModal] = useState(false);
   const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
   const [currentSurveyId, setCurrentSurveyId] = useState(null);
- const [showAIGeneratorModal, setShowAIGeneratorModal] = useState(false);
-  // Load categories on mount
+
+  const itemsPerPage = 15;
+
   useEffect(() => {
     getAllCategories();
   }, []);
 
-  // Filter categories when search query or categories change
   useEffect(() => {
     if (categories) {
-      console.log("Categories:", categories);
-      console.log("Search Query:", searchQuery);
       const filtered = categories.filter((category) =>
         category?.name?.toLowerCase().includes(searchQuery.toLowerCase().trim())
       );
-      console.log("Filtered Categories:", filtered);
       setFilteredCategories(filtered);
       setCurrentPage(1);
     }
@@ -94,8 +94,6 @@ const SelectSurveyCategory = () => {
       setCurrentSurveyId(surveyId);
       setShowCreationModal(false);
       setShowAIGeneratorModal(true);
-
-      
     } catch (err) {
       // Error already handled in createNewSurvey
     }
@@ -109,11 +107,6 @@ const SelectSurveyCategory = () => {
     } catch (err) {
       // Error already handled in createNewSurvey
     }
-  };
-
-  const handleCreateModalClose = () => {
-    setShowCreateModal(false);
-    getAllCategories(); // Refresh categories after creation
   };
 
   const handleEdit = (e, categoryId) => {
@@ -141,13 +134,17 @@ const SelectSurveyCategory = () => {
     }
   };
 
+  const handleAIGeneratorClose = () => {
+    setShowAIGeneratorModal(false);
+    navigate(`/createSurvey/${currentSurveyId}`);
+  };
+
   return (
     <>
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        {/* Header and Search Bar Container */}
+        {/* Header and Search Bar */}
         <div className="flex flex-col gap-6 mb-8">
-          {/* Header */}
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">
               Select {surveyType === "ArtPulse" ? "ArtPulse" : "Survey"}{" "}
@@ -166,11 +163,11 @@ const SelectSurveyCategory = () => {
                 }}
                 disabled={selectedCategories.length === 0 || isCreatingSurvey}
                 className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-white
-    ${
-      selectedCategories.length === 0 || isCreatingSurvey
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-green-500 hover:bg-green-600"
-    }`}
+                  ${
+                    selectedCategories.length === 0 || isCreatingSurvey
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-500 hover:bg-green-600"
+                  }`}
               >
                 {isCreatingSurvey ? (
                   <>
@@ -196,7 +193,6 @@ const SelectSurveyCategory = () => {
             </div>
           </div>
 
-          {/* Search Bar - Centered with max-width */}
           <div className="flex justify-center">
             <div className="relative w-full max-w-md">
               <Search
@@ -215,7 +211,7 @@ const SelectSurveyCategory = () => {
           </div>
         </div>
 
-        {/* Categories Grid Container - 80% width and centered */}
+        {/* Categories Grid */}
         <div className="mx-auto w-4/5">
           {loading ? (
             <div className="text-center py-8">Loading categories...</div>
@@ -231,11 +227,11 @@ const SelectSurveyCategory = () => {
                     key={category._id}
                     data-testid={`category-item-${category._id}`}
                     className={`bg-white rounded-lg shadow-md px-4 py-2 cursor-pointer transition-all flex items-center justify-between
-                    ${
-                      selectedCategories.includes(category._id)
-                        ? "ring-2 ring-blue-500 shadow-lg"
-                        : "hover:shadow-lg"
-                    }`}
+                      ${
+                        selectedCategories.includes(category._id)
+                          ? "ring-2 ring-blue-500 shadow-lg"
+                          : "hover:shadow-lg"
+                      }`}
                     onClick={() => toggleCategorySelection(category._id)}
                   >
                     <div className="flex items-center gap-4 flex-grow">
@@ -283,7 +279,6 @@ const SelectSurveyCategory = () => {
                 </div>
               )}
 
-              {/* Pagination Controls */}
               {filteredCategories.length > itemsPerPage && (
                 <PaginationControls
                   currentPage={currentPage}
@@ -296,9 +291,13 @@ const SelectSurveyCategory = () => {
         </div>
       </div>
 
+      {/* Modals */}
       <CreateCategoryModal
         isOpen={showCreateModal}
-        onClose={handleCreateModalClose}
+        onClose={() => {
+          setShowCreateModal(false);
+          getAllCategories();
+        }}
       />
 
       <EditCategoryModal
@@ -308,15 +307,6 @@ const SelectSurveyCategory = () => {
           setSelectedCategoryId(null);
         }}
         categoryId={selectedCategoryId}
-      />
-      {/* AI Survey Generator Modal */}
-
-      <AISurveyGeneratorModal
-        isOpen={showAIGeneratorModal}
-        onClose={() => setShowAIGeneratorModal(false)}
-        surveyId={currentSurveyId}
-        selectedCategories={selectedCategories}
-        surveyType={surveyType}
       />
 
       <ConfirmationModal
@@ -329,11 +319,20 @@ const SelectSurveyCategory = () => {
         title="Delete Category"
         message="Are you sure you want to delete this category? This action cannot be undone."
       />
+
       <SurveyCreationModal
         isOpen={showCreationModal}
         onClose={() => setShowCreationModal(false)}
         onCreateWithAI={handleCreateWithAI}
         onCreateBlank={handleCreateBlank}
+        surveyType={surveyType}
+      />
+
+      <AISurveyGeneratorModal
+        isOpen={showAIGeneratorModal}
+        onClose={handleAIGeneratorClose}
+        surveyId={currentSurveyId}
+        selectedCategories={selectedCategories}
         surveyType={surveyType}
       />
     </>
