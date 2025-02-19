@@ -6,7 +6,7 @@ const surveySlideController = require('../controllers/surveySlideController');
 // Route to add a new survey slide (admin only)
 router.post('/surveys/:surveyQuizId/slides', auth, isAdmin, surveySlideController.addSurveySlide);
 
-router.post("/:surveyquizId/slides/bulk", surveySlideController.addMultipleSurveySlides);
+router.post("/:surveyQuizId/slides/bulk", surveySlideController.addMultipleSurveySlides);
 
 // Route to get all survey slides for a survey
 router.get('/surveys/:surveyQuizId/slides', auth, surveySlideController.getSurveySlides);
