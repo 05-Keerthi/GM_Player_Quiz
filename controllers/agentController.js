@@ -1,4 +1,4 @@
-const { Agent, Tool } = require("praisonai");
+const { Agent } = require("praisonai");
 const Category = require("../models/category");
 
 const COLOR_PALETTE = [
@@ -26,7 +26,6 @@ const topicAgent = new Agent({
   role: "Topic Suggestion Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
-  tools: [Tools.internet_search],
 });
 
 const questionAgent = new Agent({
@@ -86,7 +85,6 @@ const questionAgent = new Agent({
   role: "Question & Slide Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
-  tools: [Tools.internet_search],
 });
 
 const surveyAgent = new Agent({
@@ -136,7 +134,6 @@ const surveyAgent = new Agent({
   role: "Survey Creation Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
-  tools: [Tools.internet_search],
 });
 
 const cleanResponse = (response) => {
