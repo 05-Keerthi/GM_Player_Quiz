@@ -66,13 +66,6 @@ exports.addMultipleSurveySlides = async (req, res) => {
       return res.status(404).json({ message: "Survey quiz not found" });
     }
 
-    // Validate slides array
-    if (!Array.isArray(slides) || slides.length === 0) {
-      return res.status(400).json({
-        message: "Please provide an array of survey slides",
-      });
-    }
-
     const baseUrl =
       process.env.HOST || `${req.protocol}://${req.get("host")}/uploads/`;
     const savedSurveySlides = [];

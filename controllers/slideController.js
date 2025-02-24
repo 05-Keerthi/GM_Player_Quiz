@@ -34,13 +34,6 @@ exports.addMultipleSlides = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // Validate slides array
-    if (!Array.isArray(slides) || slides.length === 0) {
-      return res.status(400).json({
-        message: "Please provide an array of slides",
-      });
-    }
-
     const savedSlides = [];
 
     // Process each slide
