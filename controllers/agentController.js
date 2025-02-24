@@ -1,4 +1,4 @@
-const { Agent } = require("praisonai");
+const { Agent, Tool } = require("praisonai");
 const Category = require("../models/category");
 
 const COLOR_PALETTE = [
@@ -26,6 +26,7 @@ const topicAgent = new Agent({
   role: "Topic Suggestion Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
+  tools: [Tools.internet_search],
 });
 
 const questionAgent = new Agent({
@@ -85,6 +86,7 @@ const questionAgent = new Agent({
   role: "Question & Slide Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
+  tools: [Tools.internet_search],
 });
 
 const surveyAgent = new Agent({
@@ -134,6 +136,7 @@ const surveyAgent = new Agent({
   role: "Survey Creation Assistant",
   llm: "gemini-2.0-flash-exp",
   markdown: false,
+  tools: [Tools.internet_search],
 });
 
 const cleanResponse = (response) => {
@@ -142,7 +145,6 @@ const cleanResponse = (response) => {
   }
   return response;
 };
-
 
 const getTopics = async (req, res) => {
   try {
@@ -197,7 +199,9 @@ const generateQuestions = async (req, res) => {
 
     // Updated prompt to include slide types
     const response = await questionAgent.start(`
-      Generate ${numQuestions} questions and ${numSlides} slides for: ${topic.title}
+      Generate ${numQuestions} questions and ${numSlides} slides for: ${
+      topic.title
+    }
       
       **Question Types:**
       - multiple_choice: exactly 4 options, exactly 1 correct answer
@@ -309,7 +313,9 @@ const generateSurveyQuestions = async (req, res) => {
     }
 
     const response = await surveyAgent.start(`
-      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} survey slides for the topic: "${topic.title}"
+      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} survey slides for the topic: "${
+      topic.title
+    }"
       
       **Survey Question Format:**
       - Must be well-structured, unbiased, and clear.
