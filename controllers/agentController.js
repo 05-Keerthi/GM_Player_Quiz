@@ -31,6 +31,10 @@ const topicAgent = new Agent({
 const questionAgent = new Agent({
   instructions: `
     You generate questions with colored options and provide related slides for the topic.
+    You MUST generate EXACTLY the number of questions and slides specified in each request.
+    If asked for 10 questions, generate EXACTLY 10 questions - no more, no less.
+    If asked for 20 slides, generate EXACTLY 20 slides - no more, no less.
+    
     Each option must have a unique color from the provided palette.
     For multiple choice and multiple select questions, use 4 different colors.
     For true/false questions, use 2 different colors.
@@ -90,6 +94,10 @@ const questionAgent = new Agent({
 const surveyAgent = new Agent({
   instructions: `
     You are a Survey Creation Assistant. Your task is to generate engaging survey questions with answer options.
+    You MUST generate EXACTLY the number of questions and slides specified in each request.
+    If asked for 10 questions, generate EXACTLY 10 questions - no more, no less.
+    If asked for 5 slides, generate EXACTLY 5 slides - no more, no less.
+    
     Each question type should be multiple choice, rating scale, or open-ended.
     Include slides with context or informational content for the survey.
 
@@ -183,10 +191,9 @@ const getTopics = async (req, res) => {
   }
 };
 
-// In generateQuestions function, modify the validation and prompt:
 const generateQuestions = async (req, res) => {
   try {
-    const { topic, numQuestions = 5, numSlides = 5 } = req.body;
+    const { topic, numQuestions, numSlides } = req.body;
 
     if (!topic?.title) {
       return res.status(400).json({
@@ -194,11 +201,17 @@ const generateQuestions = async (req, res) => {
       });
     }
 
-    // Updated prompt to include slide types
+    // Ensure numQuestions and numSlides are numbers
+    const requestedQuestions = parseInt(numQuestions) || 5;
+    const requestedSlides = parseInt(numSlides) || 0;
+
+    // Updated prompt to include slide types and more emphatic instructions
     const response = await questionAgent.start(`
-      Generate ${numQuestions} questions and ${numSlides} slides for: ${
+      You MUST generate EXACTLY ${requestedQuestions} questions and EXACTLY ${requestedSlides} slides for: ${
       topic.title
     }
+      
+      The number of questions (${requestedQuestions}) and slides (${requestedSlides}) is a strict requirement.
       
       **Question Types:**
       - multiple_choice: exactly 4 options, exactly 1 correct answer
@@ -295,6 +308,107 @@ const generateQuestions = async (req, res) => {
       return question;
     });
 
+    // Check if we received the correct number of questions
+    if (data.questions.length !== requestedQuestions) {
+      console.warn(
+        `Expected ${requestedQuestions} questions but got ${data.questions.length}`
+      );
+
+      // Adjust the questions array to match requested amount
+      if (data.questions.length > requestedQuestions) {
+        // Truncate extra questions
+        data.questions = data.questions.slice(0, requestedQuestions);
+      } else {
+        // Add dummy questions if needed (this shouldn't happen often with improved prompt)
+        const questionTypes = [
+          "multiple_choice",
+          "true_false",
+          "multiple_select",
+          "poll",
+          "open_ended",
+        ];
+        while (data.questions.length < requestedQuestions) {
+          const questionType =
+            questionTypes[Math.floor(Math.random() * questionTypes.length)];
+
+          // Create a placeholder question
+          const newQuestion = {
+            question: `Additional question about ${topic.title} (${
+              data.questions.length + 1
+            })`,
+            type: questionType,
+            options: [],
+          };
+
+          // Add appropriate options based on question type
+          if (questionType === "multiple_choice") {
+            newQuestion.options = [
+              { text: "Option 1", isCorrect: true, color: COLOR_PALETTE[0] },
+              { text: "Option 2", isCorrect: false, color: COLOR_PALETTE[1] },
+              { text: "Option 3", isCorrect: false, color: COLOR_PALETTE[2] },
+              { text: "Option 4", isCorrect: false, color: COLOR_PALETTE[3] },
+            ];
+          } else if (questionType === "true_false") {
+            newQuestion.options = [
+              { text: "True", isCorrect: true, color: COLOR_PALETTE[0] },
+              { text: "False", isCorrect: false, color: COLOR_PALETTE[1] },
+            ];
+          } else if (questionType === "multiple_select") {
+            newQuestion.options = [
+              { text: "Option 1", isCorrect: true, color: COLOR_PALETTE[0] },
+              { text: "Option 2", isCorrect: true, color: COLOR_PALETTE[1] },
+              { text: "Option 3", isCorrect: false, color: COLOR_PALETTE[2] },
+              { text: "Option 4", isCorrect: false, color: COLOR_PALETTE[3] },
+            ];
+          } else if (questionType === "poll") {
+            newQuestion.options = [
+              { text: "Option 1", isCorrect: true, color: COLOR_PALETTE[0] },
+              { text: "Option 2", isCorrect: false, color: COLOR_PALETTE[1] },
+              { text: "Option 3", isCorrect: false, color: COLOR_PALETTE[2] },
+            ];
+          } else if (questionType === "open_ended") {
+            newQuestion.correctAnswer = `Sample answer about ${topic.title}`;
+          }
+
+          data.questions.push(newQuestion);
+        }
+      }
+    }
+
+    // Check if we received the correct number of slides (if any were requested)
+    if (requestedSlides > 0 && data.slides.length !== requestedSlides) {
+      console.warn(
+        `Expected ${requestedSlides} slides but got ${data.slides.length}`
+      );
+
+      // Adjust the slides array to match requested amount
+      if (data.slides.length > requestedSlides) {
+        // Truncate extra slides
+        data.slides = data.slides.slice(0, requestedSlides);
+      } else {
+        // Add dummy slides if needed
+        const slideTypes = ["classic", "big_title", "bullet_points"];
+        while (data.slides.length < requestedSlides) {
+          const slideType =
+            slideTypes[Math.floor(Math.random() * slideTypes.length)];
+
+          // Create a placeholder slide
+          const newSlide = {
+            title: `Additional Information about ${topic.title} (${
+              data.slides.length + 1
+            })`,
+            type: slideType,
+            content:
+              slideType === "bullet_points"
+                ? `• Key point 1 about ${topic.title}\n• Key point 2 about ${topic.title}\n• Key point 3 about ${topic.title}`
+                : `This slide provides additional information about ${topic.title}.`,
+          };
+
+          data.slides.push(newSlide);
+        }
+      }
+    }
+
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -303,16 +417,22 @@ const generateQuestions = async (req, res) => {
 
 const generateSurveyQuestions = async (req, res) => {
   try {
-    const { topic, numSurveyQuestions = 5, numSurveySlides = 0 } = req.body;
+    const { topic, numSurveyQuestions, numSurveySlides } = req.body;
 
     if (!topic?.title) {
       return res.status(400).json({ error: "Survey topic title is required" });
     }
 
+    // Ensure numSurveyQuestions and numSurveySlides are numbers
+    const requestedQuestions = parseInt(numSurveyQuestions) || 5;
+    const requestedSlides = parseInt(numSurveySlides) || 0;
+
     const response = await surveyAgent.start(`
-      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} survey slides for the topic: "${
+      You MUST generate EXACTLY ${requestedQuestions} survey questions and EXACTLY ${requestedSlides} survey slides for the topic: "${
       topic.title
     }"
+      
+      The number of questions (${requestedQuestions}) and slides (${requestedSlides}) is a strict requirement and must be followed precisely.
       
       **Survey Question Format:**
       - Must be well-structured, unbiased, and clear.
@@ -366,7 +486,81 @@ const generateSurveyQuestions = async (req, res) => {
       }
     `);
 
-    const surveyData = cleanResponse(response);
+    let surveyData = cleanResponse(response);
+
+    // Check if we received the correct number of questions
+    if (surveyData.questions.length !== requestedQuestions) {
+      console.warn(
+        `Expected ${requestedQuestions} survey questions but got ${surveyData.questions.length}`
+      );
+
+      // Adjust the questions array to match requested amount
+      if (surveyData.questions.length > requestedQuestions) {
+        // Truncate extra questions
+        surveyData.questions = surveyData.questions.slice(
+          0,
+          requestedQuestions
+        );
+      } else {
+        // Add dummy questions if needed
+        while (surveyData.questions.length < requestedQuestions) {
+          // Create a placeholder question
+          const newQuestion = {
+            title: `Survey Question ${surveyData.questions.length + 1} about ${
+              topic.title
+            }`,
+            description: `Please share your thoughts about ${topic.title}`,
+            dimension: Math.floor(Math.random() * 5) + 1,
+            year: 2024,
+            timer: 30,
+            answerOptions: [
+              { optionText: "Strongly agree", color: COLOR_PALETTE[0] },
+              { optionText: "Agree", color: COLOR_PALETTE[1] },
+              { optionText: "Neutral", color: COLOR_PALETTE[2] },
+              { optionText: "Disagree", color: COLOR_PALETTE[3] },
+              { optionText: "Strongly disagree", color: COLOR_PALETTE[4] },
+            ],
+          };
+
+          surveyData.questions.push(newQuestion);
+        }
+      }
+    }
+
+    // Check if we received the correct number of slides (if any were requested)
+    if (
+      requestedSlides > 0 &&
+      (!surveyData.slides || surveyData.slides.length !== requestedSlides)
+    ) {
+      // Initialize slides array if it doesn't exist
+      if (!surveyData.slides) {
+        surveyData.slides = [];
+      }
+
+      console.warn(
+        `Expected ${requestedSlides} survey slides but got ${surveyData.slides.length}`
+      );
+
+      // Adjust the slides array to match requested amount
+      if (surveyData.slides.length > requestedSlides) {
+        // Truncate extra slides
+        surveyData.slides = surveyData.slides.slice(0, requestedSlides);
+      } else {
+        // Add dummy slides if needed
+        while (surveyData.slides.length < requestedSlides) {
+          // Create a placeholder slide
+          const newSlide = {
+            surveyTitle: `Information Slide ${
+              surveyData.slides.length + 1
+            } about ${topic.title}`,
+            surveyContent: `This slide provides information about ${topic.title} to help you respond to the survey questions.`,
+          };
+
+          surveyData.slides.push(newSlide);
+        }
+      }
+    }
+
     res.status(200).json(surveyData);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -375,14 +569,22 @@ const generateSurveyQuestions = async (req, res) => {
 
 const generateArtPulseSurvey = async (req, res) => {
   try {
-    const { topic, numSurveyQuestions = 5, numSurveySlides = 3 } = req.body;
+    const { topic, numSurveyQuestions, numSurveySlides } = req.body;
 
     if (!topic?.title) {
       return res.status(400).json({ error: "Survey topic title is required" });
     }
 
+    // Ensure numSurveyQuestions and numSurveySlides are numbers
+    const requestedQuestions = parseInt(numSurveyQuestions) || 5;
+    const requestedSlides = parseInt(numSurveySlides) || 0;
+
     const response = await surveyAgent.start(`
-      Generate ${numSurveyQuestions} survey questions and ${numSurveySlides} slides related to the topic: "${topic.title}" about art and creativity.
+      You MUST generate EXACTLY ${requestedQuestions} survey questions and EXACTLY ${requestedSlides} slides related to the topic: "${
+      topic.title
+    }" about art and creativity.
+      
+      The number of questions (${requestedQuestions}) and slides (${requestedSlides}) is a strict requirement and must be followed precisely.
       
       **Focus Areas:**
       - Art styles (e.g., abstract, realism, digital art)
@@ -401,12 +603,123 @@ const generateArtPulseSurvey = async (req, res) => {
       **Output JSON Format:**
       {
         "topic": "${topic.title}",
-        "questions": [...],
-        "slides": [...]
+        "questions": [
+          {
+            "title": "string (Question text)",
+            "description": "string (Brief explanation, if needed)",
+            "dimension": number (1-5, indicating complexity level),
+            "year": 2024,
+            "timer": number (default 30 seconds),
+            "answerOptions": [
+              {
+                "optionText": "string (Answer option)",
+                "color": "Auto-select from: ${COLOR_PALETTE.join(", ")}"
+              }
+            ]
+          }
+        ],
+        "slides": [
+          {
+            "slideTitle": "string (Slide title)",
+            "slideContent": "string (Descriptive content for the slide)"
+          }
+        ]
       }
     `);
 
-    const surveyData = cleanResponse(response);
+    let surveyData = cleanResponse(response);
+
+    // Check if we received the correct number of questions
+    if (surveyData.questions.length !== requestedQuestions) {
+      console.warn(
+        `Expected ${requestedQuestions} ArtPulse questions but got ${surveyData.questions.length}`
+      );
+
+      // Adjust the questions array to match requested amount
+      if (surveyData.questions.length > requestedQuestions) {
+        // Truncate extra questions
+        surveyData.questions = surveyData.questions.slice(
+          0,
+          requestedQuestions
+        );
+      } else {
+        // Add dummy questions if needed
+        while (surveyData.questions.length < requestedQuestions) {
+          // Create a placeholder question about art
+          const artTopics = [
+            "painting styles",
+            "art exhibitions",
+            "digital art",
+            "artistic expression",
+            "creative process",
+          ];
+          const randomTopic =
+            artTopics[Math.floor(Math.random() * artTopics.length)];
+
+          const newQuestion = {
+            title: `How interested are you in ${randomTopic}?`,
+            description: `Please rate your level of interest in ${randomTopic} related to ${topic.title}`,
+            dimension: Math.floor(Math.random() * 5) + 1,
+            year: 2024,
+            timer: 30,
+            answerOptions: [
+              { optionText: "Very Interested", color: COLOR_PALETTE[0] },
+              { optionText: "Somewhat Interested", color: COLOR_PALETTE[1] },
+              { optionText: "Neutral", color: COLOR_PALETTE[2] },
+              { optionText: "Slightly Interested", color: COLOR_PALETTE[3] },
+              { optionText: "Not Interested", color: COLOR_PALETTE[4] },
+            ],
+          };
+
+          surveyData.questions.push(newQuestion);
+        }
+      }
+    }
+
+    // Check if we received the correct number of slides (if any were requested)
+    if (
+      requestedSlides > 0 &&
+      (!surveyData.slides || surveyData.slides.length !== requestedSlides)
+    ) {
+      // Initialize slides array if it doesn't exist
+      if (!surveyData.slides) {
+        surveyData.slides = [];
+      }
+
+      console.warn(
+        `Expected ${requestedSlides} ArtPulse slides but got ${surveyData.slides.length}`
+      );
+
+      // Adjust the slides array to match requested amount
+      if (surveyData.slides.length > requestedSlides) {
+        // Truncate extra slides
+        surveyData.slides = surveyData.slides.slice(0, requestedSlides);
+      } else {
+        // Add dummy slides if needed
+        const artTopics = [
+          "Art History",
+          "Modern Art Movements",
+          "Digital Art Revolution",
+          "Creative Techniques",
+          "Art Appreciation",
+        ];
+        while (surveyData.slides.length < requestedSlides) {
+          const slideTopic =
+            artTopics[surveyData.slides.length % artTopics.length];
+
+          // Create a placeholder slide about art
+          const newSlide = {
+            slideTitle: `${slideTopic} - Slide ${surveyData.slides.length + 1}`,
+            slideContent: `This slide explores ${slideTopic.toLowerCase()} in relation to ${
+              topic.title
+            }, highlighting key elements and considerations for artistic expression.`,
+          };
+
+          surveyData.slides.push(newSlide);
+        }
+      }
+    }
+
     res.status(200).json(surveyData);
   } catch (error) {
     res.status(500).json({ error: error.message });
