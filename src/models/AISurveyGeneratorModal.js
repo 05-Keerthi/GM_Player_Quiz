@@ -64,8 +64,8 @@ const AISurveyGeneratorModal = ({
         topic: {
           title: topic.title,
         },
-        numQuestions: parseInt(questionsLength),
-        numSlides: parseInt(slidesLength),
+        numSurveyQuestions: parseInt(questionsLength), // Changed from numQuestions
+        numSurveySlides: parseInt(slidesLength),
       };
 
       const endpoint =
@@ -108,8 +108,8 @@ const AISurveyGeneratorModal = ({
         topic: {
           title: customTopic,
         },
-        numQuestions: parseInt(questionsLength),
-        numSlides: parseInt(slidesLength),
+        numSurveyQuestions: parseInt(questionsLength),
+        numSurveySlides: parseInt(slidesLength),
       };
 
       const endpoint =
@@ -194,7 +194,7 @@ const AISurveyGeneratorModal = ({
       let slidesResponse = null;
       if (transformedSlides.length > 0) {
         slidesResponse = await axios.post(
-         `http://localhost:5000/api/${surveyId}/slides/bulk`,
+          `http://localhost:5000/api/${surveyId}/slides/bulk`,
           {
             slides: transformedSlides,
           },
