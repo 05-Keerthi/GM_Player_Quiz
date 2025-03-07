@@ -208,7 +208,6 @@ const AIQuizGeneratorModal = ({
       );
 
       toast.success("Content added to quiz successfully");
-      onClose();
     } catch (error) {
       console.error("Failed to add content to quiz:", error);
       if (error.message === "No authentication token found") {

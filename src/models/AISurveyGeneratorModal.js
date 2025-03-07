@@ -242,7 +242,6 @@ const AISurveyGeneratorModal = ({
       );
 
       toast.success("Content added to survey successfully");
-      onClose();
     } catch (error) {
       console.error("Failed to add content to survey:", error);
       if (error.message === "No authentication token found") {
